@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caderno QGIS AESP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: barra lateral fixa (navegação + progresso) e área de trabalho; no celular a barra vira faixa superior. Visual de carta topográfica. */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --ink:#18231f; --muted:#5d6b66; --line:#d9e0dc;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#e1efeb;
+  --ok:#2f7d32; --warn:#a86400; --bad:#b3261e;
+  --display:"Archivo", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1715; --surface:#16211e; --ink:#e3ece8; --muted:#9aaba5; --line:#2a3834;
+    --accent:#4fb8a3; --accent-ink:#0b1311; --accent-soft:#1d3530;
+    --ok:#7cc47f; --warn:#e0a84a; --bad:#f08a80; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1715; --surface:#16211e; --ink:#e3ece8; --muted:#9aaba5; --line:#2a3834;
+  --accent:#4fb8a3; --accent-ink:#0b1311; --accent-soft:#1d3530;
+  --ok:#7cc47f; --warn:#e0a84a; --bad:#f08a80; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:260px 1fr;height:100%}
+aside{background:var(--surface);border-right:1px solid var(--line);padding:20px 16px;display:flex;flex-direction:column;gap:18px;overflow:auto;
+  background-image:repeating-radial-gradient(circle at 120% -10%, transparent 0 22px, color-mix(in srgb,var(--accent) 7%,transparent) 22px 23px)}
+.brand h1{font:800 20px/1.15 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+nav{display:flex;flex-direction:column;gap:2px}
+nav button{all:unset;cursor:pointer;padding:8px 10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-weight:500}
+nav button:hover{background:var(--accent-soft)}
+nav button[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
+nav .cnt{font:12px var(--mono);opacity:.8}
+.prog{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent)}
+.sync{margin-top:auto;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--ok)} .dot.loc{background:var(--warn)}
+main{overflow:auto;overflow-x:hidden;padding:24px clamp(16px,3vw,40px) 60px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h2{font:800 26px/1.15 var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h3{font:700 17px/1.25 var(--display);margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--ink);white-space:nowrap}
+.sw{width:10px;height:10px;border-radius:3px;flex:none}
+.btn{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:3px 9px;font-size:13px}
+.btn.on{background:var(--accent-soft);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+input[type=text],input[type=date],input[type=search],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
+textarea{resize:vertical;min-height:120px;line-height:1.55}
+label.lb{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+/* agora */
+.now{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+.hero{border-left:6px solid var(--c,var(--accent))}
+.hero .t{font:500 13px var(--mono);color:var(--muted)}
+.hero .d{font:800 22px/1.2 var(--display);margin:6px 0;text-wrap:balance}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi b{display:block;font:800 26px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted)}
+/* cronograma */
+.day{display:flex;flex-direction:column;gap:6px}
+.dayh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.slot{display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid transparent;cursor:pointer;text-align:left;background:none;width:100%}
+.slot:hover{background:var(--accent-soft)}
+.slot.int{cursor:default;color:var(--muted);font-size:13px;padding:2px 10px}
+.slot.int:hover{background:none}
+.slot.cur{border-color:var(--accent);background:var(--accent-soft)}
+.slot.past .nm{opacity:.75}
+.slot .nm{display:flex;gap:8px;align-items:center;min-width:0}
+.slot .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flags{display:flex;gap:6px;align-items:center;font-size:12px}
+.fl-p{color:var(--ok)} .fl-f{color:var(--bad)}
+.daysel{display:flex;gap:6px;flex-wrap:wrap}
+/* editor */
+.pane{position:fixed;inset:0 0 0 auto;width:min(620px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-12px 0 40px rgb(0 0 0 / .15);display:flex;flex-direction:column;z-index:20}
+.pane header{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.pane .body{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:14px;flex:1}
+.pane textarea{min-height:300px;flex:1}
+.shade{position:fixed;inset:0;background:rgb(0 0 0 / .25);z-index:19}
+.md{line-height:1.6;max-width:68ch}
+.md h1,.md h2,.md h3{font-family:var(--display);margin:.6em 0 .3em}
+.md h1{font-size:20px}.md h2{font-size:18px}.md h3{font-size:16px}
+.md p{margin:.4em 0}.md ul{margin:.3em 0;padding-left:1.3em}
+.md code{font-family:var(--mono);background:var(--accent-soft);padding:0 4px;border-radius:4px}
+.md a{color:var(--accent)}
+.notes{display:flex;flex-direction:column;gap:8px}
+.ni{padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--surface);text-align:left;width:100%}
+.ni:hover{border-color:var(--accent)}
+.ni .ex{color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.task{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.task.done .tx{text-decoration:line-through;color:var(--muted)}
+.task input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.empty{color:var(--muted);font-size:14px;padding:12px 0}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;z-index:40}
+mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;border-radius:3px}
+.ftk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px) 150px auto;gap:10px;align-items:end}
+.ftk>*{min-width:0}
+.dhead{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.slot .mono{white-space:nowrap}
+.slot .flags:empty{display:none}
+.chip{max-width:100%;min-width:0}
+.ct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dayh>*{min-width:0;max-width:100%}
+@media (max-width:820px){
+  .ftk{grid-template-columns:1fr 1fr}
+  .ftk>div:first-child,.ftk>button{grid-column:1/-1}
+  .dhead{flex-direction:column}
+  nav{flex-wrap:wrap;overflow:visible}
+  nav button{padding:6px 10px}
+  nav .cnt{margin-left:6px}
+  .brand h1{font-size:17px}
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 16px;gap:10px}
+  nav{flex-direction:row;overflow:auto}
+  nav button{white-space:nowrap}
+  .prog,.sync{display:none}
+  .now{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .slot{grid-template-columns:auto minmax(0,1fr);gap:10px;padding:8px 6px}
+  .slot .mono{font-size:12.5px}
+  .slot .flags{grid-column:2}
+  .slot.int{padding:2px 6px}
+  .pane header,.pane .body{padding-left:14px;padding-right:14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <h1>Uso do QGIS como Estratégia de Segurança Pública</h1>
+      <p>AESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11</p>
+    </div>
+    <nav id="nav"></nav>
+    <div class="prog" id="prog"></div>
+    <div class="sync"><span class="dot" id="sdot"></span><span id="stxt">Carregando…</span></div>
+  </aside>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<div id="paneHost"></div>
+
+<script>
+"use strict";
+/* ============ DADOS DO QTS (AESP, versão de 06/11/2026) ============ */
+const DISC = [
+  {k:"cart", nome:"Ambientação e Introdução à Cartografia", ha:4,  inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#3b7dd8"},
+  {k:"sig",  nome:"Fundamentos de Geoprocessamento e SIG",  ha:4,  inst:["José Eudázio Honório Sampaio","José Dyego de Souza Santos"], cor:"#8a5cd0"},
+  {k:"gmaps",nome:"Google Maps e Google My Maps Aplicados à Segurança Pública", ha:8, inst:["José Dyego de Souza Santos"], cor:"#d0453b"},
+  {k:"qgis", nome:"Introdução ao QGIS", ha:12, inst:["Flávio do Nascimento Moreira Júnior","José Eudázio Honório Sampaio"], cor:"#2f9e44"},
+  {k:"edic", nome:"Edição e Manipulação de Dados", ha:8, inst:["José Eudázio Honório Sampaio"], cor:"#c9871a"},
+  {k:"bases",nome:"Bases de Dados Geográficas", ha:8, inst:["José Dyego de Souza Santos"], cor:"#1592a3"},
+  {k:"anal", nome:"Análises Espaciais Aplicadas à Segurança", ha:16, inst:["José Eudázio Honório Sampaio"], cor:"#b8407a"},
+  {k:"prod", nome:"Elaboração de Produtos Cartográficos", ha:8, inst:["Flávio do Nascimento Moreira Júnior","Daniel de Souza Rocha"], cor:"#6c7a1f"},
+  {k:"proj", nome:"Projeto Prático: Diagnóstico Territorial", ha:12, inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#d2622a"},
+];
+const DK = Object.fromEntries(DISC.map(d=>[d.k,d]));
+const SLOTS = [["07:30","08:20"],["08:20","09:10"],["09:10","10:00"],"INT1",["10:20","11:10"],["11:10","12:00"],["13:00","13:50"],["13:50","14:40"],"INT2",["15:00","15:50"],["15:50","16:40"],["16:40","17:30"]];
+const DIAS_AULA = ["2026-11-09","2026-11-10","2026-11-11","2026-11-12","2026-11-13","2026-11-16","2026-11-17","2026-11-18"];
+const DIAS_REPO = ["2026-11-14","2026-11-15"];
+const WD = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+
+const AULAS = []; // {id, data, ini, fim, k, n, tot}
+(function gerar(){
+  const seq=[]; DISC.forEach(d=>{for(let i=1;i<=d.ha;i++)seq.push([d.k,i,d.ha])});
+  let p=0;
+  for(const dia of DIAS_AULA){
+    for(const s of SLOTS){ if(typeof s==="string")continue;
+      const [k,n,tot]=seq[p++];
+      AULAS.push({id:dia.replace(/-/g,"")+"-"+s[0].replace(":",""), data:dia, ini:s[0], fim:s[1], k, n, tot});
+    }
+  }
+})();
+const AK = Object.fromEntries(AULAS.map(a=>[a.id,a]));
+const TODOS_DIAS = [...DIAS_AULA.slice(0,5),...DIAS_REPO,...DIAS_AULA.slice(5)];
+
+/* ============ HORA DE FORTALEZA (UTC-3) ============ */
+function agoraFor(){ const d=new Date(Date.now()-3*3600e3); return {data:d.toISOString().slice(0,10), hm:d.toISOString().slice(11,16), ms:Date.now()}; }
+function msDe(data,hm){ return Date.parse(data+"T"+hm+":00-03:00"); }
+function fmtData(data,longo){ const d=new Date(data+"T12:00:00-03:00"); const dd=data.slice(8,10)+"/"+data.slice(5,7); return longo? WD[d.getUTCDay()]+", "+dd : WD[d.getUTCDay()].slice(0,3)+" "+dd; }
+function statusAula(a){ const t=Date.now(); const i=msDe(a.data,a.ini), f=msDe(a.data,a.fim); return t<i?"fut":(t<f?"cur":"past"); }
+
+/* ============ ARMAZENAMENTO ============ */
+// Estado: docs por id. aula-<id>, disc-<k>, nota-<id>, tarefa-<id>
+const S = { docs:{}, modo:"local", db:null, col:null, carregado:false };
+const LS="caderno-qgis-aesp:v1";
+function lsLoad(){ try{ const j=localStorage.getItem(LS); if(j) S.docs=JSON.parse(j)||{}; }catch(e){} }
+function lsSave(){ try{ localStorage.setItem(LS, JSON.stringify(S.docs)); }catch(e){} }
+lsLoad();
+const pend = {}; const timers = {}; const writing = {};
+function salvarDoc(id, body, atraso=700){
+  body.upd = Date.now();
+  S.docs[id] = body; lsSave(); setSync();
+  if(!S.col) return;
+  pend[id]=body; clearTimeout(timers[id]);
+  timers[id]=setTimeout(()=>flush(id), atraso);
+}
+async function flush(id){
+  if(writing[id]) { clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id),400); return; }
+  const body=pend[id]; if(!body) return; delete pend[id];
+  writing[id]=true; setSync();
+  try{ await S.col.doc(id).set(body); }
+  catch(e){ if(e&&e.code==="unavailable"){ pend[id]=pend[id]||body; timers[id]=setTimeout(()=>flush(id),1500+Math.random()*1500);} else if(e&&e.code==="quota_exceeded"){ toast("Espaço da nuvem cheio. Exporte um backup e apague notas antigas."); } else { S.erro=true; } }
+  writing[id]=false; setSync();
+}
+async function apagarDoc(id){
+  delete S.docs[id]; lsSave(); delete pend[id]; clearTimeout(timers[id]);
+  if(S.col){ try{ await S.col.doc(id).delete(); }catch(e){} }
+}
+function flushTudo(){ Object.keys(pend).forEach(id=>{clearTimeout(timers[id]); flush(id);}); }
+window.addEventListener("pagehide",flushTudo);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushTudo(); });
+
+function setSync(){
+  const dot=document.getElementById("sdot"), tx=document.getElementById("stxt");
+  const np=Object.keys(pend).length+Object.values(writing).filter(Boolean).length;
+  if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? "Salvando…" : (S.erro?"Salvo neste navegador (falha ao enviar)":"Salvo na sua conta"); }
+  else { dot.className="dot loc"; tx.textContent= S.modo==="conectando"?"Conectando à sua conta…":"Salvo só neste navegador"; }
+}
+
+async function conectar(){
+  S.modo="conectando"; setSync();
+  let db=null,user=null;
+  try{ [db,user]=await Promise.all([window.claude?.use?.("db"), window.claude?.use?.("user")]); }catch(e){}
+  const uid = user? await user.id().catch(()=>null) : null;
+  if(!db||!uid){ S.modo="local"; setSync(); return; }
+  S.db=db; S.col=db.collection("data/users/"+uid);
+  let primeiro=true;
+  const tm=setTimeout(()=>{ if(primeiro){ S.modo="local"; setSync(); toast("Sem conexão com a conta. Suas notas ficam neste navegador por enquanto."); } },10000);
+  S.col.onSnapshot(snap=>{
+    const remoto={}; snap.docs.forEach(d=>{ remoto[d.id]=d.data(); });
+    if(primeiro){
+      primeiro=false;
+      // mescla: o mais recente vence; envia o que só existe localmente
+      const local=S.docs; const out={...remoto};
+      for(const [id,b] of Object.entries(local)){
+        const r=remoto[id];
+        if(!r || (b.upd||0)>(r.upd||0)){ out[id]=b; pend[id]=b; }
+      }
+      S.docs=out;
+      Object.keys(pend).forEach((id,i)=>{ timers[id]=setTimeout(()=>flush(id),300+i*150); });
+    } else {
+      for(const [id,r] of Object.entries(remoto)){
+        if(pend[id]||writing[id]) continue;
+        const l=S.docs[id]; if(!l || (r.upd||0)>(l.upd||0)) S.docs[id]=r;
+      }
+      for(const id of Object.keys(S.docs)){ if(!(id in remoto) && !pend[id] && !writing[id] && !snap.metadata.fromCache) delete S.docs[id]; }
+    }
+    if(!snap.metadata.fromCache){ clearTimeout(tm); S.modo="nuvem"; }
+    lsSave(); setSync();
+    if(!editando()) render();
+  }, err=>{ clearTimeout(tm); S.modo="local"; S.col=null; setSync(); });
+}
+
+/* ============ ACESSO AOS DADOS ============ */
+const aulaD = id => S.docs["aula-"+id] || {};
+const discD = k => S.docs["disc-"+k] || {};
+const nomeDisc = k => (discD(k).nome||"").trim() || DK[k].nome;
+const notas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="nota").map(([id,b])=>({id,...b})).sort((a,b)=>(b.upd||0)-(a.upd||0));
+const tarefas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="tarefa").map(([id,b])=>({id,...b})).sort((a,b)=>(a.feito-b.feito)||((a.prazo||"9")<(b.prazo||"9")?-1:1)||((a.criado||0)-(b.criado||0)));
+function novoId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ============ UTIL ============ */
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function md(src){
+  const linhas=String(src||"").split("\n"); let out="", lista=false;
+  const inl=t=>esc(t).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  for(const l of linhas){
+    const m=l.match(/^\s*[-*]\s+(.*)$/);
+    if(m){ if(!lista){out+="<ul>";lista=true;} out+="<li>"+inl(m[1].replace(/^\[ \]\s*/,"☐ ").replace(/^\[x\]\s*/i,"☑ "))+"</li>"; continue; }
+    if(lista){out+="</ul>";lista=false;}
+    const h=l.match(/^(#{1,3})\s+(.*)$/);
+    if(h){ out+=`<h${h[1].length}>${inl(h[2])}</h${h[1].length}>`; continue; }
+    if(l.trim()==="") continue;
+    out+="<p>"+inl(l)+"</p>";
+  }
+  if(lista) out+="</ul>";
+  return out || '<p class="muted">Sem anotações.</p>';
+}
+function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),3200); }
+function sw(k){ return `<span class="sw" style="background:${DK[k].cor}"></span>`; }
+function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||(a.tagName==="INPUT"&&a.type==="text")); }
+
+/* ============ NAVEGAÇÃO ============ */
+const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
+let VIEW = "hoje", DIA_SEL=null, PANE=null;
+function lerHash(){ const h=location.hash.slice(1); if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
+window.addEventListener("hashchange",()=>{ lerHash(); render(); });
+function ir(v){ VIEW=v; try{ history.replaceState(null,"","#"+v);}catch(e){ location.hash=v; } render(); document.querySelector("main").scrollTop=0; }
+
+function renderNav(){
+  const nn=notas().length, tp=tarefas().filter(t=>!t.feito).length;
+  const cnt={caderno:nn||"", tarefas:tp||""};
+  document.getElementById("nav").innerHTML=VIEWS.map(([k,l])=>`<button data-go="${k}" ${VIEW===k?'aria-current="page"':""}>${l}<span class="cnt">${cnt[k]??""}</span></button>`).join("");
+  const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
+  const comNota=AULAS.filter(a=>(aulaD(a.id).nota||"").trim()).length;
+  const pres=AULAS.filter(a=>aulaD(a.id).pres==="p").length;
+  document.getElementById("prog").innerHTML=`
+    <div class="row" style="justify-content:space-between"><span>Curso</span><span class="mono">${passadas}/80 h/a</span></div>
+    <div class="bar"><i style="width:${passadas/80*100}%"></i></div>
+    <div class="row" style="justify-content:space-between"><span>Aulas anotadas</span><span class="mono">${comNota}</span></div>
+    <div class="row" style="justify-content:space-between"><span>Presenças marcadas</span><span class="mono">${pres}</span></div>`;
+}
+
+/* ============ VIEWS ============ */
+function slotHTML(a){
+  const st=statusAula(a), d=aulaD(a.id);
+  const flags=[];
+  if(d.estrela) flags.push('<span title="Importante">★</span>');
+  if((d.nota||"").trim()) flags.push('<span class="chip">nota</span>');
+  if(d.pres==="p") flags.push('<span class="fl-p">presente</span>'); else if(d.pres==="f") flags.push('<span class="fl-f">falta</span>');
+  return `<button class="slot ${st}" data-aula="${a.id}"><span class="mono">${a.ini}–${a.fim}</span><span class="nm">${sw(a.k)}<span>${esc(nomeDisc(a.k))}</span><span class="mono muted" style="flex:none">${a.n}/${a.tot}</span></span><span class="flags">${flags.join("")}</span></button>`;
+}
+function diaHTML(dia){
+  if(DIAS_REPO.includes(dia)) return `<div class="card day"><div class="dayh"><h3>${fmtData(dia,true)}</h3><span class="chip">Reposição de aula</span></div><p class="muted" style="margin:0">Reservado para reposição, das 07:30 às 17:30, se houver aula perdida.</p></div>`;
+  const aulas=AULAS.filter(a=>a.data===dia);
+  let h=""; let i=0;
+  for(const s of SLOTS){
+    if(s==="INT1") h+=`<div class="slot int"><span class="mono">10:00–10:20</span><span>Intervalo</span></div>`;
+    else if(s==="INT2") h+=`<div class="slot int"><span class="mono">14:40–15:00</span><span>Intervalo</span></div>`;
+    else { if(s[0]==="13:00") h+=`<div class="slot int"><span class="mono">12:00–13:00</span><span>Almoço</span></div>`; h+=slotHTML(aulas[i++]); }
+  }
+  const ds=[...new Set(aulas.map(a=>a.k))];
+  return `<div class="card day"><div class="dayh"><h3>${fmtData(dia,true)}</h3><div class="row">${ds.map(k=>`<span class="chip">${sw(k)}<span class="ct">${esc(nomeDisc(k))}</span></span>`).join("")}</div></div>${h}</div>`;
+}
+
+function vHoje(){
+  const ag=agoraFor(); const t=Date.now();
+  const cur=AULAS.find(a=>statusAula(a)==="cur");
+  const prox=AULAS.find(a=>msDe(a.data,a.ini)>t);
+  const ini=msDe(AULAS[0].data,AULAS[0].ini), fim=msDe(AULAS[79].data,AULAS[79].fim);
+  let titulo, sub, foco=cur||prox;
+  if(t<ini){ const dias=Math.ceil((msDe("2026-11-09","00:00")-msDe(ag.data,"00:00"))/864e5); titulo="O curso começa "+(dias<=1?"amanhã":"em "+dias+" dias"); sub="Segunda-feira, 09/11, às 07:30 · AESP/CE, Fortaleza"; }
+  else if(t>fim){ titulo="Curso concluído"; sub="80 h/a entre 09 e 18/11. Use o caderno para revisar."; foco=null; }
+  else if(cur){ titulo="Aula em andamento"; sub=fmtData(ag.data,true); }
+  else { titulo= DIAS_REPO.includes(ag.data)?"Fim de semana de reposição":"Fora do horário de aula"; sub=fmtData(ag.data,true); }
+
+  const diaMostrar = AULAS.some(a=>a.data===ag.data) ? ag.data : (prox?prox.data:null);
+  const d=foco?aulaD(foco.id):{};
+  const heroAula = foco? `
+    <div class="card hero" style="--c:${DK[foco.k].cor}">
+      <div class="t">${cur?"AGORA":"PRÓXIMA"} · ${fmtData(foco.data)} · ${foco.ini}–${foco.fim} · aula ${foco.n} de ${foco.tot}</div>
+      <div class="d">${esc(nomeDisc(foco.k))}</div>
+      <div class="muted">${DK[foco.k].inst.map(esc).join(" · ")}</div>
+      <div style="margin-top:12px"><label class="lb" for="qnota">Anotação rápida desta aula</label>
+      <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. Salva sozinho.">${esc(d.nota||"")}</textarea></div>
+      <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button></div>
+    </div>` : `<div class="card"><p class="muted" style="margin:0">Nenhuma aula pela frente.</p></div>`;
+
+  const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
+  const tp=tarefas().filter(x=>!x.feito);
+  return `
+    <div><h2>${titulo}</h2><p class="sub">${sub}</p></div>
+    <div class="kpis">
+      <div class="card kpi"><b>${passadas}<span class="mono" style="font-size:15px">/80</span></b><span>h/a cumpridas (50 min)</span></div>
+      <div class="card kpi"><b>${DISC.filter(x=>AULAS.filter(a=>a.k===x.k).every(a=>statusAula(a)==="past")).length}<span class="mono" style="font-size:15px">/9</span></b><span>disciplinas concluídas</span></div>
+      <div class="card kpi"><b>${notas().length}</b><span>notas no caderno</span></div>
+      <div class="card kpi"><b>${tp.length}</b><span>tarefas pendentes</span></div>
+    </div>
+    <div class="now">
+      ${heroAula}
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Tarefas</h3><button class="btn sm" data-go="tarefas">Todas</button></div>
+        ${tp.length? tp.slice(0,6).map(tarefaHTML).join("") : '<p class="empty">Nada pendente. Anote trabalhos, leituras e o que instalar antes da aula.</p>'}
+      </div>
+    </div>
+    ${diaMostrar? `<div><h3 style="margin-bottom:8px">${diaMostrar===ag.data?"Aulas de hoje":"Aulas do próximo dia"}</h3>${diaHTML(diaMostrar)}</div>`:""}
+  `;
+}
+
+function vCronograma(){
+  const ag=agoraFor();
+  if(!DIA_SEL) DIA_SEL = TODOS_DIAS.includes(ag.data)? ag.data : "todos";
+  const bts=[["todos","Todos"],...TODOS_DIAS.map(d=>[d,fmtData(d)])].map(([v,l])=>`<button class="btn sm ${DIA_SEL===v?"on":""}" data-dia="${v}">${l}</button>`).join("");
+  const dias = DIA_SEL==="todos"?TODOS_DIAS:[DIA_SEL];
+  return `<div><h2>Cronograma</h2><p class="sub">Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.</p></div>
+    <div class="daysel">${bts}</div>
+    ${dias.map(diaHTML).join("")}
+    <p class="muted" style="font-size:13px;margin:0">No QTS original, o horário de 18/11 às 07:30 veio em branco; aqui ele aparece como a 3ª aula do Projeto Prático, seguindo a numeração 2/12 → 4/12.</p>`;
+}
+
+function vDisciplinas(){
+  return `<div><h2>Disciplinas</h2><p class="sub">9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.</p></div>
+  ${DISC.map(x=>{
+    const aulas=AULAS.filter(a=>a.k===x.k); const pas=aulas.filter(a=>statusAula(a)==="past").length;
+    const dd=discD(x.k); const nts=notas().filter(n=>n.disc===x.k);
+    const anot=aulas.filter(a=>(aulaD(a.id).nota||"").trim());
+    const dias=[...new Set(aulas.map(a=>a.data))];
+    return `<div class="card" id="d-${x.k}" style="border-left:6px solid ${x.cor}">
+      <div class="dhead">
+        <div style="min-width:0;flex:1"><h3 data-nome="${x.k}">${esc(nomeDisc(x.k))}</h3>
+        <div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
+        <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
+        <div class="row"><button class="btn sm" data-editnome="${x.k}">Editar nome</button><button class="btn sm" data-novanota="${x.k}">Nova nota</button></div>
+      </div>
+      <div class="row" style="margin:10px 0 4px;gap:8px"><div class="bar" style="flex:1"><i style="width:${pas/x.ha*100}%;background:${x.cor}"></i></div><span class="mono" style="font-size:12.5px">${pas}/${x.ha}</span></div>
+      <div class="grid2" style="margin-top:10px">
+        <div><label class="lb" for="dn-${x.k}">Resumo da disciplina</label>
+          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea></div>
+        <div class="notes"><span class="lb">Aulas (${anot.length} com anotação)</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${aulas.map(a=>{const ad=aulaD(a.id);const has=(ad.nota||"").trim();return `<button class="btn sm ${has?"on":""}" data-aula="${a.id}" title="${fmtData(a.data)} ${a.ini}">${a.n}${ad.estrela?" ★":""}</button>`}).join("")}</div>
+          ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
+        </div>
+      </div></div>`;
+  }).join("")}`;
+}
+
+function notaItem(n){
+  const ex=(n.texto||"").replace(/[#*`>\-\[\]]/g,"").slice(0,180);
+  return `<button class="ni" data-nota="${n.id}"><div class="row" style="justify-content:space-between"><strong>${esc(n.titulo||"Sem título")}</strong><span class="mono muted" style="font-size:12px">${new Date(n.upd||0).toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza",day:"2-digit",month:"2-digit"})}</span></div>
+  ${n.disc&&DK[n.disc]?`<div class="row" style="margin:2px 0"><span class="chip">${sw(n.disc)}${esc(nomeDisc(n.disc))}</span></div>`:""}<div class="ex">${esc(ex)}</div></button>`;
+}
+let FILTRO_NOTA="";
+function vCaderno(){
+  const ns=notas().filter(n=>!FILTRO_NOTA||n.disc===FILTRO_NOTA);
+  return `<div class="row" style="justify-content:space-between"><div><h2>Caderno</h2><p class="sub">Notas livres: resumos, passo a passo do QGIS, dúvidas para levar ao instrutor.</p></div>
+    <button class="btn pri" data-novanota="${FILTRO_NOTA}">Nova nota</button></div>
+    <div class="row"><label class="lb" for="fnd" style="margin:0">Disciplina</label><select id="fnd" style="width:auto;flex:1;min-width:0;max-width:100%"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_NOTA===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+    <div class="notes">${ns.length?ns.map(notaItem).join(""):'<p class="empty">Nenhuma nota ainda. Crie a primeira: por exemplo, “Instalação do QGIS” ou “Dúvidas da semana”.</p>'}</div>`;
+}
+
+function tarefaHTML(t){
+  return `<div class="task ${t.feito?"done":""}"><input type="checkbox" id="tk-${t.id}" data-tk="${t.id}" ${t.feito?"checked":""}><label for="tk-${t.id}" class="tx" style="flex:1">${esc(t.texto)}${t.disc&&DK[t.disc]?` <span class="chip">${sw(t.disc)}${esc(nomeDisc(t.disc).split(" ").slice(0,3).join(" "))}</span>`:""}</label>${t.prazo?`<span class="mono muted" style="font-size:12.5px">${t.prazo.slice(8,10)}/${t.prazo.slice(5,7)}</span>`:""}<button class="btn sm danger" data-tkdel="${t.id}" aria-label="Apagar tarefa">✕</button></div>`;
+}
+function vTarefas(){
+  const ts=tarefas();
+  return `<div><h2>Tarefas</h2><p class="sub">Trabalhos, leituras, softwares a instalar e entregas do Projeto Prático.</p></div>
+  <form class="card ftk" id="ftk">
+    <div><label class="lb" for="tk-t">Tarefa</label><input type="text" id="tk-t" placeholder="Ex.: instalar QGIS 3.40 LTR no notebook" required></div>
+    <div><label class="lb" for="tk-d">Disciplina</label><select id="tk-d"><option value="">Nenhuma</option>${DISC.map(d=>`<option value="${d.k}">${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+    <div><label class="lb" for="tk-p">Prazo</label><input type="date" id="tk-p" min="2026-11-01" max="2026-12-31"></div>
+    <button class="btn pri" type="submit">Adicionar</button>
+  </form>
+  <div class="card">${ts.length?ts.map(tarefaHTML).join(""):'<p class="empty">Nenhuma tarefa.</p>'}</div>`;
+}
+
+let BUSCA="";
+function vBusca(){
+  return `<div><h2>Buscar</h2><p class="sub">Procura em todas as anotações de aula, resumos, notas e tarefas.</p></div>
+  <input type="search" id="q" placeholder="Ex.: buffer, mapa de calor, CRS 31984…" value="${esc(BUSCA)}">
+  <div id="res" class="notes">${resultados()}</div>`;
+}
+function trecho(txt,q){ const i=txt.toLowerCase().indexOf(q); if(i<0) return esc(txt.slice(0,140)); const a=Math.max(0,i-60); const s=txt.slice(a,i+q.length+80); const j=s.toLowerCase().indexOf(q); return (a?"…":"")+esc(s.slice(0,j))+"<mark>"+esc(s.slice(j,j+q.length))+"</mark>"+esc(s.slice(j+q.length))+"…"; }
+function resultados(){
+  const q=BUSCA.trim().toLowerCase(); if(q.length<2) return '<p class="empty">Digite pelo menos 2 letras.</p>';
+  const r=[];
+  AULAS.forEach(a=>{const t=aulaD(a.id).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-aula="${a.id}"><strong>${esc(nomeDisc(a.k))} · aula ${a.n}/${a.tot}</strong> <span class="mono muted" style="font-size:12px">${fmtData(a.data)} ${a.ini}</span><div class="ex">${trecho(t,q)}</div></button>`)});
+  DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Resumo: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
+  notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
+  tarefas().forEach(t=>{ if((t.texto||"").toLowerCase().includes(q)) r.push(`<button class="ni" data-go="tarefas"><strong>Tarefa</strong><div class="ex">${trecho(t.texto,q)}</div></button>`)});
+  return r.length? r.join("") : '<p class="empty">Nada encontrado.</p>';
+}
+
+function exportarMD(){
+  let o=`# Uso do QGIS como Estratégia de Segurança Pública\nAESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11/2026\n\n`;
+  DISC.forEach(d=>{
+    o+=`## ${nomeDisc(d.k)}\n${d.inst.join(" · ")} · ${d.ha} h/a\n\n`;
+    const dn=discD(d.k).nota; if(dn&&dn.trim()) o+=`### Resumo\n${dn.trim()}\n\n`;
+    AULAS.filter(a=>a.k===d.k).forEach(a=>{const ad=aulaD(a.id); if((ad.nota||"").trim()||ad.estrela) o+=`### Aula ${a.n}/${a.tot} · ${fmtData(a.data)} ${a.ini}${ad.estrela?" ★":""}\n${(ad.nota||"").trim()}\n\n`;});
+    notas().filter(n=>n.disc===d.k).forEach(n=>{o+=`### Nota: ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;});
+  });
+  const soltas=notas().filter(n=>!n.disc||!DK[n.disc]);
+  if(soltas.length){ o+=`## Notas gerais\n\n`; soltas.forEach(n=>{o+=`### ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;}); }
+  const ts=tarefas(); if(ts.length){ o+=`## Tarefas\n`+ts.map(t=>`- [${t.feito?"x":" "}] ${t.texto}${t.prazo?" (até "+t.prazo.slice(8,10)+"/"+t.prazo.slice(5,7)+")":""}`).join("\n")+"\n"; }
+  return o;
+}
+function vBackup(){
+  return `<div><h2>Exportar</h2><p class="sub">Leve suas anotações para o Word, Google Docs ou Obsidian, ou guarde uma cópia de segurança.</p></div>
+  <div class="grid2">
+    <div class="card"><h3>Caderno completo (Markdown)</h3><p class="muted">Tudo organizado por disciplina: resumos, aulas anotadas, notas e tarefas.</p>
+      <div class="row"><button class="btn pri" id="cpmd">Copiar texto</button><button class="btn" id="dlmd" hidden>Baixar .md</button></div></div>
+    <div class="card"><h3>Cópia de segurança</h3><p class="muted">Arquivo de dados para restaurar o caderno em outro navegador ou conta.</p>
+      <div class="row"><button class="btn" id="cpjs">Copiar backup</button><button class="btn" id="dljs" hidden>Baixar .json</button></div>
+      <label class="lb" for="imp" style="margin-top:12px">Restaurar: cole o backup aqui</label><textarea id="imp" style="min-height:80px" placeholder='{"aula-20261109-0730": …}'></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn" id="btimp">Restaurar backup</button></div></div>
+  </div>
+  <div class="card"><h3>Onde ficam as notas</h3><p class="muted" style="margin:0">${S.modo==="nuvem"?"As notas estão guardadas na sua conta e aparecem em qualquer aparelho. Só você vê.":"As notas ficam salvas neste navegador, neste aparelho. Para levar a outro computador, use “Copiar backup” aqui e “Restaurar backup” lá. Não limpe os dados do navegador sem exportar antes."}</p></div>`;
+}
+
+/* ============ PAINEL LATERAL (aula / nota) ============ */
+function abrirAula(id){ PANE={tipo:"aula",id,prev:false}; renderPane(); }
+function abrirNota(id){ PANE={tipo:"nota",id,prev:!!(S.docs[id]?.texto)}; renderPane(); }
+function fecharPane(){ PANE=null; document.getElementById("paneHost").innerHTML=""; render(); }
+function renderPane(){
+  const host=document.getElementById("paneHost");
+  if(!PANE){ host.innerHTML=""; return; }
+  if(PANE.tipo==="aula"){
+    const a=AK[PANE.id]; const d=aulaD(a.id); const x=DK[a.k];
+    const i=AULAS.indexOf(a);
+    host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Aula">
+      <header style="border-top:5px solid ${x.cor}"><div><div class="mono muted" style="font-size:12.5px">${fmtData(a.data,true)} · ${a.ini}–${a.fim} · aula ${a.n} de ${a.tot}</div>
+        <h3 style="margin-top:4px">${esc(nomeDisc(a.k))}</h3><div class="muted" style="font-size:13px">${x.inst.map(esc).join(" · ")}</div></div>
+        <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+      <div class="body">
+        <div class="row">
+          <button class="btn sm ${d.pres==="p"?"on":""}" data-pres="p">Presente</button>
+          <button class="btn sm ${d.pres==="f"?"on":""}" data-pres="f">Falta</button>
+          <button class="btn sm ${d.estrela?"on":""}" data-estrela>★ Importante</button>
+          <span style="flex:1"></span>
+          <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button>
+        </div>
+        ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<label class="lb" for="pnota">Anotações (aceita # título, - lista, **negrito**, links)</label><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(d.nota||"")}</textarea>`}
+        <div class="row" style="justify-content:space-between">
+          <button class="btn sm" ${i>0?`data-aula="${AULAS[i-1].id}"`:"disabled"}>← Aula anterior</button>
+          <button class="btn sm" ${i<79?`data-aula="${AULAS[i+1].id}"`:"disabled"}>Próxima aula →</button>
+        </div>
+      </div></section>`;
+    if(!PANE.prev){ const ta=document.getElementById("pnota"); ta.focus(); ta.selectionStart=ta.value.length; }
+  } else {
+    const n=S.docs[PANE.id]||{tipo:"nota",titulo:"",texto:"",disc:"",criado:Date.now()};
+    host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Nota">
+      <header><div style="flex:1"><label class="lb" for="ntit">Título</label><input type="text" id="ntit" value="${esc(n.titulo)}" placeholder="Ex.: Reprojetar camadas para SIRGAS 2000"></div>
+        <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+      <div class="body">
+        <div class="row"><label class="lb" for="ndisc" style="margin:0">Disciplina</label><select id="ndisc" style="width:auto;flex:1;min-width:0"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${n.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select>
+          <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div>
+        ${PANE.prev? `<div class="md">${md(n.texto)}</div>` : `<textarea id="ntxt" placeholder="# Passo a passo&#10;- Abrir camada…&#10;- **Atenção:** …">${esc(n.texto)}</textarea>`}
+        <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">${S.docs[PANE.id]?"Salva automaticamente":"Será salva ao digitar"}</span><button class="btn sm danger" data-delnota>Apagar nota</button></div>
+      </div></section>`;
+    if(!PANE.prev && !n.titulo) document.getElementById("ntit").focus();
+  }
+}
+function salvarNotaDoForm(){
+  const id=PANE.id; const old=S.docs[id]||{tipo:"nota",criado:Date.now()};
+  const titulo=document.getElementById("ntit").value, disc=document.getElementById("ndisc").value;
+  const ta=document.getElementById("ntxt"); const texto= ta? ta.value : (old.texto||"");
+  if(!S.docs[id] && !titulo.trim() && !texto.trim()) return;
+  salvarDoc(id,{...old,tipo:"nota",titulo,disc,texto});
+}
+
+/* ============ RENDER + EVENTOS ============ */
+function render(){
+  lerHash();
+  renderNav();
+  const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
+  document.getElementById("view").innerHTML=V();
+  if(VIEW==="backup") ligarBackup();
+}
+
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-go],[data-aula],[data-nota],[data-novanota],[data-fechar],[data-pres],[data-estrela],[data-prev],[data-delnota],[data-dia],[data-editnome],[data-tkdel]");
+  if(!b||b.disabled) return;
+  const ds=b.dataset;
+  if(ds.aula!==undefined){ flushTudo(); abrirAula(ds.aula); return; }
+  if(ds.nota!==undefined){ abrirNota(ds.nota); return; }
+  if(ds.novanota!==undefined){ PANE={tipo:"nota",id:"nota-"+novoId(),prev:false}; renderPane(); if(ds.novanota) document.getElementById("ndisc").value=ds.novanota; return; }
+  if(ds.fechar!==undefined){ flushTudo(); fecharPane(); return; }
+  if(ds.go!==undefined){ ir(ds.go); if(ds.disc) setTimeout(()=>document.getElementById("d-"+ds.disc)?.scrollIntoView({behavior:"smooth"}),30); return; }
+  if(ds.dia!==undefined){ DIA_SEL=ds.dia; render(); return; }
+  if(ds.pres!==undefined){ const id=PANE.id, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",pres:d.pres===ds.pres?"":ds.pres},50); renderPane(); return; }
+  if(ds.estrela!==undefined){ const id=PANE.id, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",estrela:!d.estrela},50); renderPane(); return; }
+  if(ds.prev!==undefined){ PANE.prev=!PANE.prev; renderPane(); return; }
+  if(ds.delnota!==undefined){
+    if(b.dataset.conf){ await apagarDoc(PANE.id); fecharPane(); toast("Nota apagada"); }
+    else { b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar nota"; } },3000); }
+    return;
+  }
+  if(ds.tkdel!==undefined){ await apagarDoc(ds.tkdel); render(); return; }
+  if(ds.editnome!==undefined){
+    const k=ds.editnome; const h=document.querySelector(`[data-nome="${k}"]`);
+    h.outerHTML=`<div class="row" style="margin-bottom:4px"><input type="text" id="en-${k}" value="${esc(nomeDisc(k))}" style="flex:1;min-width:200px"><button class="btn sm pri" data-salvanome="${k}">Salvar</button></div>`;
+    const inp=document.getElementById("en-"+k); inp.focus(); inp.select();
+    return;
+  }
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-salvanome]"); if(!b) return;
+  const k=b.dataset.salvanome; const v=document.getElementById("en-"+k).value.trim();
+  salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nome:v===DK[k].nome?"":v},50); document.activeElement.blur(); render();
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape" && PANE){ flushTudo(); fecharPane(); }
+  if(e.key==="Enter" && e.target.id?.startsWith("en-")){ document.querySelector(`[data-salvanome="${e.target.id.slice(3)}"]`).click(); }
+});
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="pnota"){ const id=PANE.id; salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:t.value}); return; }
+  if(t.dataset.qaula){ const id=t.dataset.qaula; salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:t.value}); return; }
+  if(t.dataset.dnota){ const k=t.dataset.dnota; salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nota:t.value}); return; }
+  if(t.id==="ntit"||t.id==="ntxt"){ salvarNotaDoForm(); return; }
+  if(t.id==="q"){ BUSCA=t.value; document.getElementById("res").innerHTML=resultados(); return; }
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="ndisc"){ salvarNotaDoForm(); return; }
+  if(t.id==="fnd"){ FILTRO_NOTA=t.value; render(); return; }
+  if(t.dataset.tk){ const id=t.dataset.tk; salvarDoc(id,{...S.docs[id],feito:t.checked},100); render(); return; }
+});
+document.addEventListener("submit",e=>{
+  if(e.target.id!=="ftk") return; e.preventDefault();
+  const tx=document.getElementById("tk-t").value.trim(); if(!tx) return;
+  salvarDoc("tarefa-"+novoId(),{tipo:"tarefa",texto:tx,disc:document.getElementById("tk-d").value,prazo:document.getElementById("tk-p").value,feito:false,criado:Date.now()},50);
+  render(); document.getElementById("tk-t").focus();
+});
+
+async function copiar(txt,msg){ try{ await navigator.clipboard.writeText(txt); toast(msg); }catch(e){ toast("Não foi possível copiar. Selecione e copie manualmente."); } }
+async function ligarBackup(){
+  document.getElementById("cpmd").onclick=()=>copiar(exportarMD(),"Caderno copiado. Cole no Word ou Docs.");
+  document.getElementById("cpjs").onclick=()=>copiar(JSON.stringify(S.docs),"Backup copiado.");
+  document.getElementById("btimp").onclick=()=>{
+    let j; try{ j=JSON.parse(document.getElementById("imp").value); }catch(e){ toast("Backup inválido: cole o texto completo copiado em “Copiar backup”."); return; }
+    let n=0; for(const [id,b] of Object.entries(j||{})){ if(/^(aula|disc|nota|tarefa)-[\w-]+$/.test(id) && b && typeof b==="object"){ salvarDoc(id,{...b},300+n*120); n++; } }
+    toast(n+" itens restaurados."); render();
+  };
+  let dl=null; try{ dl=await window.claude?.use?.("downloads"); }catch(e){}
+  if(dl && VIEW==="backup"){
+    const a=document.getElementById("dlmd"), b=document.getElementById("dljs"); if(!a) return;
+    a.hidden=b.hidden=false;
+    a.onclick=()=>dl.save({filename:"caderno-qgis-aesp.md",data:exportarMD()}).catch(()=>{});
+    b.onclick=()=>dl.save({filename:"caderno-qgis-aesp-backup.json",data:JSON.stringify(S.docs,null,1)}).catch(()=>{});
+  }
+}
+
+// atualiza "agora" a cada minuto sem atrapalhar a digitação
+setInterval(()=>{ if(!editando() && !PANE) render(); else renderNav(); },60000);
+render(); setSync();
+conectar();
+</script>
+</body>
+</html>
