@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0f6b5c"/>
+  <!-- página do caderno -->
+  <rect x="112" y="84" width="300" height="352" rx="28" fill="#f3f5f2"/>
+  <defs><clipPath id="pg"><rect x="112" y="84" width="300" height="352" rx="28"/></clipPath></defs>
+  <rect x="112" y="84" width="54" height="352" fill="#d9e8e3" clip-path="url(#pg)"/>
+  <g fill="#0f6b5c"><circle cx="139" cy="140" r="9"/><circle cx="139" cy="200" r="9"/><circle cx="139" cy="260" r="9"/><circle cx="139" cy="320" r="9"/><circle cx="139" cy="380" r="9"/></g>
+  <!-- curvas de nível -->
+  <g fill="none" stroke="#7fb8ab" stroke-width="10" stroke-linecap="round">
+    <path d="M190 360c40-10 60-60 110-62s80 30 90 60"/>
+    <path d="M200 400c40-6 70-44 110-46s64 20 76 40"/>
+    <path d="M186 318c34-14 50-70 106-76s92 34 98 64"/>
+  </g>
+  <!-- marcador de mapa -->
+  <path d="M290 112c-44 0-78 34-78 76 0 56 78 132 78 132s78-76 78-132c0-42-34-76-78-76z" fill="#d2622a"/>
+  <circle cx="290" cy="188" r="28" fill="#f3f5f2"/>
+</svg>
