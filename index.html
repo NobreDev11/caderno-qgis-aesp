@@ -117,6 +117,11 @@ label.lb{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
 .fb{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:14.5px}
 .fb.ok{background:color-mix(in srgb,var(--ok) 12%,transparent)}.fb.no{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 input[type=file]{width:100%;font-size:14px}
+.info{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1px solid var(--muted);background:transparent;color:var(--muted);font:italic 700 11px/1 Georgia,serif;cursor:pointer;padding:0;vertical-align:middle;flex:none}
+.info:hover{border-color:var(--accent);color:var(--accent)}
+h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
+.pop{position:fixed;z-index:50;width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgb(0 0 0 / .2);padding:12px 14px;font-size:14px;line-height:1.5}
+.pop p{margin:8px 0 0}.pop pre{margin:4px 0 0;padding:8px;background:var(--bg);border-radius:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
 .shade{position:fixed;inset:0;background:rgb(0 0 0 / .25);z-index:19}
 .md{line-height:1.6;max-width:68ch}
 .md h1,.md h2,.md h3{font-family:var(--display);margin:.6em 0 .3em}
@@ -176,7 +181,7 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
     </div>
     <nav id="nav"></nav>
     <div class="prog" id="prog"></div>
-    <div class="sync"><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
+    <div class="sync"><span id="sinfo"></span><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
   </aside>
   <main><div class="wrap" id="view"></div></main>
 </div>
@@ -228,7 +233,7 @@ function statusAula(a){ const t=Date.now(); const i=msDe(a.data,a.ini), f=msDe(a
 // Nuvem: Supabase do Checklist, tabela caderno_notas (cada usuário só vê as próprias linhas).
 const SUPA_URL="https://ytionrwdwdmcxbdgqnkt.supabase.co";
 const SUPA_KEY="sb_publishable_MFrDp-4qr0yA2vyX1UJWOw_7RN7rdMX"; // chave publicável (pública por natureza)
-const S = { docs:{}, modo:"local", push:null, sb:null, uid:null, email:"", erro:false };
+const S = { faltaSQL:false, docs:{}, modo:"local", push:null, sb:null, uid:null, email:"", erro:false };
 const LS="caderno-qgis-aesp:v1";
 function lsLoad(){ try{ const j=localStorage.getItem(LS); if(j) S.docs=JSON.parse(j)||{}; }catch(e){} }
 function lsSave(){
@@ -305,21 +310,27 @@ async function iniciarSupa(session){
       if(error) throw error;
       const remoto={}; (data||[]).forEach(r=>{ remoto[r.id]=r.body; if(!S.desde||r.updated_at>S.desde) S.desde=r.updated_at; });
       mesclar(remoto, !!inicial);
-      S.modo="nuvem"; S.erro=false;
+      S.modo="nuvem"; S.erro=false; if(S.faltaSQL){ S.faltaSQL=false; render(); }
     }catch(e){
       if(inicial){ S.modo="nuvem"; S.erro=true; }
-      if(e&&e.code==="42P01") toast("Tabela caderno_notas não existe: rode o SQL no Supabase.");
+      if(semTabela(e)){ S.faltaSQL=true; render(); }
     }
     puxando=false; setSync();
   };
   await S.pull(true);
   if(!S._intervalo) S._intervalo=setInterval(()=>{ if(S.pull&&document.visibilityState==="visible") S.pull(); },60000);
 }
+// A tabela existe? (sem login a resposta é "sem permissão" se existir, ou "tabela não encontrada" se faltar o SQL)
+const semTabela = e => !!e && (e.code==="PGRST205"||e.code==="42P01"||/could not find the table|does not exist/i.test(e.message||""));
+async function checarSQL(){
+  try{ const {error}=await S.sb.from("caderno_notas").select("id").limit(1); const antes=S.faltaSQL; S.faltaSQL=semTabela(error); if(antes!==S.faltaSQL&&!editando()) render(); }catch(e){}
+}
 function pararSupa(){ S.desde=null; S.uid=null; S.email=""; S.push=null; S.pull=null; S.modo="local"; Object.keys(pend).forEach(k=>delete pend[k]); setSync(); }
 async function conectarSupa(){
   if(!window.supabase){ S.modo="local"; setSync(); return; }
   S.sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
   S.sb.auth.onAuthStateChange((ev,session)=>{ if(ev==="SIGNED_OUT") pararSupa(); });
+  checarSQL();
   let session=null;
   try{ session=(await S.sb.auth.getSession()).data.session; }catch(e){}
   if(session) await iniciarSupa(session); else { S.modo="local"; setSync(); }
@@ -327,7 +338,7 @@ async function conectarSupa(){
 function abrirLogin(){
   PANE={tipo:"login"};
   document.getElementById("paneHost").innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Entrar" style="height:auto;bottom:auto;max-height:100%">
-    <header><div><h3>Entrar para sincronizar</h3><p class="muted" style="margin:4px 0 0;font-size:13.5px">Use o mesmo e-mail e senha do portal ADMIN CBMCE. Suas notas ficam na nuvem e aparecem no computador e no celular.</p></div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+    <header><div><h3>Entrar para sincronizar ${info("login")}</h3><p class="muted" style="margin:4px 0 0;font-size:13.5px">Use o mesmo e-mail e senha do portal ADMIN CBMCE. Suas notas ficam na nuvem e aparecem no computador e no celular.</p></div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
     <form class="body" id="flogin" style="flex:none">
       <div><label class="lb" for="lg-e">E-mail</label><input type="text" id="lg-e" autocomplete="username" inputmode="email" required></div>
       <div><label class="lb" for="lg-s">Senha</label><input type="password" id="lg-s" autocomplete="current-password" required style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%"></div>
@@ -473,7 +484,7 @@ function vHoje(){
       <div class="t">${cur?"AGORA":"PRÓXIMA"} · ${fmtData(foco.data)} · ${foco.ini}–${foco.fim} · aula ${foco.n} de ${foco.tot}</div>
       <div class="d">${esc(nomeDisc(foco.k))}</div>
       <div class="muted">${DK[foco.k].inst.map(esc).join(" · ")}</div>
-      <div style="margin-top:12px"><label class="lb" for="qnota">Anotação rápida desta aula</label>
+      <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida desta aula</label>${info("rapida")}</div>
       <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. Salva sozinho.">${esc(d.nota||"")}</textarea></div>
       <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button></div>
     </div>` : `<div class="card"><p class="muted" style="margin:0">Nenhuma aula pela frente.</p></div>`;
@@ -481,16 +492,16 @@ function vHoje(){
   const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
   const tp=tarefas().filter(x=>!x.feito);
   return `
-    <div><h2>${titulo}</h2><p class="sub">${sub}</p></div>
+    <div><h2>${titulo} ${info("hoje")}</h2><p class="sub">${sub}</p></div>
     <div class="kpis">
-      <div class="card kpi"><b>${passadas}<span class="mono" style="font-size:15px">/80</span></b><span>h/a cumpridas (50 min)</span></div>
-      <div class="card kpi"><b>${DISC.filter(x=>AULAS.filter(a=>a.k===x.k).every(a=>statusAula(a)==="past")).length}<span class="mono" style="font-size:15px">/9</span></b><span>disciplinas concluídas</span></div>
-      <div class="card kpi"><b>${notas().length}</b><span>notas no caderno</span></div>
-      <div class="card kpi"><b>${tp.length}</b><span>tarefas pendentes</span></div>
+      <div class="card kpi"><b>${passadas}<span class="mono" style="font-size:15px">/80</span></b><span>h/a cumpridas (50 min) ${info("kpiha")}</span></div>
+      <div class="card kpi"><b>${DISC.filter(x=>AULAS.filter(a=>a.k===x.k).every(a=>statusAula(a)==="past")).length}<span class="mono" style="font-size:15px">/9</span></b><span>disciplinas concluídas ${info("kpidisc")}</span></div>
+      <div class="card kpi"><b>${notas().length}</b><span>notas no caderno ${info("kpinotas")}</span></div>
+      <div class="card kpi"><b>${tp.length}</b><span>tarefas pendentes ${info("kpitar")}</span></div>
     </div>
     <div class="now">
       ${heroAula}
-      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Tarefas</h3><button class="btn sm" data-go="tarefas">Todas</button></div>
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Tarefas ${info("tarefas")}</h3><button class="btn sm" data-go="tarefas">Todas</button></div>
         ${tp.length? tp.slice(0,6).map(tarefaHTML).join("") : '<p class="empty">Nada pendente. Anote trabalhos, leituras e o que instalar antes da aula.</p>'}
       </div>
     </div>
@@ -503,14 +514,14 @@ function vCronograma(){
   if(!DIA_SEL) DIA_SEL = TODOS_DIAS.includes(ag.data)? ag.data : "todos";
   const bts=[["todos","Todos"],...TODOS_DIAS.map(d=>[d,fmtData(d)])].map(([v,l])=>`<button class="btn sm ${DIA_SEL===v?"on":""}" data-dia="${v}">${l}</button>`).join("");
   const dias = DIA_SEL==="todos"?TODOS_DIAS:[DIA_SEL];
-  return `<div><h2>Cronograma</h2><p class="sub">Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.</p></div>
+  return `<div><h2>Cronograma ${info("cronograma")}</h2><p class="sub">Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.</p></div>
     <div class="daysel">${bts}</div>
     ${dias.map(diaHTML).join("")}
     <p class="muted" style="font-size:13px;margin:0">No QTS original, o horário de 18/11 às 07:30 veio em branco; aqui ele aparece como a 3ª aula do Projeto Prático, seguindo a numeração 2/12 → 4/12.</p>`;
 }
 
 function vDisciplinas(){
-  return `<div><h2>Disciplinas</h2><p class="sub">9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.</p></div>
+  return `<div><h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.</p></div>
   ${DISC.map(x=>{
     const aulas=AULAS.filter(a=>a.k===x.k); const pas=aulas.filter(a=>statusAula(a)==="past").length;
     const dd=discD(x.k); const nts=notas().filter(n=>n.disc===x.k);
@@ -525,9 +536,9 @@ function vDisciplinas(){
       </div>
       <div class="row" style="margin:10px 0 4px;gap:8px"><div class="bar" style="flex:1"><i style="width:${pas/x.ha*100}%;background:${x.cor}"></i></div><span class="mono" style="font-size:12.5px">${pas}/${x.ha}</span></div>
       <div class="grid2" style="margin-top:10px">
-        <div><label class="lb" for="dn-${x.k}">Resumo da disciplina</label>
+        <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Resumo da disciplina</label>${info("discres")}</div>
           <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea></div>
-        <div class="notes"><span class="lb">Aulas (${anot.length} com anotação)</span>
+        <div class="notes"><span class="lb">Aulas (${anot.length} com anotação) ${info("discaulas")}</span>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${aulas.map(a=>{const ad=aulaD(a.id);const has=(ad.nota||"").trim();return `<button class="btn sm ${has?"on":""}" data-aula="${a.id}" title="${fmtData(a.data)} ${a.ini}">${a.n}${ad.estrela?" ★":""}</button>`}).join("")}</div>
           ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
           ${(()=>{const ms=mats().filter(m=>m.disc===x.k);return `<div class="row" style="justify-content:space-between;margin-top:6px"><span class="lb" style="margin:0">Materiais (${ms.length})</span><button class="btn sm" data-addmat="${x.k}">Adicionar</button></div>`+ms.map(matItem).join("")})()}
@@ -544,7 +555,7 @@ function notaItem(n){
 let FILTRO_NOTA="";
 function vCaderno(){
   const ns=notas().filter(n=>!FILTRO_NOTA||n.disc===FILTRO_NOTA);
-  return `<div class="row" style="justify-content:space-between"><div><h2>Caderno</h2><p class="sub">Notas livres: resumos, passo a passo do QGIS, dúvidas para levar ao instrutor.</p></div>
+  return `<div class="row" style="justify-content:space-between"><div><h2>Caderno ${info("caderno")}</h2><p class="sub">Notas livres: resumos, passo a passo do QGIS, dúvidas para levar ao instrutor.</p></div>
     <button class="btn pri" data-novanota="${FILTRO_NOTA}">Nova nota</button></div>
     <div class="row"><label class="lb" for="fnd" style="margin:0">Disciplina</label><select id="fnd" style="width:auto;flex:1;min-width:0;max-width:100%"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_NOTA===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
     <div class="notes">${ns.length?ns.map(notaItem).join(""):'<p class="empty">Nenhuma nota ainda. Crie a primeira: por exemplo, “Instalação do QGIS” ou “Dúvidas da semana”.</p>'}</div>`;
@@ -555,7 +566,7 @@ function tarefaHTML(t){
 }
 function vTarefas(){
   const ts=tarefas();
-  return `<div><h2>Tarefas</h2><p class="sub">Trabalhos, leituras, softwares a instalar e entregas do Projeto Prático.</p></div>
+  return `<div><h2>Tarefas ${info("tarefas")}</h2><p class="sub">Trabalhos, leituras, softwares a instalar e entregas do Projeto Prático.</p></div>
   <form class="card ftk" id="ftk">
     <div><label class="lb" for="tk-t">Tarefa</label><input type="text" id="tk-t" placeholder="Ex.: instalar QGIS 3.40 LTR no notebook" required></div>
     <div><label class="lb" for="tk-d">Disciplina</label><select id="tk-d"><option value="">Nenhuma</option>${DISC.map(d=>`<option value="${d.k}">${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
@@ -567,7 +578,7 @@ function vTarefas(){
 
 let BUSCA="";
 function vBusca(){
-  return `<div><h2>Buscar</h2><p class="sub">Procura em todas as anotações de aula, resumos, notas e tarefas.</p></div>
+  return `<div><h2>Buscar ${info("busca")}</h2><p class="sub">Procura em todas as anotações de aula, resumos, notas e tarefas.</p></div>
   <input type="search" id="q" placeholder="Ex.: buffer, mapa de calor, CRS 31984…" value="${esc(BUSCA)}">
   <div id="res" class="notes">${resultados()}</div>`;
 }
@@ -598,16 +609,28 @@ function exportarMD(){
   return o;
 }
 function vBackup(){
-  return `<div><h2>Exportar</h2><p class="sub">Leve suas anotações para o Word, Google Docs ou Obsidian, ou guarde uma cópia de segurança.</p></div>
-  <div class="grid2">
-    <div class="card"><h3>Caderno completo (Markdown)</h3><p class="muted">Tudo organizado por disciplina: resumos, aulas anotadas, notas e tarefas.</p>
-      <div class="row"><button class="btn pri" id="cpmd">Copiar texto</button><button class="btn" id="dlmd" hidden>Baixar .md</button></div></div>
-    <div class="card"><h3>Cópia de segurança</h3><p class="muted">Arquivo de dados para restaurar o caderno em outro navegador ou conta.</p>
-      <div class="row"><button class="btn" id="cpjs">Copiar backup</button><button class="btn" id="dljs" hidden>Baixar .json</button></div>
-      <label class="lb" for="imp" style="margin-top:12px">Restaurar: cole o backup aqui</label><textarea id="imp" style="min-height:80px" placeholder='{"aula-20261109-0730": …}'></textarea>
-      <div class="row" style="margin-top:8px"><button class="btn" id="btimp">Restaurar backup</button></div></div>
+  const c=contagem(S.docs); let ult=null; try{ ult=localStorage.getItem(LS_BK); }catch(e){}
+  const nuvem=S.modo==="nuvem";
+  return `<div><h2>Exportar e backup ${info("backup")}</h2><p class="sub">Guarde uma cópia das suas anotações ou leve o caderno para o Word e o Docs.</p></div>
+  <div class="card" style="border-left:6px solid ${nuvem?"var(--ok)":"var(--warn)"}">
+    <h3>${nuvem?"Suas notas estão na nuvem":"Suas notas estão só neste navegador"}</h3>
+    <p style="margin:6px 0">${nuvem?`Sincronizadas com a conta <b>${esc(S.email)}</b>: aparecem em qualquer aparelho em que você entrar. O backup abaixo é uma garantia extra.`:`Se você limpar os dados do navegador, formatar o computador ou trocar de aparelho, elas somem. <b>Entre na conta</b> (botão Entrar) para guardar na nuvem, ou baixe um backup.`}</p>
+    <p class="muted" style="margin:0;font-size:13.5px">Agora: ${txtCont(c)}.<br>Último backup baixado neste aparelho: ${ult?new Date(ult).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"}):"nunca"}.</p>
   </div>
-  <div class="card"><h3>Onde ficam as notas</h3><p class="muted" style="margin:0">${S.modo==="nuvem"?"As notas estão sincronizadas na nuvem e aparecem em qualquer aparelho em que você entrar. Só você vê.":"As notas estão só neste navegador. Clique em “Entrar” (barra lateral) para sincronizar com a nuvem, ou use “Copiar backup” e “Restaurar backup”."}</p></div>`;
+  <div class="grid2">
+    <div class="card"><h3>1. Baixar backup ${info("backup")}</h3>
+      <p class="muted">Salva tudo num arquivo <span class="mono">.json</span> na pasta Downloads. Guarde no Google Drive ou num pendrive. PDFs e fotos não vão no arquivo.</p>
+      <div class="row"><button class="btn pri" id="bk-dl">Baixar arquivo de backup</button><button class="btn sm" id="bk-cp">Copiar como texto</button></div></div>
+    <div class="card"><h3>2. Restaurar backup ${info("restaurar")}</h3>
+      <p class="muted">Use em outro aparelho, ou se perder as notas. Não apaga nada: junta com o que já existe e mantém a versão mais nova de cada item.</p>
+      <label class="lb" for="bk-f">Escolha o arquivo de backup</label><input type="file" id="bk-f" accept=".json,application/json">
+      <details style="margin-top:8px"><summary class="muted" style="font-size:13.5px;cursor:pointer">ou cole o texto do backup</summary><textarea id="bk-t" style="min-height:80px;margin-top:6px"></textarea><button class="btn sm" id="bk-tl" style="margin-top:6px">Ler texto</button></details>
+      <div id="bk-prev">${BK_LIDO?`<div class="card" style="margin-top:10px;background:var(--accent-soft)"><b>Backup encontrado</b>${BK_LIDO.criado?" de "+new Date(BK_LIDO.criado).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"}):""}<p style="margin:4px 0 8px;font-size:13.5px">${txtCont(contagem(BK_LIDO.docs))}</p><div class="row"><button class="btn pri" id="bk-ok">Restaurar agora</button><button class="btn sm" id="bk-no">Cancelar</button></div></div>`:""}</div>
+    </div>
+    <div class="card"><h3>3. Exportar para ler ou imprimir ${info("exportmd")}</h3>
+      <p class="muted">Todo o caderno em texto, organizado por disciplina: resumos, aulas anotadas, notas, resumos de materiais e tarefas.</p>
+      <div class="row"><button class="btn" id="md-dl">Baixar .md</button><button class="btn" id="md-cp">Copiar texto</button></div></div>
+  </div>`;
 }
 
 /* ============ PAINEL LATERAL (aula / nota) ============ */
@@ -625,7 +648,7 @@ function renderPane(){
     const i=AULAS.indexOf(a);
     host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Aula">
       <header style="border-top:5px solid ${x.cor}"><div><div class="mono muted" style="font-size:12.5px">${fmtData(a.data,true)} · ${a.ini}–${a.fim} · aula ${a.n} de ${a.tot}</div>
-        <h3 style="margin-top:4px">${esc(nomeDisc(a.k))}</h3><div class="muted" style="font-size:13px">${x.inst.map(esc).join(" · ")}</div></div>
+        <h3 style="margin-top:4px">${esc(nomeDisc(a.k))} ${info("aula")}</h3><div class="muted" style="font-size:13px">${x.inst.map(esc).join(" · ")}</div></div>
         <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
       <div class="body">
         <div class="row">
@@ -635,7 +658,7 @@ function renderPane(){
           <span style="flex:1"></span>
           <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button>
         </div>
-        ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<label class="lb" for="pnota">Anotações (aceita # título, - lista, **negrito**, links)</label><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(d.nota||"")}</textarea>`}
+        ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<div class="row" style="gap:6px"><label class="lb" for="pnota" style="margin:0">Anotações (aceita # título, - lista, **negrito**, links)</label>${info("markdown")}</div><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(d.nota||"")}</textarea>`}
         <div class="row" style="justify-content:space-between">
           <button class="btn sm" ${i>0?`data-aula="${AULAS[i-1].id}"`:"disabled"}>← Aula anterior</button>
           <button class="btn sm" ${i<79?`data-aula="${AULAS[i+1].id}"`:"disabled"}>Próxima aula →</button>
@@ -645,7 +668,7 @@ function renderPane(){
   } else {
     const n=S.docs[PANE.id]||{tipo:"nota",titulo:"",texto:"",disc:"",criado:Date.now()};
     host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Nota">
-      <header><div style="flex:1"><label class="lb" for="ntit">Título</label><input type="text" id="ntit" value="${esc(n.titulo)}" placeholder="Ex.: Reprojetar camadas para SIRGAS 2000"></div>
+      <header><div style="flex:1"><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="ntit" style="margin:0">Título</label>${info("markdown")}</div><input type="text" id="ntit" value="${esc(n.titulo)}" placeholder="Ex.: Reprojetar camadas para SIRGAS 2000"></div>
         <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
       <div class="body">
         <div class="row"><label class="lb" for="ndisc" style="margin:0">Disciplina</label><select id="ndisc" style="width:auto;flex:1;min-width:0"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${n.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select>
@@ -725,7 +748,7 @@ function paneAddMat(){
     texto:`<label class="lb" for="am-t">Texto do material</label><textarea id="am-t" style="min-height:220px" placeholder="Cole aqui o conteúdo de um slide, apostila, mensagem do grupo…"></textarea>`,
   }[P.aba];
   return `<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Novo material">
-    <header><div><h3>Novo material</h3><p class="muted" style="margin:4px 0 0;font-size:13.5px">Guarde o material da aula e gere resumo e questões a partir dele.</p></div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+    <header><div><h3>Novo material ${info("addmat")}</h3><p class="muted" style="margin:4px 0 0;font-size:13.5px">Guarde o material da aula e gere resumo e questões a partir dele.</p></div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
     <form class="body" id="faddmat">
       <div class="row">${abas.map(([k,l])=>`<button type="button" class="btn sm ${P.aba===k?"on":""}" data-amaba="${k}">${l}</button>`).join("")}</div>
       <div>${campo}</div>
@@ -811,7 +834,7 @@ function paneMat(){
     <div class="body">
       ${busy}
       <div class="card">
-        <div class="row" style="justify-content:space-between"><h3>Resumo</h3>
+        <div class="row" style="justify-content:space-between"><h3>Resumo ${info("matres")}</h3>
           <div class="row">${podeIA?`<button class="btn sm pri" data-mgerar="resumo" ${P.busy?"disabled":""}>${m.resumo?"Refazer resumo":"Gerar resumo"}</button>`:""}
           <button class="btn sm" data-mcopiar="resumo">Copiar pedido p/ Claude</button><button class="btn sm" data-mcolar="resumo">Colar resposta</button>
           ${m.resumo?`<button class="btn sm" data-meditr>${P.editR?"Ver":"Editar"}</button>`:""}</div></div>
@@ -819,14 +842,14 @@ function paneMat(){
         ${m.resumo? (P.editR?`<textarea id="mt-r" style="min-height:280px;margin-top:8px">${esc(m.resumo)}</textarea>`:`<div class="md" style="margin-top:6px">${md(m.resumo)}</div>`) : `<p class="empty">${podeIA?"Clique em “Gerar resumo”.":(IA_OK===false?"Geração automática desligada: use “Copiar pedido”, cole no app do Claude e traga a resposta em “Colar resposta”.":"")}${!logado()&&IA_OK?" Entre na conta para gerar automaticamente.":""}</p>`}
       </div>
       <div class="card">
-        <div class="row" style="justify-content:space-between"><h3>Questões <span class="mono muted" style="font-size:13px">${st.total?st.acertos+"/"+st.feitas+" acertos · "+st.total+" no total":""}</span></h3>
+        <div class="row" style="justify-content:space-between"><h3>Questões ${info("matq")} <span class="mono muted" style="font-size:13px">${st.total?st.acertos+"/"+st.feitas+" acertos · "+st.total+" no total":""}</span></h3>
           <div class="row"><select id="mt-n" style="width:auto" aria-label="Quantidade">${[5,8,10,15].map(n=>`<option ${n===(P.n||8)?"selected":""}>${n}</option>`).join("")}</select>
           ${podeIA?`<button class="btn sm pri" data-mgerar="questoes" ${P.busy?"disabled":""}>${qs.length?"Gerar mais":"Gerar questões"}</button>`:""}
           <button class="btn sm" data-mcopiar="questoes">Copiar pedido</button><button class="btn sm" data-mcolar="questoes">Colar resposta</button></div></div>
         ${blocoColar("questoes")}
         ${qs.length?`<div class="row" style="margin:8px 0"><button class="btn sm pri" data-mestudar="${P.id}">Estudar estas questões</button><button class="btn sm danger" data-mlimparq>Apagar questões</button></div><div class="qlist">${qLista}</div>`:'<p class="empty">Nenhuma questão ainda.</p>'}
       </div>
-      <details class="card" ${P.verTexto?"open":""} id="mt-det"><summary><strong>Texto do material</strong> <span class="muted" style="font-size:13px">(pode corrigir ou colar mais conteúdo)</span></summary>
+      <details class="card" ${P.verTexto?"open":""} id="mt-det"><summary><strong>Texto do material</strong> ${info("mattx")} <span class="muted" style="font-size:13px">(pode corrigir ou colar mais conteúdo)</span></summary>
         <textarea id="mt-tx" style="min-height:260px;margin-top:8px" placeholder="Sem texto. Cole aqui a transcrição, o conteúdo do slide…">${esc(t.texto||"")}</textarea></details>
       <div class="row" style="justify-content:flex-end"><button class="btn sm danger" data-mapagar>Apagar material</button></div>
     </div></section>`;
@@ -871,7 +894,7 @@ function matItem(m){
 let FILTRO_MAT="";
 function vMateriais(){
   const ms=mats().filter(m=>!FILTRO_MAT||m.disc===FILTRO_MAT);
-  return `<div class="row" style="justify-content:space-between"><div><h2>Materiais</h2><p class="sub">PDFs, slides, links e fotos das aulas. Cada material ganha resumo e questões.</p></div>
+  return `<div class="row" style="justify-content:space-between"><div><h2>Materiais ${info("materiais")}</h2><p class="sub">PDFs, slides, links e fotos das aulas. Cada material ganha resumo e questões.</p></div>
     <button class="btn pri" data-addmat="${FILTRO_MAT}">Adicionar material</button></div>
     ${IA_OK===false?`<div class="card" style="font-size:14px"><strong>Geração automática desligada.</strong> <span class="muted">Funciona copiando o pedido para o app do Claude e colando a resposta. Para gerar direto aqui, cadastre a chave <span class="mono">ANTHROPIC_API_KEY</span> na Vercel.</span></div>`:""}
     <div class="row"><label class="lb" for="fmd" style="margin:0">Disciplina</label><select id="fmd" style="width:auto;flex:1;min-width:0;max-width:100%"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_MAT===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
@@ -903,7 +926,7 @@ function vEstudar(){
       <div style="flex:1;min-width:160px"><label class="lb" for="ef-d">Disciplina</label><select id="ef-d"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${EF.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
       <div style="flex:1;min-width:160px"><label class="lb" for="ef-m">Material</label><select id="ef-m"><option value="">Todos</option>${mats().filter(m=>(m.questoes||[]).length&&(!EF.disc||m.disc===EF.disc)).map(m=>`<option value="${m.id}" ${EF.mat===m.id?"selected":""}>${esc(m.titulo)}</option>`).join("")}</select></div>
       <div style="min-width:150px"><label class="lb" for="ef-o">Quais</label><select id="ef-o">${[["todas","Todas"],["novas","Não respondidas"],["erradas","Que errei"]].map(([v,l])=>`<option value="${v}" ${EF.modo===v?"selected":""}>${l}</option>`).join("")}</select></div>
-      <button class="btn pri" data-ecomecar>${ESTUDO?"Recomeçar":"Começar"}</button></div>`;
+      <button class="btn pri" data-ecomecar>${ESTUDO?"Recomeçar":"Começar"}</button>${info("efiltro")}</div>`;
   let sessao="";
   if(ESTUDO&&ESTUDO.fila.length){
     if(ESTUDO.i>=ESTUDO.fila.length){
@@ -920,8 +943,8 @@ function vEstudar(){
       </div>`;
     }
   }
-  return `<div><h2>Estudar</h2><p class="sub">Responda as questões geradas dos materiais. O app guarda acertos e erros.</p></div>
-    ${porDisc.length?`<div class="card"><h3 style="margin-bottom:8px">Desempenho</h3>${porDisc.map(x=>`<div class="row" style="gap:8px;margin:4px 0"><span style="flex:0 0 min(46%,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">${sw(x.d.k)} ${esc(nomeDisc(x.d.k))}</span><div class="bar" style="flex:1"><i style="width:${x.f?x.a/x.f*100:0}%;background:${x.d.cor}"></i></div><span class="mono" style="font-size:12.5px">${x.a}/${x.f} · ${x.tot}</span></div>`).join("")}<p class="muted" style="font-size:12px;margin:6px 0 0">acertos / respondidas · total de questões</p></div>`:""}
+  return `<div><h2>Estudar ${info("estudar")}</h2><p class="sub">Responda as questões geradas dos materiais. O app guarda acertos e erros.</p></div>
+    ${porDisc.length?`<div class="card"><h3 style="margin-bottom:8px">Desempenho ${info("desemp")}</h3>${porDisc.map(x=>`<div class="row" style="gap:8px;margin:4px 0"><span style="flex:0 0 min(46%,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">${sw(x.d.k)} ${esc(nomeDisc(x.d.k))}</span><div class="bar" style="flex:1"><i style="width:${x.f?x.a/x.f*100:0}%;background:${x.d.cor}"></i></div><span class="mono" style="font-size:12.5px">${x.a}/${x.f} · ${x.tot}</span></div>`).join("")}<p class="muted" style="font-size:12px;margin:6px 0 0">acertos / respondidas · total de questões</p></div>`:""}
     ${banco.length?filtros+sessao:'<p class="empty">Ainda não há questões. Abra um material em “Materiais” e gere as questões.</p>'}`;
 }
 
@@ -971,12 +994,93 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.verTexto=e.target.open; },true);
 
+/* ============ AJUDA (ícones "i") ============ */
+const AJUDA={
+  sync:{t:"Onde suas notas estão salvas",o:"Ponto verde: sincronizado na nuvem, aparece em qualquer aparelho em que você entrar. Ponto laranja: salvo só neste navegador.",c:"Clique em Entrar e use o e-mail e a senha do portal ADMIN CBMCE. Tudo o que você já escreveu aqui sobe para a nuvem. Sem internet o app continua salvando e envia depois."},
+  login:{t:"Entrar",o:"Liga o caderno à sua conta para sincronizar entre computador e celular e guardar PDFs e fotos.",c:"Use o mesmo e-mail e senha do portal ADMIN CBMCE. Só você vê as suas notas."},
+  hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
+  kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
+  kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
+  kpinotas:{t:"Notas no caderno",o:"Quantidade de notas livres criadas na aba Caderno."},
+  kpitar:{t:"Tarefas pendentes",o:"Tarefas ainda não marcadas como feitas.",c:"Crie na aba Tarefas, com disciplina e prazo."},
+  rapida:{t:"Anotação rápida",o:"Campo para escrever durante a aula. Fica salvo na aula atual (ou na próxima, antes de começar).",c:"Escreva livremente. Aceita # título, - lista e **negrito**. Salva sozinho a cada pausa na digitação.",ex:"# SRC\n- SIRGAS 2000 / UTM 24S\n- **Projeto > Propriedades > SRC**"},
+  cronograma:{t:"Cronograma",o:"As 80 aulas do QTS da AESP, dia a dia, com intervalos e almoço. 14 e 15/11 são reserva para reposição.",c:"Escolha o dia nos botões ou “Todos”. Clique numa aula para anotar, marcar presença ou estrela. Marcas na linha: ★ importante, “nota” tem anotação, presente/falta."},
+  aula:{t:"Aula",o:"Anotações de uma aula específica.",c:"Presente/Falta: controle de frequência (clique de novo para desmarcar). ★ Importante: destaca para revisar. Visualizar: mostra o texto formatado. As setas passam para a aula anterior/seguinte."},
+  markdown:{t:"Formatação do texto",o:"Atalhos simples para organizar as anotações.",c:"# Título · ## Subtítulo · - item de lista · **negrito** · *itálico* · `código` · links começando com http viram clicáveis.",ex:"## Buffer\n- Vetor > Geoprocessamento > Buffer\n- distância em **metros** (SRC projetado)"},
+  disciplinas:{t:"Disciplinas",o:"As 9 disciplinas do curso com instrutores, carga horária, dias e progresso.",c:"“Editar nome” completa o nome (no QTS veio cortado). “Resumo da disciplina” é seu resumo geral. Os números são as aulas: clique para abrir. Também dá para criar notas e materiais da disciplina."},
+  discres:{t:"Resumo da disciplina",o:"Seu resumo geral da disciplina, separado das anotações de cada aula.",c:"Use para juntar conceitos-chave, atalhos e links de material. Salva sozinho."},
+  discaulas:{t:"Aulas da disciplina",o:"Cada número é uma aula (sessão) da disciplina.",c:"Botão destacado = aula com anotação. ★ = marcada como importante. Clique para abrir."},
+  materiais:{t:"Materiais",o:"Biblioteca do curso: PDFs, slides, fotos do quadro, links e textos, separados por disciplina.",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo e questões, ou para corrigir o texto extraído."},
+  addmat:{t:"Novo material",o:"Formas de trazer conteúdo para o caderno.",c:"Arquivo: PDF ou texto (o app lê o texto do PDF). Fotos: até 8 de slides ou do quadro. Link: site, PDF, Google Drive/Docs/Slides (precisa estar como “Qualquer pessoa com o link”); YouTube fica só como link. Colar texto: conteúdo copiado de qualquer lugar."},
+  matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo no QGIS, aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
+  matq:{t:"Questões",o:"Questões de múltipla escolha geradas do material, com gabarito e explicação.",c:"Escolha a quantidade e clique em Gerar (automático) ou use Copiar pedido / Colar resposta (cole a resposta inteira do Claude; o app acha o JSON). “Gerar mais” acrescenta sem repetir. Clique numa questão para ver o gabarito, ou use “Estudar estas questões”."},
+  mattx:{t:"Texto do material",o:"O texto que o app extraiu do PDF, link ou que você colou. É ele que vai para a IA.",c:"Corrija erros, apague partes irrelevantes ou cole conteúdo extra (por exemplo, a transcrição de um vídeo). PDF escaneado vem sem texto: use fotos ou cole o conteúdo."},
+  estudar:{t:"Estudar",o:"Treino com as questões de todos os materiais.",c:"Escolha filtros e clique em Começar. Toque na alternativa: verde é a correta, vermelho a sua se errou, e aparece a explicação. Cada resposta fica guardada."},
+  desemp:{t:"Desempenho",o:"Acertos sobre questões respondidas em cada disciplina, e o total de questões disponíveis.",c:"Considera a última resposta de cada questão. Use “Que errei” para revisar os pontos fracos."},
+  efiltro:{t:"Filtros do estudo",o:"Define quais questões entram na rodada.",c:"Disciplina e Material restringem o conteúdo. Quais: Todas, Não respondidas ou Que errei. Clique em Começar/Recomeçar para aplicar; a ordem é embaralhada."},
+  caderno:{t:"Caderno",o:"Notas livres que não pertencem a uma aula específica.",c:"Nova nota → título, disciplina (opcional) e texto. Salva sozinho. Ideias: passo a passo de ferramentas, dúvidas para o instrutor, resumo da semana."},
+  tarefas:{t:"Tarefas",o:"Lista de pendências do curso.",c:"Escreva a tarefa, escolha disciplina e prazo (opcionais) e clique em Adicionar. Marque a caixa quando concluir; ✕ apaga."},
+  busca:{t:"Buscar",o:"Procura em tudo o que você escreveu e nos materiais.",c:"Digite 2 letras ou mais. Clique no resultado para abrir.",ex:"buffer · SIRGAS · mapa de calor"},
+  backup:{t:"Cópia de segurança",o:"Um arquivo com todas as suas anotações, notas, tarefas, resumos e questões.",c:"Com login, as notas já estão na nuvem: o backup é uma garantia extra. Sem login, é a única forma de não perder ao limpar o navegador ou trocar de aparelho. PDFs e fotos não entram no arquivo (ficam na nuvem)."},
+  restaurar:{t:"Restaurar backup",o:"Traz de volta o conteúdo de um arquivo de backup.",c:"Escolha o arquivo .json baixado antes. O app mostra o que tem nele e só restaura quando você confirmar. Não apaga nada: junta com o que existe e, se o mesmo item estiver nos dois, fica a versão mais nova."},
+  exportmd:{t:"Exportar para ler",o:"Todo o caderno em texto organizado por disciplina (formato Markdown).",c:"Baixe o .md ou copie e cole no Word, Google Docs, Obsidian ou Notion para imprimir ou revisar."},
+  sql:{t:"Configuração pendente",o:"A tabela do caderno ainda não existe no Supabase do Checklist.",c:"No Supabase do Checklist: SQL Editor → cole o conteúdo de supabase/caderno_notas.sql (do repositório caderno-qgis-aesp) → Run. Depois recarregue esta página."},
+};
+const info = k => AJUDA[k]?`<button type="button" class="info" data-info="${k}" aria-label="Ajuda: ${esc(AJUDA[k].t)}">i</button>`:"";
+function fecharPop(){ document.querySelector(".pop")?.remove(); }
+function abrirPop(btn){
+  const k=btn.dataset.info, a=AJUDA[k]; fecharPop(); if(!a) return;
+  const d=document.createElement("div"); d.className="pop"; d.setAttribute("role","dialog"); d.setAttribute("aria-label",a.t);
+  d.innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><strong>${esc(a.t)}</strong><button type="button" class="btn sm" data-popx aria-label="Fechar">✕</button></div>
+    <p><b>O que é:</b> ${esc(a.o)}</p>${a.c?`<p><b>Como usar:</b> ${esc(a.c)}</p>`:""}${a.ex?`<p><b>Exemplo:</b></p><pre>${esc(a.ex)}</pre>`:""}`;
+  document.body.appendChild(d);
+  const r=btn.getBoundingClientRect(), W=innerWidth, H=innerHeight, w=d.offsetWidth, h=d.offsetHeight;
+  let x=Math.min(Math.max(8,r.left-16), W-w-8), y=r.bottom+8; if(y+h>H-8) y=Math.max(8,r.top-h-8);
+  d.style.left=x+"px"; d.style.top=y+"px"; d.querySelector("[data-popx]").focus();
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-info]");
+  if(b){ e.preventDefault(); e.stopPropagation(); if(document.querySelector(".pop")&&document.querySelector(".pop").dataset.k===b.dataset.info){fecharPop();return;} abrirPop(b); document.querySelector(".pop").dataset.k=b.dataset.info; return; }
+  if(e.target.closest("[data-popx]")||!e.target.closest(".pop")) fecharPop();
+},true);
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&document.querySelector(".pop")){ fecharPop(); e.stopImmediatePropagation(); } },true);
+document.addEventListener("scroll",fecharPop,true);
+
+/* ============ BACKUP ============ */
+const LS_BK="caderno-qgis-aesp:ultimoBackup";
+function contagem(docs){
+  const v=Object.values(docs).filter(b=>b&&!b.apagado);
+  return {aulas:v.filter(b=>b.tipo==="aula"&&((b.nota||"").trim()||b.pres||b.estrela)).length, notas:v.filter(b=>b.tipo==="nota").length, tarefas:v.filter(b=>b.tipo==="tarefa").length, mats:v.filter(b=>b.tipo==="mat").length, quest:v.filter(b=>b.tipo==="mat").reduce((s,b)=>s+(b.questoes||[]).length,0), resumos:v.filter(b=>b.tipo==="disc"&&(b.nota||"").trim()).length};
+}
+const txtCont = c => `${c.aulas} aula(s) anotada(s) · ${c.notas} nota(s) · ${c.tarefas} tarefa(s) · ${c.mats} material(is) · ${c.quest} questão(ões) · ${c.resumos} resumo(s) de disciplina`;
+function baixarArquivo(nome, conteudo, tipo){
+  const url=URL.createObjectURL(new Blob([conteudo],{type:tipo})); const a=document.createElement("a"); a.href=url; a.download=nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+function dataArq(){ const d=new Date(Date.now()-3*3600e3).toISOString(); return d.slice(0,10)+"_"+d.slice(11,16).replace(":","h"); }
+function gerarBackup(){ return JSON.stringify({app:"caderno-qgis-aesp", versao:1, criado:new Date().toISOString(), docs:S.docs}); }
+let BK_LIDO=null;
+function lerBackup(txt){
+  let j; try{ j=JSON.parse(txt); }catch(e){ throw new Error("Esse arquivo não é um backup do caderno (não é JSON)."); }
+  const docs = j&&j.app==="caderno-qgis-aesp" ? j.docs : j;
+  if(!docs||typeof docs!=="object") throw new Error("Backup vazio ou inválido.");
+  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(aula|disc|nota|tarefa|mat|mtx)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
+  if(!Object.keys(ok).length) throw new Error("Não achei anotações nesse arquivo.");
+  return {docs:ok, criado:j.criado||null};
+}
+function restaurar(bk){
+  let n=0, i=0;
+  for(const [id,b] of Object.entries(bk.docs)){
+    const l=S.docs[id];
+    if(!l || (b.upd||0)>(l.upd||0)){ S.docs[id]=b; n++; if(S.push){ pend[id]=b; clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id),200+(i++)*120); } }
+  }
+  lsSave(); setSync(); return n;
+}
 /* ============ RENDER + EVENTOS ============ */
 function render(){
   lerHash();
   renderNav();
   const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
-  document.getElementById("view").innerHTML=V();
+  document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_notas.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
 }
 
@@ -1039,25 +1143,22 @@ document.addEventListener("submit",e=>{
 });
 
 async function copiar(txt,msg){ try{ await navigator.clipboard.writeText(txt); toast(msg); }catch(e){ toast("Não foi possível copiar. Selecione e copie manualmente."); } }
-async function ligarBackup(){
-  document.getElementById("cpmd").onclick=()=>copiar(exportarMD(),"Caderno copiado. Cole no Word ou Docs.");
-  document.getElementById("cpjs").onclick=()=>copiar(JSON.stringify(S.docs),"Backup copiado.");
-  document.getElementById("btimp").onclick=()=>{
-    let j; try{ j=JSON.parse(document.getElementById("imp").value); }catch(e){ toast("Backup inválido: cole o texto completo copiado em “Copiar backup”."); return; }
-    let n=0; for(const [id,b] of Object.entries(j||{})){ if(/^(aula|disc|nota|tarefa)-[\w-]+$/.test(id) && b && typeof b==="object"){ salvarDoc(id,{...b},300+n*120); n++; } }
-    toast(n+" itens restaurados."); render();
-  };
-  let dl=null; try{ dl=await window.claude?.use?.("downloads"); }catch(e){}
-  if(dl && VIEW==="backup"){
-    const a=document.getElementById("dlmd"), b=document.getElementById("dljs"); if(!a) return;
-    a.hidden=b.hidden=false;
-    a.onclick=()=>dl.save({filename:"caderno-qgis-aesp.md",data:exportarMD()}).catch(()=>{});
-    b.onclick=()=>dl.save({filename:"caderno-qgis-aesp-backup.json",data:JSON.stringify(S.docs,null,1)}).catch(()=>{});
-  }
+function ligarBackup(){
+  const g=id=>document.getElementById(id);
+  g("bk-dl").onclick=()=>{ baixarArquivo("caderno-qgis-backup_"+dataArq()+".json", gerarBackup(), "application/json"); try{ localStorage.setItem(LS_BK,new Date().toISOString()); }catch(e){} toast("Backup baixado. Confira a pasta Downloads."); setTimeout(render,300); };
+  g("bk-cp").onclick=()=>copiar(gerarBackup(),"Backup copiado. Cole num arquivo ou e-mail para guardar.");
+  g("md-dl").onclick=()=>baixarArquivo("caderno-qgis_"+dataArq()+".md", exportarMD(), "text/markdown");
+  g("md-cp").onclick=()=>copiar(exportarMD(),"Caderno copiado. Cole no Word ou Docs.");
+  const ler=txt=>{ try{ BK_LIDO=lerBackup(txt); render(); }catch(e){ BK_LIDO=null; toast(e.message); } };
+  g("bk-f").onchange=async e=>{ const f=e.target.files[0]; if(f) ler(await f.text()); };
+  g("bk-tl").onclick=()=>ler(g("bk-t").value);
+  if(g("bk-ok")) g("bk-ok").onclick=()=>{ const n=restaurar(BK_LIDO); BK_LIDO=null; toast(n?n+" item(ns) restaurado(s).":"Nada novo: você já tinha tudo o que está no backup."); render(); };
+  if(g("bk-no")) g("bk-no").onclick=()=>{ BK_LIDO=null; render(); };
 }
 
 // atualiza "agora" a cada minuto sem atrapalhar a digitação
 setInterval(()=>{ if(!editando() && !PANE) render(); else renderNav(); },60000);
+document.getElementById("sinfo").innerHTML=info("sync");
 render(); setSync();
 conectar();
 </script>
