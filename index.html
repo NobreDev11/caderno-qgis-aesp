@@ -142,7 +142,8 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
   aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 16px;gap:10px}
   nav{flex-direction:row;overflow:auto}
   nav button{white-space:nowrap}
-  .prog,.sync{display:none}
+  .prog{display:none}
+  .sync{margin-top:0}
   .now{grid-template-columns:1fr}
   .kpis{grid-template-columns:repeat(2,1fr)}
   .slot{grid-template-columns:auto minmax(0,1fr);gap:10px;padding:8px 6px}
@@ -163,12 +164,12 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
     </div>
     <nav id="nav"></nav>
     <div class="prog" id="prog"></div>
-    <div class="sync"><span class="dot" id="sdot"></span><span id="stxt">Carregando…</span></div>
+    <div class="sync"><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
   </aside>
   <main><div class="wrap" id="view"></div></main>
 </div>
 <div id="paneHost"></div>
-
+<script src="/vendor/supabase.js"></script>
 <script>
 "use strict";
 /* ============ DADOS DO QTS (AESP, versão de 06/11/2026) ============ */
@@ -210,8 +211,11 @@ function fmtData(data,longo){ const d=new Date(data+"T12:00:00-03:00"); const dd
 function statusAula(a){ const t=Date.now(); const i=msDe(a.data,a.ini), f=msDe(a.data,a.fim); return t<i?"fut":(t<f?"cur":"past"); }
 
 /* ============ ARMAZENAMENTO ============ */
-// Estado: docs por id. aula-<id>, disc-<k>, nota-<id>, tarefa-<id>
-const S = { docs:{}, modo:"local", db:null, col:null, carregado:false };
+// Docs: aula-<id>, disc-<k>, nota-<id>, tarefa-<id>. Apagar = marcar {apagado:true} (sincroniza entre aparelhos).
+// Nuvem: Supabase do Checklist, tabela caderno_notas (cada usuário só vê as próprias linhas).
+const SUPA_URL="https://ytionrwdwdmcxbdgqnkt.supabase.co";
+const SUPA_KEY="sb_publishable_MFrDp-4qr0yA2vyX1UJWOw_7RN7rdMX"; // chave publicável (pública por natureza)
+const S = { docs:{}, modo:"local", push:null, sb:null, uid:null, email:"", erro:false };
 const LS="caderno-qgis-aesp:v1";
 function lsLoad(){ try{ const j=localStorage.getItem(LS); if(j) S.docs=JSON.parse(j)||{}; }catch(e){} }
 function lsSave(){ try{ localStorage.setItem(LS, JSON.stringify(S.docs)); }catch(e){} }
@@ -219,74 +223,150 @@ lsLoad();
 const pend = {}; const timers = {}; const writing = {};
 function salvarDoc(id, body, atraso=700){
   body.upd = Date.now();
-  S.docs[id] = body; lsSave(); setSync();
-  if(!S.col) return;
-  pend[id]=body; clearTimeout(timers[id]);
-  timers[id]=setTimeout(()=>flush(id), atraso);
+  S.docs[id] = body; lsSave();
+  if(S.push){ pend[id]=body; clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id), atraso); }
+  setSync();
 }
 async function flush(id){
+  if(!S.push) return;
   if(writing[id]) { clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id),400); return; }
   const body=pend[id]; if(!body) return; delete pend[id];
   writing[id]=true; setSync();
-  try{ await S.col.doc(id).set(body); }
-  catch(e){ if(e&&e.code==="unavailable"){ pend[id]=pend[id]||body; timers[id]=setTimeout(()=>flush(id),1500+Math.random()*1500);} else if(e&&e.code==="quota_exceeded"){ toast("Espaço da nuvem cheio. Exporte um backup e apague notas antigas."); } else { S.erro=true; } }
+  try{ await S.push(id, body); S.erro=false; }
+  catch(e){ if(!pend[id]) pend[id]=body; S.erro=true; timers[id]=setTimeout(()=>flush(id),5000+Math.random()*3000); }
   writing[id]=false; setSync();
 }
-async function apagarDoc(id){
-  delete S.docs[id]; lsSave(); delete pend[id]; clearTimeout(timers[id]);
-  if(S.col){ try{ await S.col.doc(id).delete(); }catch(e){} }
-}
+function apagarDoc(id){ const old=S.docs[id]; if(!old) return; salvarDoc(id,{tipo:old.tipo,apagado:true},50); }
 function flushTudo(){ Object.keys(pend).forEach(id=>{clearTimeout(timers[id]); flush(id);}); }
 window.addEventListener("pagehide",flushTudo);
-document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushTudo(); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushTudo(); else if(S.pull) S.pull(); });
+window.addEventListener("online",()=>{ flushTudo(); if(S.pull) S.pull(); });
+
+// Junta o que veio da nuvem com o local: o mais recente vence. inicial=true também envia o que só está aqui.
+function mesclar(remoto, inicial){
+  let mudou=false;
+  for(const [id,r] of Object.entries(remoto)){
+    if(pend[id]||writing[id]) continue;
+    const l=S.docs[id]; if(!l || (r.upd||0)>(l.upd||0)){ S.docs[id]=r; mudou=true; }
+  }
+  if(inicial){
+    let i=0;
+    for(const [id,b] of Object.entries(S.docs)){
+      const r=remoto[id];
+      if(!r || (b.upd||0)>(r.upd||0)){ pend[id]=b; clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id),300+(i++)*120); }
+    }
+  }
+  if(mudou){ lsSave(); if(!editando()) render(); }
+}
 
 function setSync(){
-  const dot=document.getElementById("sdot"), tx=document.getElementById("stxt");
+  const dot=document.getElementById("sdot"), tx=document.getElementById("stxt"), bt=document.getElementById("sbtn");
   const np=Object.keys(pend).length+Object.values(writing).filter(Boolean).length;
-  if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? "Salvando…" : (S.erro?"Salvo neste navegador (falha ao enviar)":"Salvo na sua conta"); }
-  else { dot.className="dot loc"; tx.textContent= S.modo==="conectando"?"Conectando à sua conta…":"Salvo só neste navegador"; }
+  if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? (S.erro?"Sem internet: salvo aqui, envio depois":"Salvando…") : "Sincronizado"+(S.email?" · "+S.email:""); }
+  else if(S.modo==="conectando"){ dot.className="dot loc"; tx.textContent="Conectando…"; }
+  else { dot.className="dot loc"; tx.textContent="Salvo só neste navegador"; }
+  if(bt){ bt.hidden=!S.sb; bt.textContent= S.uid?"Sair":"Entrar"; }
 }
 
-async function conectar(){
+/* ---- Supabase (site na Vercel) ---- */
+async function iniciarSupa(session){
+  S.uid=session.user.id; S.email=session.user.email||"";
+  S.modo="conectando"; setSync();
+  const tab=()=>S.sb.from("caderno_notas");
+  S.push=async(id,body)=>{
+    const {error}=await tab().upsert({user_id:S.uid,id,body,upd:body.upd||Date.now()},{onConflict:"user_id,id"});
+    if(error) throw error;
+  };
+  let puxando=false;
+  S.pull=async(inicial)=>{
+    if(puxando) return; puxando=true;
+    try{
+      const {data,error}=await tab().select("id,body").limit(5000);
+      if(error) throw error;
+      const remoto={}; (data||[]).forEach(r=>{ remoto[r.id]=r.body; });
+      mesclar(remoto, !!inicial);
+      S.modo="nuvem"; S.erro=false;
+    }catch(e){
+      if(inicial){ S.modo="nuvem"; S.erro=true; }
+      if(e&&e.code==="42P01") toast("Tabela caderno_notas não existe: rode o SQL no Supabase.");
+    }
+    puxando=false; setSync();
+  };
+  await S.pull(true);
+  if(!S._intervalo) S._intervalo=setInterval(()=>{ if(S.pull&&document.visibilityState==="visible") S.pull(); },60000);
+}
+function pararSupa(){ S.uid=null; S.email=""; S.push=null; S.pull=null; S.modo="local"; Object.keys(pend).forEach(k=>delete pend[k]); setSync(); }
+async function conectarSupa(){
+  if(!window.supabase){ S.modo="local"; setSync(); return; }
+  S.sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
+  S.sb.auth.onAuthStateChange((ev,session)=>{ if(ev==="SIGNED_OUT") pararSupa(); });
+  let session=null;
+  try{ session=(await S.sb.auth.getSession()).data.session; }catch(e){}
+  if(session) await iniciarSupa(session); else { S.modo="local"; setSync(); }
+}
+function abrirLogin(){
+  PANE={tipo:"login"};
+  document.getElementById("paneHost").innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Entrar" style="height:auto;bottom:auto;max-height:100%">
+    <header><div><h3>Entrar para sincronizar</h3><p class="muted" style="margin:4px 0 0;font-size:13.5px">Use o mesmo e-mail e senha do portal ADMIN CBMCE. Suas notas ficam na nuvem e aparecem no computador e no celular.</p></div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+    <form class="body" id="flogin" style="flex:none">
+      <div><label class="lb" for="lg-e">E-mail</label><input type="text" id="lg-e" autocomplete="username" inputmode="email" required></div>
+      <div><label class="lb" for="lg-s">Senha</label><input type="password" id="lg-s" autocomplete="current-password" required style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%"></div>
+      <p id="lg-err" class="fl-f" style="margin:0;font-size:14px" hidden></p>
+      <button class="btn pri" type="submit" id="lg-b">Entrar</button>
+      <p class="muted" style="margin:0;font-size:12.5px">O que você já anotou neste aparelho sobe para a nuvem ao entrar.</p>
+    </form></section>`;
+  document.getElementById("lg-e").focus();
+}
+async function fazerLogin(){
+  const email=document.getElementById("lg-e").value.trim(), password=document.getElementById("lg-s").value;
+  const err=document.getElementById("lg-err"), bt=document.getElementById("lg-b");
+  err.hidden=true; bt.disabled=true; bt.textContent="Entrando…";
+  try{
+    const r=await Promise.race([S.sb.auth.signInWithPassword({email,password}), new Promise((_,rej)=>setTimeout(()=>rej(new Error("tempo")),15000))]);
+    if(r.error) throw r.error;
+    PANE=null; document.getElementById("paneHost").innerHTML="";
+    await iniciarSupa(r.data.session); render(); toast("Conectado. Suas notas estão sincronizando.");
+  }catch(e){
+    err.hidden=false;
+    err.textContent= e.message==="tempo" ? "O servidor não respondeu. Confira a internet e tente de novo." : (/invalid/i.test(e.message||"") ? "E-mail ou senha incorretos." : "Não foi possível entrar: "+(e.message||"erro"));
+    bt.disabled=false; bt.textContent="Entrar";
+  }
+}
+async function sair(){
+  flushTudo();
+  const b=document.getElementById("sbtn");
+  if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar saída"; setTimeout(()=>{ delete b.dataset.conf; setSync(); },3000); return; }
+  delete b.dataset.conf;
+  try{ await S.sb.auth.signOut(); }catch(e){}
+  pararSupa(); toast("Você saiu. As notas continuam neste navegador.");
+}
+
+/* ---- Claude (quando aberto como artefato) ---- */
+async function conectarClaude(){
   S.modo="conectando"; setSync();
   let db=null,user=null;
-  try{ [db,user]=await Promise.all([window.claude?.use?.("db"), window.claude?.use?.("user")]); }catch(e){}
+  try{ [db,user]=await Promise.all([window.claude.use("db"), window.claude.use("user")]); }catch(e){}
   const uid = user? await user.id().catch(()=>null) : null;
   if(!db||!uid){ S.modo="local"; setSync(); return; }
-  S.db=db; S.col=db.collection("data/users/"+uid);
+  const col=db.collection("data/users/"+uid);
+  S.push=(id,body)=>col.doc(id).set(body);
   let primeiro=true;
-  const tm=setTimeout(()=>{ if(primeiro){ S.modo="local"; setSync(); toast("Sem conexão com a conta. Suas notas ficam neste navegador por enquanto."); } },10000);
-  S.col.onSnapshot(snap=>{
+  const tm=setTimeout(()=>{ if(primeiro){ S.modo="local"; setSync(); } },10000);
+  col.onSnapshot(snap=>{
     const remoto={}; snap.docs.forEach(d=>{ remoto[d.id]=d.data(); });
-    if(primeiro){
-      primeiro=false;
-      // mescla: o mais recente vence; envia o que só existe localmente
-      const local=S.docs; const out={...remoto};
-      for(const [id,b] of Object.entries(local)){
-        const r=remoto[id];
-        if(!r || (b.upd||0)>(r.upd||0)){ out[id]=b; pend[id]=b; }
-      }
-      S.docs=out;
-      Object.keys(pend).forEach((id,i)=>{ timers[id]=setTimeout(()=>flush(id),300+i*150); });
-    } else {
-      for(const [id,r] of Object.entries(remoto)){
-        if(pend[id]||writing[id]) continue;
-        const l=S.docs[id]; if(!l || (r.upd||0)>(l.upd||0)) S.docs[id]=r;
-      }
-      for(const id of Object.keys(S.docs)){ if(!(id in remoto) && !pend[id] && !writing[id] && !snap.metadata.fromCache) delete S.docs[id]; }
-    }
+    mesclar(remoto, primeiro); primeiro=false;
     if(!snap.metadata.fromCache){ clearTimeout(tm); S.modo="nuvem"; }
-    lsSave(); setSync();
-    if(!editando()) render();
-  }, err=>{ clearTimeout(tm); S.modo="local"; S.col=null; setSync(); });
+    setSync();
+  }, ()=>{ clearTimeout(tm); S.modo="local"; S.push=null; setSync(); });
 }
+function conectar(){ if(window.claude&&window.claude.use) conectarClaude(); else conectarSupa(); }
 
 /* ============ ACESSO AOS DADOS ============ */
 const aulaD = id => S.docs["aula-"+id] || {};
 const discD = k => S.docs["disc-"+k] || {};
 const nomeDisc = k => (discD(k).nome||"").trim() || DK[k].nome;
-const notas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="nota").map(([id,b])=>({id,...b})).sort((a,b)=>(b.upd||0)-(a.upd||0));
-const tarefas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="tarefa").map(([id,b])=>({id,...b})).sort((a,b)=>(a.feito-b.feito)||((a.prazo||"9")<(b.prazo||"9")?-1:1)||((a.criado||0)-(b.criado||0)));
+const notas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="nota"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(b.upd||0)-(a.upd||0));
+const tarefas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="tarefa"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(a.feito-b.feito)||((a.prazo||"9")<(b.prazo||"9")?-1:1)||((a.criado||0)-(b.criado||0)));
 function novoId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 /* ============ UTIL ============ */
@@ -504,7 +584,7 @@ function vBackup(){
       <label class="lb" for="imp" style="margin-top:12px">Restaurar: cole o backup aqui</label><textarea id="imp" style="min-height:80px" placeholder='{"aula-20261109-0730": …}'></textarea>
       <div class="row" style="margin-top:8px"><button class="btn" id="btimp">Restaurar backup</button></div></div>
   </div>
-  <div class="card"><h3>Onde ficam as notas</h3><p class="muted" style="margin:0">${S.modo==="nuvem"?"As notas estão guardadas na sua conta e aparecem em qualquer aparelho. Só você vê.":"As notas ficam salvas neste navegador, neste aparelho. Para levar a outro computador, use “Copiar backup” aqui e “Restaurar backup” lá. Não limpe os dados do navegador sem exportar antes."}</p></div>`;
+  <div class="card"><h3>Onde ficam as notas</h3><p class="muted" style="margin:0">${S.modo==="nuvem"?"As notas estão sincronizadas na nuvem e aparecem em qualquer aparelho em que você entrar. Só você vê.":"As notas estão só neste navegador. Clique em “Entrar” (barra lateral) para sincronizar com a nuvem, ou use “Copiar backup” e “Restaurar backup”."}</p></div>`;
 }
 
 /* ============ PAINEL LATERAL (aula / nota) ============ */
@@ -514,6 +594,7 @@ function fecharPane(){ PANE=null; document.getElementById("paneHost").innerHTML=
 function renderPane(){
   const host=document.getElementById("paneHost");
   if(!PANE){ host.innerHTML=""; return; }
+  if(PANE.tipo==="login") return;
   if(PANE.tipo==="aula"){
     const a=AK[PANE.id]; const d=aulaD(a.id); const x=DK[a.k];
     const i=AULAS.indexOf(a);
@@ -581,11 +662,11 @@ document.addEventListener("click",async e=>{
   if(ds.estrela!==undefined){ const id=PANE.id, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",estrela:!d.estrela},50); renderPane(); return; }
   if(ds.prev!==undefined){ PANE.prev=!PANE.prev; renderPane(); return; }
   if(ds.delnota!==undefined){
-    if(b.dataset.conf){ await apagarDoc(PANE.id); fecharPane(); toast("Nota apagada"); }
+    if(b.dataset.conf){ apagarDoc(PANE.id); fecharPane(); toast("Nota apagada"); }
     else { b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar nota"; } },3000); }
     return;
   }
-  if(ds.tkdel!==undefined){ await apagarDoc(ds.tkdel); render(); return; }
+  if(ds.tkdel!==undefined){ apagarDoc(ds.tkdel); render(); return; }
   if(ds.editnome!==undefined){
     const k=ds.editnome; const h=document.querySelector(`[data-nome="${k}"]`);
     h.outerHTML=`<div class="row" style="margin-bottom:4px"><input type="text" id="en-${k}" value="${esc(nomeDisc(k))}" style="flex:1;min-width:200px"><button class="btn sm pri" data-salvanome="${k}">Salvar</button></div>`;
@@ -594,6 +675,7 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("click",e=>{
+  if(e.target.id==="sbtn"){ if(S.uid) sair(); else abrirLogin(); return; }
   const b=e.target.closest("[data-salvanome]"); if(!b) return;
   const k=b.dataset.salvanome; const v=document.getElementById("en-"+k).value.trim();
   salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nome:v===DK[k].nome?"":v},50); document.activeElement.blur(); render();
@@ -617,6 +699,7 @@ document.addEventListener("change",e=>{
   if(t.dataset.tk){ const id=t.dataset.tk; salvarDoc(id,{...S.docs[id],feito:t.checked},100); render(); return; }
 });
 document.addEventListener("submit",e=>{
+  if(e.target.id==="flogin"){ e.preventDefault(); fazerLogin(); return; }
   if(e.target.id!=="ftk") return; e.preventDefault();
   const tx=document.getElementById("tk-t").value.trim(); if(!tx) return;
   salvarDoc("tarefa-"+novoId(),{tipo:"tarefa",texto:tx,disc:document.getElementById("tk-d").value,prazo:document.getElementById("tk-p").value,feito:false,criado:Date.now()},50);

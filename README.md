@@ -12,7 +12,10 @@ Página estática única (`index.html`), sem build e sem variáveis de ambiente.
 - **Exportar:** caderno em Markdown, backup JSON e restauração.
 
 ## Onde ficam os dados
-No endereço da Vercel, as notas ficam no `localStorage` do navegador (chave `caderno-qgis-aesp:v1`). Para trocar de aparelho: Exportar → Copiar backup → Restaurar backup no outro.
+- Sempre há uma cópia no `localStorage` do navegador (chave `caderno-qgis-aesp:v1`), então o app funciona sem internet.
+- Ao clicar em **Entrar** (mesmo e-mail e senha do portal ADMIN CBMCE), as notas sincronizam com a tabela `caderno_notas` do Supabase do Checklist. Cada usuário só vê as próprias linhas, e precisa ser admin (`is_admin()`). SQL em `supabase/caderno_notas.sql`.
+- Apagar uma nota ou tarefa grava `apagado: true` (para o apagamento chegar aos outros aparelhos).
+- Conflitos: vence a versão mais recente (`upd`).
 
 ## Publicar na Vercel
 1. New Project → importar este repositório.
