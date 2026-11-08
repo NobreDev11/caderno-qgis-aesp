@@ -1,7 +1,7 @@
 {
-  "name": "Caderno QGIS AESP",
-  "short_name": "Caderno QGIS",
-  "description": "Cronograma e anotações do curso de QGIS da AESP/CE",
+  "name": "Cadernos de Estudo",
+  "short_name": "Cadernos",
+  "description": "Cadernos de estudo: curso de QGIS da AESP/CE e trilha DIO de agentes de IA e dados",
   "lang": "pt-BR",
   "start_url": "/",
   "display": "standalone",

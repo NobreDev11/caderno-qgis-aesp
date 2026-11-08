@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caderno QGIS AESP</title>
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0f6b5c">
+<meta name="apple-mobile-web-app-title" content="Caderno QGIS">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: barra lateral fixa (navegação + progresso) e área de trabalho; no celular a barra vira faixa superior. Visual de carta topográfica. */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --ink:#18231f; --muted:#5d6b66; --line:#d9e0dc;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#e1efeb;
+  --ok:#2f7d32; --warn:#a86400; --bad:#b3261e;
+  --display:"Archivo", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1715; --surface:#16211e; --ink:#e3ece8; --muted:#9aaba5; --line:#2a3834;
+    --accent:#4fb8a3; --accent-ink:#0b1311; --accent-soft:#1d3530;
+    --ok:#7cc47f; --warn:#e0a84a; --bad:#f08a80; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1715; --surface:#16211e; --ink:#e3ece8; --muted:#9aaba5; --line:#2a3834;
+  --accent:#4fb8a3; --accent-ink:#0b1311; --accent-soft:#1d3530;
+  --ok:#7cc47f; --warn:#e0a84a; --bad:#f08a80; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:260px 1fr;height:100%}
+aside{background:var(--surface);border-right:1px solid var(--line);padding:20px 16px;display:flex;flex-direction:column;gap:18px;overflow:auto;
+  background-image:repeating-radial-gradient(circle at 120% -10%, transparent 0 22px, color-mix(in srgb,var(--accent) 7%,transparent) 22px 23px)}
+.brand h1{font:800 20px/1.15 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+nav{display:flex;flex-direction:column;gap:2px}
+nav button{all:unset;cursor:pointer;padding:8px 10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-weight:500}
+nav button:hover{background:var(--accent-soft)}
+nav button[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
+nav .cnt{font:12px var(--mono);opacity:.8}
+.prog{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent)}
+.sync{margin-top:auto;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--ok)} .dot.loc{background:var(--warn)}
+main{overflow:auto;overflow-x:hidden;padding:24px clamp(16px,3vw,40px) 60px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h2{font:800 26px/1.15 var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h3{font:700 17px/1.25 var(--display);margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--ink);white-space:nowrap}
+.sw{width:10px;height:10px;border-radius:3px;flex:none}
+.btn{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:3px 9px;font-size:13px}
+.btn.on{background:var(--accent-soft);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+input[type=text],input[type=date],input[type=search],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
+textarea{resize:vertical;min-height:120px;line-height:1.55}
+label.lb{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+/* agora */
+.now{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+.hero{border-left:6px solid var(--c,var(--accent))}
+.hero .t{font:500 13px var(--mono);color:var(--muted)}
+.hero .d{font:800 22px/1.2 var(--display);margin:6px 0;text-wrap:balance}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi b{display:block;font:800 26px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted)}
+/* cronograma */
+.day{display:flex;flex-direction:column;gap:6px}
+.dayh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.slot{display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid transparent;cursor:pointer;text-align:left;background:none;width:100%}
+.slot:hover{background:var(--accent-soft)}
+.slot.int{cursor:default;color:var(--muted);font-size:13px;padding:2px 10px}
+.slot.int:hover{background:none}
+.slot.cur{border-color:var(--accent);background:var(--accent-soft)}
+.slot.past .nm{opacity:.75}
+.slot .nm{display:flex;gap:8px;align-items:center;min-width:0}
+.slot .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flags{display:flex;gap:6px;align-items:center;font-size:12px}
+.fl-p{color:var(--ok)} .fl-f{color:var(--bad)}
+.daysel{display:flex;gap:6px;flex-wrap:wrap}
+/* editor */
+.pane{position:fixed;inset:0 0 0 auto;width:min(620px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-12px 0 40px rgb(0 0 0 / .15);display:flex;flex-direction:column;z-index:20}
+.pane header{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.pane .body{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:14px;flex:1}
+.pane textarea{min-height:300px;flex:1}
+.pane.wide{width:min(880px,100%)}
+.qd{border-top:1px solid var(--line);padding:8px 0}.qd summary{cursor:pointer}.qd ol{margin:6px 0 0;padding-left:1.6em}
+.alts{display:flex;flex-direction:column;gap:8px}
+.alt{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;width:100%}
+.alt:hover:not(:disabled){border-color:var(--accent)}
+.alt .mono{font-weight:500;color:var(--muted)}
+.alt.certa{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--surface))}
+.alt.errada{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,var(--surface))}
+.alt:disabled{cursor:default}
+.fb{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:14.5px}
+.fb.ok{background:color-mix(in srgb,var(--ok) 12%,transparent)}.fb.no{background:color-mix(in srgb,var(--bad) 10%,transparent)}
+input[type=file]{width:100%;font-size:14px}
+.info{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1px solid var(--muted);background:transparent;color:var(--muted);font:italic 700 11px/1 Georgia,serif;cursor:pointer;padding:0;vertical-align:middle;flex:none}
+.info:hover{border-color:var(--accent);color:var(--accent)}
+h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
+.pop{position:fixed;z-index:50;width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgb(0 0 0 / .2);padding:12px 14px;font-size:14px;line-height:1.5}
+.pop p{margin:8px 0 0}.pop pre{margin:4px 0 0;padding:8px;background:var(--bg);border-radius:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
+.shade{position:fixed;inset:0;background:rgb(0 0 0 / .25);z-index:19}
+.md{line-height:1.6;max-width:68ch}
+.md h1,.md h2,.md h3{font-family:var(--display);margin:.6em 0 .3em}
+.md h1{font-size:20px}.md h2{font-size:18px}.md h3{font-size:16px}
+.md p{margin:.4em 0}.md ul{margin:.3em 0;padding-left:1.3em}
+.md code{font-family:var(--mono);background:var(--accent-soft);padding:0 4px;border-radius:4px}
+.md a{color:var(--accent)}
+.notes{display:flex;flex-direction:column;gap:8px}
+.ni{padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--surface);text-align:left;width:100%}
+.ni:hover{border-color:var(--accent)}
+.ni .ex{color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.task{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.task.done .tx{text-decoration:line-through;color:var(--muted)}
+.task input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.empty{color:var(--muted);font-size:14px;padding:12px 0}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;z-index:40}
+mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;border-radius:3px}
+.ftk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px) 150px auto;gap:10px;align-items:end}
+.ftk>*{min-width:0}
+.dhead{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.slot .mono{white-space:nowrap}
+.slot .flags:empty{display:none}
+.chip{max-width:100%;min-width:0}
+.ct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dayh>*{min-width:0;max-width:100%}
+@media (max-width:820px){
+  .ftk{grid-template-columns:1fr 1fr}
+  .ftk>div:first-child,.ftk>button{grid-column:1/-1}
+  .dhead{flex-direction:column}
+  nav{flex-wrap:wrap;overflow:visible}
+  nav button{padding:6px 10px}
+  nav .cnt{margin-left:6px}
+  .brand h1{font-size:17px}
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 16px;gap:10px}
+  nav{flex-direction:row;overflow:auto}
+  nav button{white-space:nowrap}
+  .prog{display:none}
+  .sync{margin-top:0}
+  .now{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .slot{grid-template-columns:auto minmax(0,1fr);gap:10px;padding:8px 6px}
+  .slot .mono{font-size:12.5px}
+  .slot .flags{grid-column:2}
+  .slot.int{padding:2px 6px}
+  .pane header,.pane .body{padding-left:14px;padding-right:14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <p style="margin:0 0 6px"><a href="/" style="color:var(--accent);font-size:13px;text-decoration:none">← Cursos</a></p>
+      <h1>Uso do QGIS como Estratégia de Segurança Pública</h1>
+      <p>AESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11</p>
+    </div>
+    <nav id="nav"></nav>
+    <div class="prog" id="prog"></div>
+    <div class="sync"><span id="sinfo"></span><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
+  </aside>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<div id="paneHost"></div>
+<script src="/vendor/supabase.js"></script>
+<script src="/prompts.js"></script>
+<script>
+"use strict";
+/* ============ DADOS DO QTS (AESP, versão de 06/11/2026) ============ */
+const DISC = [
+  {k:"cart", nome:"Ambientação e Introdução à Cartografia", ha:4,  inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#3b7dd8"},
+  {k:"sig",  nome:"Fundamentos de Geoprocessamento e SIG",  ha:4,  inst:["José Eudázio Honório Sampaio","José Dyego de Souza Santos"], cor:"#8a5cd0"},
+  {k:"gmaps",nome:"Google Maps e Google My Maps Aplicados à Segurança Pública", ha:8, inst:["José Dyego de Souza Santos"], cor:"#d0453b"},
+  {k:"qgis", nome:"Introdução ao QGIS", ha:12, inst:["Flávio do Nascimento Moreira Júnior","José Eudázio Honório Sampaio"], cor:"#2f9e44"},
+  {k:"edic", nome:"Edição e Manipulação de Dados", ha:8, inst:["José Eudázio Honório Sampaio"], cor:"#c9871a"},
+  {k:"bases",nome:"Bases de Dados Geográficas", ha:8, inst:["José Dyego de Souza Santos"], cor:"#1592a3"},
+  {k:"anal", nome:"Análises Espaciais Aplicadas à Segurança", ha:16, inst:["José Eudázio Honório Sampaio"], cor:"#b8407a"},
+  {k:"prod", nome:"Elaboração de Produtos Cartográficos", ha:8, inst:["Flávio do Nascimento Moreira Júnior","Daniel de Souza Rocha"], cor:"#6c7a1f"},
+  {k:"proj", nome:"Projeto Prático: Diagnóstico Territorial", ha:12, inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#d2622a"},
+];
+const DK = Object.fromEntries(DISC.map(d=>[d.k,d]));
+const SLOTS = [["07:30","08:20"],["08:20","09:10"],["09:10","10:00"],"INT1",["10:20","11:10"],["11:10","12:00"],["13:00","13:50"],["13:50","14:40"],"INT2",["15:00","15:50"],["15:50","16:40"],["16:40","17:30"]];
+const DIAS_AULA = ["2026-11-09","2026-11-10","2026-11-11","2026-11-12","2026-11-13","2026-11-16","2026-11-17","2026-11-18"];
+const DIAS_REPO = ["2026-11-14","2026-11-15"];
+const WD = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+
+const AULAS = []; // {id, data, ini, fim, k, n, tot}
+(function gerar(){
+  const seq=[]; DISC.forEach(d=>{for(let i=1;i<=d.ha;i++)seq.push([d.k,i,d.ha])});
+  let p=0;
+  for(const dia of DIAS_AULA){
+    for(const s of SLOTS){ if(typeof s==="string")continue;
+      const [k,n,tot]=seq[p++];
+      AULAS.push({id:dia.replace(/-/g,"")+"-"+s[0].replace(":",""), data:dia, ini:s[0], fim:s[1], k, n, tot});
+    }
+  }
+})();
+const AK = Object.fromEntries(AULAS.map(a=>[a.id,a]));
+const TODOS_DIAS = [...DIAS_AULA.slice(0,5),...DIAS_REPO,...DIAS_AULA.slice(5)];
+
+/* ============ HORA DE FORTALEZA (UTC-3) ============ */
+function agoraFor(){ const d=new Date(Date.now()-3*3600e3); return {data:d.toISOString().slice(0,10), hm:d.toISOString().slice(11,16), ms:Date.now()}; }
+function msDe(data,hm){ return Date.parse(data+"T"+hm+":00-03:00"); }
+function fmtData(data,longo){ const d=new Date(data+"T12:00:00-03:00"); const dd=data.slice(8,10)+"/"+data.slice(5,7); return longo? WD[d.getUTCDay()]+", "+dd : WD[d.getUTCDay()].slice(0,3)+" "+dd; }
+function statusAula(a){ const t=Date.now(); const i=msDe(a.data,a.ini), f=msDe(a.data,a.fim); return t<i?"fut":(t<f?"cur":"past"); }
+
+/* ============ ARMAZENAMENTO ============ */
+// Docs: aula-<id>, disc-<k>, nota-<id>, tarefa-<id>. Apagar = marcar {apagado:true} (sincroniza entre aparelhos).
+// Nuvem: Supabase do Checklist, tabela caderno_notas (cada usuário só vê as próprias linhas).
+const SUPA_URL="https://ytionrwdwdmcxbdgqnkt.supabase.co";
+const SUPA_KEY="sb_publishable_MFrDp-4qr0yA2vyX1UJWOw_7RN7rdMX"; // chave publicável (pública por natureza)
+const S = { faltaSQL:false, docs:{}, modo:"local", push:null, sb:null, uid:null, email:"", erro:false };
+const LS="caderno-qgis-aesp:v1";
+function lsLoad(){ try{ const j=localStorage.getItem(LS); if(j) S.docs=JSON.parse(j)||{}; }catch(e){} }
+function lsSave(){
+  try{ localStorage.setItem(LS, JSON.stringify(S.docs)); return; }catch(e){}
+  // sem espaço: guarda tudo menos o texto/fotos dos materiais (que ficam na nuvem)
+  try{ const leve={}; for(const [k,v] of Object.entries(S.docs)) if(!k.startsWith("mtx-")) leve[k]=v; localStorage.setItem(LS, JSON.stringify(leve)); }catch(e){}
+}
+lsLoad();
+const pend = {}; const timers = {}; const writing = {};
+function salvarDoc(id, body, atraso=700){
+  body.upd = Date.now();
+  S.docs[id] = body; lsSave();
+  if(S.push){ pend[id]=body; clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id), atraso); }
+  setSync();
+}
+async function flush(id){
+  if(!S.push) return;
+  if(writing[id]) { clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id),400); return; }
+  const body=pend[id]; if(!body) return; delete pend[id];
+  writing[id]=true; setSync();
+  try{ await S.push(id, body); S.erro=false; }
+  catch(e){ if(!pend[id]) pend[id]=body; S.erro=true; timers[id]=setTimeout(()=>flush(id),5000+Math.random()*3000); }
+  writing[id]=false; setSync();
+}
+function apagarDoc(id){ const old=S.docs[id]; if(!old) return; salvarDoc(id,{tipo:old.tipo,apagado:true},50); }
+function flushTudo(){ Object.keys(pend).forEach(id=>{clearTimeout(timers[id]); flush(id);}); }
+window.addEventListener("pagehide",flushTudo);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushTudo(); else if(S.pull) S.pull(); });
+window.addEventListener("online",()=>{ flushTudo(); if(S.pull) S.pull(); });
+
+// Junta o que veio da nuvem com o local: o mais recente vence. inicial=true também envia o que só está aqui.
+function mesclar(remoto, inicial){
+  let mudou=false;
+  for(const [id,r] of Object.entries(remoto)){
+    if(pend[id]||writing[id]) continue;
+    const l=S.docs[id]; if(!l || (r.upd||0)>(l.upd||0)){ S.docs[id]=r; mudou=true; }
+  }
+  if(inicial){
+    let i=0;
+    for(const [id,b] of Object.entries(S.docs)){
+      const r=remoto[id];
+      if(!r || (b.upd||0)>(r.upd||0)){ pend[id]=b; clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id),300+(i++)*120); }
+    }
+  }
+  if(mudou){ lsSave(); if(!editando()) render(); }
+}
+
+function setSync(){
+  const dot=document.getElementById("sdot"), tx=document.getElementById("stxt"), bt=document.getElementById("sbtn");
+  const np=Object.keys(pend).length+Object.values(writing).filter(Boolean).length;
+  if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? (S.erro?"Sem internet: salvo aqui, envio depois":"Salvando…") : "Sincronizado"+(S.email?" · "+S.email:""); }
+  else if(S.modo==="conectando"){ dot.className="dot loc"; tx.textContent="Conectando…"; }
+  else { dot.className="dot loc"; tx.textContent="Salvo só neste navegador"; }
+  if(bt){ bt.hidden=!S.sb; bt.textContent= S.uid?"Sair":"Entrar"; }
+}
+
+/* ---- Supabase (site na Vercel) ---- */
+async function iniciarSupa(session){
+  S.uid=session.user.id; S.email=session.user.email||"";
+  S.modo="conectando"; setSync();
+  const tab=()=>S.sb.from("caderno_notas");
+  S.push=async(id,body)=>{
+    const {error}=await tab().upsert({user_id:S.uid,id,body,upd:body.upd||Date.now()},{onConflict:"user_id,id"});
+    if(error) throw error;
+  };
+  let puxando=false;
+  S.pull=async(inicial)=>{
+    if(puxando) return; puxando=true;
+    try{
+      // 1ª vez: tudo. Depois: só o que mudou desde a última leitura (com folga de 10 s).
+      let q=tab().select("id,body,updated_at").order("updated_at",{ascending:true}).limit(5000);
+      if(!inicial && S.desde) q=q.gte("updated_at", new Date(Date.parse(S.desde)-10000).toISOString());
+      const {data,error}=await q;
+      if(error) throw error;
+      const remoto={}; (data||[]).forEach(r=>{ remoto[r.id]=r.body; if(!S.desde||r.updated_at>S.desde) S.desde=r.updated_at; });
+      mesclar(remoto, !!inicial);
+      S.modo="nuvem"; S.erro=false; if(S.faltaSQL){ S.faltaSQL=false; render(); }
+    }catch(e){
+      if(inicial){ S.modo="nuvem"; S.erro=true; }
+      if(semTabela(e)){ S.faltaSQL=true; render(); }
+    }
+    puxando=false; setSync();
+  };
+  await S.pull(true);
+  if(!S._intervalo) S._intervalo=setInterval(()=>{ if(S.pull&&document.visibilityState==="visible") S.pull(); },60000);
+}
+// A tabela existe? (sem login a resposta é "sem permissão" se existir, ou "tabela não encontrada" se faltar o SQL)
+const semTabela = e => !!e && (e.code==="PGRST205"||e.code==="42P01"||/could not find the table|does not exist/i.test(e.message||""));
+async function checarSQL(){
+  try{ const {error}=await S.sb.from("caderno_notas").select("id").limit(1); const antes=S.faltaSQL; S.faltaSQL=semTabela(error); if(antes!==S.faltaSQL&&!editando()) render(); }catch(e){}
+}
+function pararSupa(){ S.desde=null; S.uid=null; S.email=""; S.push=null; S.pull=null; S.modo="local"; Object.keys(pend).forEach(k=>delete pend[k]); setSync(); }
+async function conectarSupa(){
+  if(!window.supabase){ S.modo="local"; setSync(); return; }
+  S.sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
+  S.sb.auth.onAuthStateChange((ev,session)=>{ if(ev==="SIGNED_OUT") pararSupa(); });
+  checarSQL();
+  let session=null;
+  try{ session=(await S.sb.auth.getSession()).data.session; }catch(e){}
+  if(session) await iniciarSupa(session); else { S.modo="local"; setSync(); }
+}
+function abrirLogin(){
+  PANE={tipo:"login"};
+  document.getElementById("paneHost").innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Entrar" style="height:auto;bottom:auto;max-height:100%">
+    <header><div><h3>Entrar para sincronizar ${info("login")}</h3><p class="muted" style="margin:4px 0 0;font-size:13.5px">Use o mesmo e-mail e senha do portal ADMIN CBMCE. Suas notas ficam na nuvem e aparecem no computador e no celular.</p></div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+    <form class="body" id="flogin" style="flex:none">
+      <div><label class="lb" for="lg-e">E-mail</label><input type="text" id="lg-e" autocomplete="username" inputmode="email" required></div>
+      <div><label class="lb" for="lg-s">Senha</label><input type="password" id="lg-s" autocomplete="current-password" required style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%"></div>
+      <p id="lg-err" class="fl-f" style="margin:0;font-size:14px" hidden></p>
+      <button class="btn pri" type="submit" id="lg-b">Entrar</button>
+      <p class="muted" style="margin:0;font-size:12.5px">O que você já anotou neste aparelho sobe para a nuvem ao entrar.</p>
+    </form></section>`;
+  document.getElementById("lg-e").focus();
+}
+async function fazerLogin(){
+  const email=document.getElementById("lg-e").value.trim(), password=document.getElementById("lg-s").value;
+  const err=document.getElementById("lg-err"), bt=document.getElementById("lg-b");
+  err.hidden=true; bt.disabled=true; bt.textContent="Entrando…";
+  try{
+    const r=await Promise.race([S.sb.auth.signInWithPassword({email,password}), new Promise((_,rej)=>setTimeout(()=>rej(new Error("tempo")),15000))]);
+    if(r.error) throw r.error;
+    PANE=null; document.getElementById("paneHost").innerHTML="";
+    await iniciarSupa(r.data.session); render(); toast("Conectado. Suas notas estão sincronizando.");
+  }catch(e){
+    err.hidden=false;
+    err.textContent= e.message==="tempo" ? "O servidor não respondeu. Confira a internet e tente de novo." : (/invalid/i.test(e.message||"") ? "E-mail ou senha incorretos." : "Não foi possível entrar: "+(e.message||"erro"));
+    bt.disabled=false; bt.textContent="Entrar";
+  }
+}
+async function sair(){
+  flushTudo();
+  const b=document.getElementById("sbtn");
+  if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar saída"; setTimeout(()=>{ delete b.dataset.conf; setSync(); },3000); return; }
+  delete b.dataset.conf;
+  try{ await S.sb.auth.signOut(); }catch(e){}
+  pararSupa(); toast("Você saiu. As notas continuam neste navegador.");
+}
+
+/* ---- Claude (quando aberto como artefato) ---- */
+async function conectarClaude(){
+  S.modo="conectando"; setSync();
+  let db=null,user=null;
+  try{ [db,user]=await Promise.all([window.claude.use("db"), window.claude.use("user")]); }catch(e){}
+  const uid = user? await user.id().catch(()=>null) : null;
+  if(!db||!uid){ S.modo="local"; setSync(); return; }
+  const col=db.collection("data/users/"+uid);
+  S.push=(id,body)=>col.doc(id).set(body);
+  let primeiro=true;
+  const tm=setTimeout(()=>{ if(primeiro){ S.modo="local"; setSync(); } },10000);
+  col.onSnapshot(snap=>{
+    const remoto={}; snap.docs.forEach(d=>{ remoto[d.id]=d.data(); });
+    mesclar(remoto, primeiro); primeiro=false;
+    if(!snap.metadata.fromCache){ clearTimeout(tm); S.modo="nuvem"; }
+    setSync();
+  }, ()=>{ clearTimeout(tm); S.modo="local"; S.push=null; setSync(); });
+}
+function conectar(){ if(window.claude&&window.claude.use) conectarClaude(); else conectarSupa(); }
+
+/* ============ ACESSO AOS DADOS ============ */
+const aulaD = id => S.docs["aula-"+id] || {};
+const discD = k => S.docs["disc-"+k] || {};
+const nomeDisc = k => (discD(k).nome||"").trim() || DK[k].nome;
+const notas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="nota"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(b.upd||0)-(a.upd||0));
+const tarefas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="tarefa"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(a.feito-b.feito)||((a.prazo||"9")<(b.prazo||"9")?-1:1)||((a.criado||0)-(b.criado||0)));
+function novoId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ============ UTIL ============ */
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function md(src){
+  const linhas=String(src||"").split("\n"); let out="", lista=false;
+  const inl=t=>esc(t).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  for(const l of linhas){
+    const m=l.match(/^\s*[-*]\s+(.*)$/);
+    if(m){ if(!lista){out+="<ul>";lista=true;} out+="<li>"+inl(m[1].replace(/^\[ \]\s*/,"☐ ").replace(/^\[x\]\s*/i,"☑ "))+"</li>"; continue; }
+    if(lista){out+="</ul>";lista=false;}
+    const h=l.match(/^(#{1,3})\s+(.*)$/);
+    if(h){ out+=`<h${h[1].length}>${inl(h[2])}</h${h[1].length}>`; continue; }
+    if(l.trim()==="") continue;
+    out+="<p>"+inl(l)+"</p>";
+  }
+  if(lista) out+="</ul>";
+  return out || '<p class="muted">Sem anotações.</p>';
+}
+function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),3200); }
+function sw(k){ return `<span class="sw" style="background:${DK[k].cor}"></span>`; }
+function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||(a.tagName==="INPUT"&&a.type==="text")); }
+
+/* ============ NAVEGAÇÃO ============ */
+const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
+let VIEW = "hoje", DIA_SEL=null, PANE=null;
+function lerHash(){ const h=location.hash.slice(1); if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
+window.addEventListener("hashchange",()=>{ lerHash(); render(); });
+function ir(v){ VIEW=v; try{ history.replaceState(null,"","#"+v);}catch(e){ location.hash=v; } render(); document.querySelector("main").scrollTop=0; }
+
+function renderNav(){
+  const nn=notas().length, tp=tarefas().filter(t=>!t.feito).length;
+  const cnt={caderno:nn||"", tarefas:tp||"", materiais:(typeof mats==="function"&&mats().length)||""};
+  document.getElementById("nav").innerHTML=VIEWS.map(([k,l])=>`<button data-go="${k}" ${VIEW===k?'aria-current="page"':""}>${l}<span class="cnt">${cnt[k]??""}</span></button>`).join("");
+  const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
+  const comNota=AULAS.filter(a=>(aulaD(a.id).nota||"").trim()).length;
+  const pres=AULAS.filter(a=>aulaD(a.id).pres==="p").length;
+  document.getElementById("prog").innerHTML=`
+    <div class="row" style="justify-content:space-between"><span>Curso</span><span class="mono">${passadas}/80 h/a</span></div>
+    <div class="bar"><i style="width:${passadas/80*100}%"></i></div>
+    <div class="row" style="justify-content:space-between"><span>Aulas anotadas</span><span class="mono">${comNota}</span></div>
+    <div class="row" style="justify-content:space-between"><span>Presenças marcadas</span><span class="mono">${pres}</span></div>`;
+}
+
+/* ============ VIEWS ============ */
+function slotHTML(a){
+  const st=statusAula(a), d=aulaD(a.id);
+  const flags=[];
+  if(d.estrela) flags.push('<span title="Importante">★</span>');
+  if((d.nota||"").trim()) flags.push('<span class="chip">nota</span>');
+  if(d.pres==="p") flags.push('<span class="fl-p">presente</span>'); else if(d.pres==="f") flags.push('<span class="fl-f">falta</span>');
+  return `<button class="slot ${st}" data-aula="${a.id}"><span class="mono">${a.ini}–${a.fim}</span><span class="nm">${sw(a.k)}<span>${esc(nomeDisc(a.k))}</span><span class="mono muted" style="flex:none">${a.n}/${a.tot}</span></span><span class="flags">${flags.join("")}</span></button>`;
+}
+function diaHTML(dia){
+  if(DIAS_REPO.includes(dia)) return `<div class="card day"><div class="dayh"><h3>${fmtData(dia,true)}</h3><span class="chip">Reposição de aula</span></div><p class="muted" style="margin:0">Reservado para reposição, das 07:30 às 17:30, se houver aula perdida.</p></div>`;
+  const aulas=AULAS.filter(a=>a.data===dia);
+  let h=""; let i=0;
+  for(const s of SLOTS){
+    if(s==="INT1") h+=`<div class="slot int"><span class="mono">10:00–10:20</span><span>Intervalo</span></div>`;
+    else if(s==="INT2") h+=`<div class="slot int"><span class="mono">14:40–15:00</span><span>Intervalo</span></div>`;
+    else { if(s[0]==="13:00") h+=`<div class="slot int"><span class="mono">12:00–13:00</span><span>Almoço</span></div>`; h+=slotHTML(aulas[i++]); }
+  }
+  const ds=[...new Set(aulas.map(a=>a.k))];
+  return `<div class="card day"><div class="dayh"><h3>${fmtData(dia,true)}</h3><div class="row">${ds.map(k=>`<span class="chip">${sw(k)}<span class="ct">${esc(nomeDisc(k))}</span></span>`).join("")}</div></div>${h}</div>`;
+}
+
+function vHoje(){
+  const ag=agoraFor(); const t=Date.now();
+  const cur=AULAS.find(a=>statusAula(a)==="cur");
+  const prox=AULAS.find(a=>msDe(a.data,a.ini)>t);
+  const ini=msDe(AULAS[0].data,AULAS[0].ini), fim=msDe(AULAS[79].data,AULAS[79].fim);
+  let titulo, sub, foco=cur||prox;
+  if(t<ini){ const dias=Math.ceil((msDe("2026-11-09","00:00")-msDe(ag.data,"00:00"))/864e5); titulo="O curso começa "+(dias<=1?"amanhã":"em "+dias+" dias"); sub="Segunda-feira, 09/11, às 07:30 · AESP/CE, Fortaleza"; }
+  else if(t>fim){ titulo="Curso concluído"; sub="80 h/a entre 09 e 18/11. Use o caderno para revisar."; foco=null; }
+  else if(cur){ titulo="Aula em andamento"; sub=fmtData(ag.data,true); }
+  else { titulo= DIAS_REPO.includes(ag.data)?"Fim de semana de reposição":"Fora do horário de aula"; sub=fmtData(ag.data,true); }
+
+  const diaMostrar = AULAS.some(a=>a.data===ag.data) ? ag.data : (prox?prox.data:null);
+  const d=foco?aulaD(foco.id):{};
+  const heroAula = foco? `
+    <div class="card hero" style="--c:${DK[foco.k].cor}">
+      <div class="t">${cur?"AGORA":"PRÓXIMA"} · ${fmtData(foco.data)} · ${foco.ini}–${foco.fim} · aula ${foco.n} de ${foco.tot}</div>
+      <div class="d">${esc(nomeDisc(foco.k))}</div>
+      <div class="muted">${DK[foco.k].inst.map(esc).join(" · ")}</div>
+      <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida desta aula</label>${info("rapida")}</div>
+      <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. Salva sozinho.">${esc(d.nota||"")}</textarea></div>
+      <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button></div>
+    </div>` : `<div class="card"><p class="muted" style="margin:0">Nenhuma aula pela frente.</p></div>`;
+
+  const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
+  const tp=tarefas().filter(x=>!x.feito);
+  return `
+    <div><h2>${titulo} ${info("hoje")}</h2><p class="sub">${sub}</p></div>
+    <div class="kpis">
+      <div class="card kpi"><b>${passadas}<span class="mono" style="font-size:15px">/80</span></b><span>h/a cumpridas (50 min) ${info("kpiha")}</span></div>
+      <div class="card kpi"><b>${DISC.filter(x=>AULAS.filter(a=>a.k===x.k).every(a=>statusAula(a)==="past")).length}<span class="mono" style="font-size:15px">/9</span></b><span>disciplinas concluídas ${info("kpidisc")}</span></div>
+      <div class="card kpi"><b>${notas().length}</b><span>notas no caderno ${info("kpinotas")}</span></div>
+      <div class="card kpi"><b>${tp.length}</b><span>tarefas pendentes ${info("kpitar")}</span></div>
+    </div>
+    <div class="now">
+      ${heroAula}
+      <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Tarefas ${info("tarefas")}</h3><button class="btn sm" data-go="tarefas">Todas</button></div>
+        ${tp.length? tp.slice(0,6).map(tarefaHTML).join("") : '<p class="empty">Nada pendente. Anote trabalhos, leituras e o que instalar antes da aula.</p>'}
+      </div>
+    </div>
+    ${diaMostrar? `<div><h3 style="margin-bottom:8px">${diaMostrar===ag.data?"Aulas de hoje":"Aulas do próximo dia"}</h3>${diaHTML(diaMostrar)}</div>`:""}
+  `;
+}
+
+function vCronograma(){
+  const ag=agoraFor();
+  if(!DIA_SEL) DIA_SEL = TODOS_DIAS.includes(ag.data)? ag.data : "todos";
+  const bts=[["todos","Todos"],...TODOS_DIAS.map(d=>[d,fmtData(d)])].map(([v,l])=>`<button class="btn sm ${DIA_SEL===v?"on":""}" data-dia="${v}">${l}</button>`).join("");
+  const dias = DIA_SEL==="todos"?TODOS_DIAS:[DIA_SEL];
+  return `<div><h2>Cronograma ${info("cronograma")}</h2><p class="sub">Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.</p></div>
+    <div class="daysel">${bts}</div>
+    ${dias.map(diaHTML).join("")}
+    <p class="muted" style="font-size:13px;margin:0">No QTS original, o horário de 18/11 às 07:30 veio em branco; aqui ele aparece como a 3ª aula do Projeto Prático, seguindo a numeração 2/12 → 4/12.</p>`;
+}
+
+function vDisciplinas(){
+  return `<div><h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.</p></div>
+  ${DISC.map(x=>{
+    const aulas=AULAS.filter(a=>a.k===x.k); const pas=aulas.filter(a=>statusAula(a)==="past").length;
+    const dd=discD(x.k); const nts=notas().filter(n=>n.disc===x.k);
+    const anot=aulas.filter(a=>(aulaD(a.id).nota||"").trim());
+    const dias=[...new Set(aulas.map(a=>a.data))];
+    return `<div class="card" id="d-${x.k}" style="border-left:6px solid ${x.cor}">
+      <div class="dhead">
+        <div style="min-width:0;flex:1"><h3 data-nome="${x.k}">${esc(nomeDisc(x.k))}</h3>
+        <div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
+        <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
+        <div class="row"><button class="btn sm" data-editnome="${x.k}">Editar nome</button><button class="btn sm" data-novanota="${x.k}">Nova nota</button></div>
+      </div>
+      <div class="row" style="margin:10px 0 4px;gap:8px"><div class="bar" style="flex:1"><i style="width:${pas/x.ha*100}%;background:${x.cor}"></i></div><span class="mono" style="font-size:12.5px">${pas}/${x.ha}</span></div>
+      <div class="grid2" style="margin-top:10px">
+        <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Resumo da disciplina</label>${info("discres")}</div>
+          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea></div>
+        <div class="notes"><span class="lb">Aulas (${anot.length} com anotação) ${info("discaulas")}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${aulas.map(a=>{const ad=aulaD(a.id);const has=(ad.nota||"").trim();return `<button class="btn sm ${has?"on":""}" data-aula="${a.id}" title="${fmtData(a.data)} ${a.ini}">${a.n}${ad.estrela?" ★":""}</button>`}).join("")}</div>
+          ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
+          ${(()=>{const ms=mats().filter(m=>m.disc===x.k);return `<div class="row" style="justify-content:space-between;margin-top:6px"><span class="lb" style="margin:0">Materiais (${ms.length})</span><button class="btn sm" data-addmat="${x.k}">Adicionar</button></div>`+ms.map(matItem).join("")})()}
+        </div>
+      </div></div>`;
+  }).join("")}`;
+}
+
+function notaItem(n){
+  const ex=(n.texto||"").replace(/[#*`>\-\[\]]/g,"").slice(0,180);
+  return `<button class="ni" data-nota="${n.id}"><div class="row" style="justify-content:space-between"><strong>${esc(n.titulo||"Sem título")}</strong><span class="mono muted" style="font-size:12px">${new Date(n.upd||0).toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza",day:"2-digit",month:"2-digit"})}</span></div>
+  ${n.disc&&DK[n.disc]?`<div class="row" style="margin:2px 0"><span class="chip">${sw(n.disc)}${esc(nomeDisc(n.disc))}</span></div>`:""}<div class="ex">${esc(ex)}</div></button>`;
+}
+let FILTRO_NOTA="";
+function vCaderno(){
+  const ns=notas().filter(n=>!FILTRO_NOTA||n.disc===FILTRO_NOTA);
+  return `<div class="row" style="justify-content:space-between"><div><h2>Caderno ${info("caderno")}</h2><p class="sub">Notas livres: resumos, passo a passo do QGIS, dúvidas para levar ao instrutor.</p></div>
+    <button class="btn pri" data-novanota="${FILTRO_NOTA}">Nova nota</button></div>
+    <div class="row"><label class="lb" for="fnd" style="margin:0">Disciplina</label><select id="fnd" style="width:auto;flex:1;min-width:0;max-width:100%"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_NOTA===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+    <div class="notes">${ns.length?ns.map(notaItem).join(""):'<p class="empty">Nenhuma nota ainda. Crie a primeira: por exemplo, “Instalação do QGIS” ou “Dúvidas da semana”.</p>'}</div>`;
+}
+
+function tarefaHTML(t){
+  return `<div class="task ${t.feito?"done":""}"><input type="checkbox" id="tk-${t.id}" data-tk="${t.id}" ${t.feito?"checked":""}><label for="tk-${t.id}" class="tx" style="flex:1">${esc(t.texto)}${t.disc&&DK[t.disc]?` <span class="chip">${sw(t.disc)}${esc(nomeDisc(t.disc).split(" ").slice(0,3).join(" "))}</span>`:""}</label>${t.prazo?`<span class="mono muted" style="font-size:12.5px">${t.prazo.slice(8,10)}/${t.prazo.slice(5,7)}</span>`:""}<button class="btn sm danger" data-tkdel="${t.id}" aria-label="Apagar tarefa">✕</button></div>`;
+}
+function vTarefas(){
+  const ts=tarefas();
+  return `<div><h2>Tarefas ${info("tarefas")}</h2><p class="sub">Trabalhos, leituras, softwares a instalar e entregas do Projeto Prático.</p></div>
+  <form class="card ftk" id="ftk">
+    <div><label class="lb" for="tk-t">Tarefa</label><input type="text" id="tk-t" placeholder="Ex.: instalar QGIS 3.40 LTR no notebook" required></div>
+    <div><label class="lb" for="tk-d">Disciplina</label><select id="tk-d"><option value="">Nenhuma</option>${DISC.map(d=>`<option value="${d.k}">${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+    <div><label class="lb" for="tk-p">Prazo</label><input type="date" id="tk-p" min="2026-11-01" max="2026-12-31"></div>
+    <button class="btn pri" type="submit">Adicionar</button>
+  </form>
+  <div class="card">${ts.length?ts.map(tarefaHTML).join(""):'<p class="empty">Nenhuma tarefa.</p>'}</div>`;
+}
+
+let BUSCA="";
+function vBusca(){
+  return `<div><h2>Buscar ${info("busca")}</h2><p class="sub">Procura em todas as anotações de aula, resumos, notas e tarefas.</p></div>
+  <input type="search" id="q" placeholder="Ex.: buffer, mapa de calor, CRS 31984…" value="${esc(BUSCA)}">
+  <div id="res" class="notes">${resultados()}</div>`;
+}
+function trecho(txt,q){ const i=txt.toLowerCase().indexOf(q); if(i<0) return esc(txt.slice(0,140)); const a=Math.max(0,i-60); const s=txt.slice(a,i+q.length+80); const j=s.toLowerCase().indexOf(q); return (a?"…":"")+esc(s.slice(0,j))+"<mark>"+esc(s.slice(j,j+q.length))+"</mark>"+esc(s.slice(j+q.length))+"…"; }
+function resultados(){
+  const q=BUSCA.trim().toLowerCase(); if(q.length<2) return '<p class="empty">Digite pelo menos 2 letras.</p>';
+  const r=[];
+  AULAS.forEach(a=>{const t=aulaD(a.id).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-aula="${a.id}"><strong>${esc(nomeDisc(a.k))} · aula ${a.n}/${a.tot}</strong> <span class="mono muted" style="font-size:12px">${fmtData(a.data)} ${a.ini}</span><div class="ex">${trecho(t,q)}</div></button>`)});
+  DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Resumo: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
+  notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
+  mats().forEach(m=>{const t=(m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-mat="${m.id}"><strong>Material: ${esc(m.titulo)}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
+  tarefas().forEach(t=>{ if((t.texto||"").toLowerCase().includes(q)) r.push(`<button class="ni" data-go="tarefas"><strong>Tarefa</strong><div class="ex">${trecho(t.texto,q)}</div></button>`)});
+  return r.length? r.join("") : '<p class="empty">Nada encontrado.</p>';
+}
+
+function exportarMD(){
+  let o=`# Uso do QGIS como Estratégia de Segurança Pública\nAESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11/2026\n\n`;
+  DISC.forEach(d=>{
+    o+=`## ${nomeDisc(d.k)}\n${d.inst.join(" · ")} · ${d.ha} h/a\n\n`;
+    const dn=discD(d.k).nota; if(dn&&dn.trim()) o+=`### Resumo\n${dn.trim()}\n\n`;
+    AULAS.filter(a=>a.k===d.k).forEach(a=>{const ad=aulaD(a.id); if((ad.nota||"").trim()||ad.estrela) o+=`### Aula ${a.n}/${a.tot} · ${fmtData(a.data)} ${a.ini}${ad.estrela?" ★":""}\n${(ad.nota||"").trim()}\n\n`;});
+    notas().filter(n=>n.disc===d.k).forEach(n=>{o+=`### Nota: ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;});
+    mats().filter(m=>m.disc===d.k&&m.resumo).forEach(m=>{o+=`### Material: ${m.titulo}\n${m.resumo.trim()}\n\n`;});
+  });
+  const soltas=notas().filter(n=>!n.disc||!DK[n.disc]);
+  if(soltas.length){ o+=`## Notas gerais\n\n`; soltas.forEach(n=>{o+=`### ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;}); }
+  const ts=tarefas(); if(ts.length){ o+=`## Tarefas\n`+ts.map(t=>`- [${t.feito?"x":" "}] ${t.texto}${t.prazo?" (até "+t.prazo.slice(8,10)+"/"+t.prazo.slice(5,7)+")":""}`).join("\n")+"\n"; }
+  return o;
+}
+function vBackup(){
+  const c=contagem(S.docs); let ult=null; try{ ult=localStorage.getItem(LS_BK); }catch(e){}
+  const nuvem=S.modo==="nuvem";
+  return `<div><h2>Exportar e backup ${info("backup")}</h2><p class="sub">Guarde uma cópia das suas anotações ou leve o caderno para o Word e o Docs.</p></div>
+  <div class="card" style="border-left:6px solid ${nuvem?"var(--ok)":"var(--warn)"}">
+    <h3>${nuvem?"Suas notas estão na nuvem":"Suas notas estão só neste navegador"}</h3>
+    <p style="margin:6px 0">${nuvem?`Sincronizadas com a conta <b>${esc(S.email)}</b>: aparecem em qualquer aparelho em que você entrar. O backup abaixo é uma garantia extra.`:`Se você limpar os dados do navegador, formatar o computador ou trocar de aparelho, elas somem. <b>Entre na conta</b> (botão Entrar) para guardar na nuvem, ou baixe um backup.`}</p>
+    <p class="muted" style="margin:0;font-size:13.5px">Agora: ${txtCont(c)}.<br>Último backup baixado neste aparelho: ${ult?new Date(ult).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"}):"nunca"}.</p>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>1. Baixar backup ${info("backup")}</h3>
+      <p class="muted">Salva tudo num arquivo <span class="mono">.json</span> na pasta Downloads. Guarde no Google Drive ou num pendrive. PDFs e fotos não vão no arquivo.</p>
+      <div class="row"><button class="btn pri" id="bk-dl">Baixar arquivo de backup</button><button class="btn sm" id="bk-cp">Copiar como texto</button></div></div>
+    <div class="card"><h3>2. Restaurar backup ${info("restaurar")}</h3>
+      <p class="muted">Use em outro aparelho, ou se perder as notas. Não apaga nada: junta com o que já existe e mantém a versão mais nova de cada item.</p>
+      <label class="lb" for="bk-f">Escolha o arquivo de backup</label><input type="file" id="bk-f" accept=".json,application/json">
+      <details style="margin-top:8px"><summary class="muted" style="font-size:13.5px;cursor:pointer">ou cole o texto do backup</summary><textarea id="bk-t" style="min-height:80px;margin-top:6px"></textarea><button class="btn sm" id="bk-tl" style="margin-top:6px">Ler texto</button></details>
+      <div id="bk-prev">${BK_LIDO?`<div class="card" style="margin-top:10px;background:var(--accent-soft)"><b>Backup encontrado</b>${BK_LIDO.criado?" de "+new Date(BK_LIDO.criado).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"}):""}<p style="margin:4px 0 8px;font-size:13.5px">${txtCont(contagem(BK_LIDO.docs))}</p><div class="row"><button class="btn pri" id="bk-ok">Restaurar agora</button><button class="btn sm" id="bk-no">Cancelar</button></div></div>`:""}</div>
+    </div>
+    <div class="card"><h3>3. Exportar para ler ou imprimir ${info("exportmd")}</h3>
+      <p class="muted">Todo o caderno em texto, organizado por disciplina: resumos, aulas anotadas, notas, resumos de materiais e tarefas.</p>
+      <div class="row"><button class="btn" id="md-dl">Baixar .md</button><button class="btn" id="md-cp">Copiar texto</button></div></div>
+  </div>`;
+}
+
+/* ============ PAINEL LATERAL (aula / nota) ============ */
+function abrirAula(id){ PANE={tipo:"aula",id,prev:false}; renderPane(); }
+function abrirNota(id){ PANE={tipo:"nota",id,prev:!!(S.docs[id]?.texto)}; renderPane(); }
+function fecharPane(){ PANE=null; document.getElementById("paneHost").innerHTML=""; render(); }
+function renderPane(){
+  const host=document.getElementById("paneHost");
+  if(!PANE){ host.innerHTML=""; return; }
+  if(PANE.tipo==="login") return;
+  if(PANE.tipo==="addmat"){ host.innerHTML=paneAddMat(); return; }
+  if(PANE.tipo==="mat"){ host.innerHTML=paneMat(); if(!PANE) host.innerHTML=""; return; }
+  if(PANE.tipo==="aula"){
+    const a=AK[PANE.id]; const d=aulaD(a.id); const x=DK[a.k];
+    const i=AULAS.indexOf(a);
+    host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Aula">
+      <header style="border-top:5px solid ${x.cor}"><div><div class="mono muted" style="font-size:12.5px">${fmtData(a.data,true)} · ${a.ini}–${a.fim} · aula ${a.n} de ${a.tot}</div>
+        <h3 style="margin-top:4px">${esc(nomeDisc(a.k))} ${info("aula")}</h3><div class="muted" style="font-size:13px">${x.inst.map(esc).join(" · ")}</div></div>
+        <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+      <div class="body">
+        <div class="row">
+          <button class="btn sm ${d.pres==="p"?"on":""}" data-pres="p">Presente</button>
+          <button class="btn sm ${d.pres==="f"?"on":""}" data-pres="f">Falta</button>
+          <button class="btn sm ${d.estrela?"on":""}" data-estrela>★ Importante</button>
+          <span style="flex:1"></span>
+          <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button>
+        </div>
+        ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<div class="row" style="gap:6px"><label class="lb" for="pnota" style="margin:0">Anotações (aceita # título, - lista, **negrito**, links)</label>${info("markdown")}</div><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(d.nota||"")}</textarea>`}
+        <div class="row" style="justify-content:space-between">
+          <button class="btn sm" ${i>0?`data-aula="${AULAS[i-1].id}"`:"disabled"}>← Aula anterior</button>
+          <button class="btn sm" ${i<79?`data-aula="${AULAS[i+1].id}"`:"disabled"}>Próxima aula →</button>
+        </div>
+      </div></section>`;
+    if(!PANE.prev){ const ta=document.getElementById("pnota"); ta.focus(); ta.selectionStart=ta.value.length; }
+  } else {
+    const n=S.docs[PANE.id]||{tipo:"nota",titulo:"",texto:"",disc:"",criado:Date.now()};
+    host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Nota">
+      <header><div style="flex:1"><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="ntit" style="margin:0">Título</label>${info("markdown")}</div><input type="text" id="ntit" value="${esc(n.titulo)}" placeholder="Ex.: Reprojetar camadas para SIRGAS 2000"></div>
+        <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+      <div class="body">
+        <div class="row"><label class="lb" for="ndisc" style="margin:0">Disciplina</label><select id="ndisc" style="width:auto;flex:1;min-width:0"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${n.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select>
+          <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div>
+        ${PANE.prev? `<div class="md">${md(n.texto)}</div>` : `<textarea id="ntxt" placeholder="# Passo a passo&#10;- Abrir camada…&#10;- **Atenção:** …">${esc(n.texto)}</textarea>`}
+        <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">${S.docs[PANE.id]?"Salva automaticamente":"Será salva ao digitar"}</span><button class="btn sm danger" data-delnota>Apagar nota</button></div>
+      </div></section>`;
+    if(!PANE.prev && !n.titulo) document.getElementById("ntit").focus();
+  }
+}
+function salvarNotaDoForm(){
+  const id=PANE.id; const old=S.docs[id]||{tipo:"nota",criado:Date.now()};
+  const titulo=document.getElementById("ntit").value, disc=document.getElementById("ndisc").value;
+  const ta=document.getElementById("ntxt"); const texto= ta? ta.value : (old.texto||"");
+  if(!S.docs[id] && !titulo.trim() && !texto.trim()) return;
+  salvarDoc(id,{...old,tipo:"nota",titulo,disc,texto});
+}
+
+/* ============ MATERIAIS (PDF, link, texto, fotos) ============ */
+// mat-<x>: dados do material (título, disciplina, resumo, questões, respostas). mtx-<x>: texto extraído (e fotos, sem login).
+const MAX_TXT = 300000;
+const mats = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="mat"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(b.criado||0)-(a.criado||0));
+const mtx = mid => S.docs["mtx-"+mid.slice(4)] || {};
+let IA_OK = null;
+fetch("/api/status").then(r=>r.ok?r.json():{}).then(j=>{ IA_OK=!!j.ia; if(PANE&&PANE.tipo==="mat") renderPane(); }).catch(()=>{ IA_OK=false; });
+
+let _pdfjs=null;
+async function pdfjs(){ if(!_pdfjs){ _pdfjs=await import("/vendor/pdf.min.mjs"); _pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs"; } return _pdfjs; }
+async function textoDoPdf(bytes, prog){
+  const lib=await pdfjs(); const doc=await lib.getDocument({data:bytes}).promise; const out=[];
+  for(let i=1;i<=doc.numPages;i++){
+    const pg=await doc.getPage(i); const tc=await pg.getTextContent(); let s="";
+    for(const it of tc.items){ if(!("str" in it)) continue; s+=it.str; if(it.hasEOL) s+="\n"; }
+    out.push("--- Página "+i+" ---\n"+s.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim());
+    if(prog) prog(i,doc.numPages);
+  }
+  return {texto:out.join("\n\n"), paginas:doc.numPages};
+}
+async function comprimirImagem(file){
+  const bmp=await createImageBitmap(file); const k=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas"); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  return await new Promise(r=>c.toBlob(r,"image/jpeg",0.85));
+}
+const paraDataURL = b => new Promise((ok,err)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=err; r.readAsDataURL(b); });
+const logado = () => !!(S.sb && S.uid);
+async function token(){ const s=(await S.sb.auth.getSession()).data.session; if(!s) throw new Error("Sessão expirada. Saia e entre de novo."); return s.access_token; }
+async function subir(mid, nome, blob, mime){
+  const ext=(nome.split(".").pop()||"bin").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,5)||"bin";
+  const path=S.uid+"/"+mid.slice(4)+"-"+novoId()+"."+ext;
+  const {error}=await S.sb.storage.from("caderno").upload(path, blob, {contentType:mime, upsert:false});
+  if(error) throw new Error(/bucket|not found/i.test(error.message)?"Pasta de arquivos não existe no Supabase: rode o SQL.":"Falha ao enviar arquivo: "+error.message);
+  return {path, nome, mime, tam:blob.size};
+}
+async function baixar(path){ const {data,error}=await S.sb.storage.from("caderno").download(path); if(error) throw new Error("Não consegui baixar o arquivo: "+error.message); return data; }
+async function abrirArquivo(path){
+  const w=window.open("about:blank","_blank");
+  try{ const {data,error}=await S.sb.storage.from("caderno").createSignedUrl(path,3600); if(error) throw error; if(w) w.location=data.signedUrl; else location.href=data.signedUrl; }
+  catch(e){ if(w) w.close(); toast("Não foi possível abrir o arquivo."); }
+}
+async function api(rota, corpo){
+  const r=await fetch(rota,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+await token()},body:JSON.stringify(corpo)});
+  const j=await r.json().catch(()=>({erro:"O servidor não respondeu direito (HTTP "+r.status+")."}));
+  if(!r.ok) throw new Error(j.erro||("HTTP "+r.status));
+  return j;
+}
+function discPadrao(){ const t=Date.now(); const a=AULAS.find(a=>msDe(a.data,a.fim)>t); return a?a.k:""; }
+
+/* ---- adicionar ---- */
+function abrirAddMat(disc){ PANE={tipo:"addmat", aba:"arquivo", disc: disc ?? discPadrao(), status:""}; renderPane(); }
+function paneAddMat(){
+  const P=PANE; const abas=[["arquivo","Arquivo (PDF/texto)"],["fotos","Fotos"],["link","Link"],["texto","Colar texto"]];
+  const campo={
+    arquivo:`<label class="lb" for="am-f">PDF, .txt ou .md (até 25 MB)</label><input type="file" id="am-f" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown">`,
+    fotos:`<label class="lb" for="am-i">Fotos de slides, quadro ou apostila (até 8)</label><input type="file" id="am-i" accept="image/*" multiple>${logado()?"":'<p class="muted" style="font-size:12.5px;margin:6px 0 0">Sem login as fotos ficam só neste navegador. Entre para guardá-las na nuvem.</p>'}`,
+    link:`<label class="lb" for="am-u">Endereço (site, PDF, Google Drive/Docs/Slides, YouTube)</label><input type="text" id="am-u" inputmode="url" placeholder="https://…">${logado()?"":'<p class="fl-f" style="font-size:12.5px;margin:6px 0 0">Para importar links, entre na sua conta (botão Entrar).</p>'}`,
+    texto:`<label class="lb" for="am-t">Texto do material</label><textarea id="am-t" style="min-height:220px" placeholder="Cole aqui o conteúdo de um slide, apostila, mensagem do grupo…"></textarea>`,
+  }[P.aba];
+  return `<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Novo material">
+    <header><div><h3>Novo material ${info("addmat")}</h3><p class="muted" style="margin:4px 0 0;font-size:13.5px">Guarde o material da aula e gere resumo e questões a partir dele.</p></div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+    <form class="body" id="faddmat">
+      <div class="row">${abas.map(([k,l])=>`<button type="button" class="btn sm ${P.aba===k?"on":""}" data-amaba="${k}">${l}</button>`).join("")}</div>
+      <div>${campo}</div>
+      <div><label class="lb" for="am-ti">Título (opcional)</label><input type="text" id="am-ti" placeholder="Ex.: Slides – Sistemas de referência"></div>
+      <div><label class="lb" for="am-d">Disciplina</label><select id="am-d"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${P.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+      <p id="am-st" class="muted" style="margin:0;font-size:14px">${esc(P.status||"")}</p>
+      <button class="btn pri" type="submit" id="am-b">Salvar material</button>
+    </form></section>`;
+}
+async function salvarMaterial(){
+  const P=PANE, st=document.getElementById("am-st"), bt=document.getElementById("am-b");
+  const status=t=>{ st.textContent=t; st.className="muted"; };
+  const x=novoId(), mid="mat-"+x, tid="mtx-"+x;
+  let titulo=document.getElementById("am-ti").value.trim(); const disc=document.getElementById("am-d").value;
+  const meta={tipo:"mat", titulo:"", disc, origem:P.aba, criado:Date.now(), arquivos:[], questoes:[], resp:{}};
+  let texto="", imgs=[];
+  bt.disabled=true;
+  try{
+    if(P.aba==="arquivo"){
+      const f=document.getElementById("am-f").files[0]; if(!f) throw new Error("Escolha um arquivo.");
+      if(f.size>25*1024*1024) throw new Error("Arquivo maior que 25 MB.");
+      titulo=titulo||f.name.replace(/\.[^.]+$/,"");
+      if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){
+        status("Lendo o PDF…");
+        const r=await textoDoPdf(new Uint8Array(await f.arrayBuffer()),(i,n)=>status("Lendo o PDF… página "+i+" de "+n));
+        texto=r.texto; meta.paginas=r.paginas;
+        if(logado()){ status("Guardando o PDF na nuvem…"); meta.arquivos.push(await subir(mid,f.name,f,"application/pdf")); }
+      } else { texto=await f.text(); }
+    } else if(P.aba==="fotos"){
+      const fs=[...document.getElementById("am-i").files].slice(0,8); if(!fs.length) throw new Error("Escolha as fotos.");
+      titulo=titulo||"Fotos "+new Date().toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza",day:"2-digit",month:"2-digit"});
+      for(let i=0;i<fs.length;i++){
+        status("Preparando foto "+(i+1)+" de "+fs.length+"…");
+        const b=await comprimirImagem(fs[i]);
+        if(logado()) meta.arquivos.push(await subir(mid,"foto"+(i+1)+".jpg",b,"image/jpeg")); else imgs.push(await paraDataURL(b));
+      }
+    } else if(P.aba==="link"){
+      const u=document.getElementById("am-u").value.trim(); if(!/^https?:\/\//i.test(u)) throw new Error("Cole um link começando com http.");
+      if(!logado()) throw new Error("Entre na sua conta para importar links, ou cole o texto.");
+      meta.url=u; status("Buscando o link…");
+      const r=await api("/api/link",{url:u});
+      if(r.tipo==="video"){ titulo=titulo||"Vídeo"; status(""); toast("Vídeo salvo como link. Para resumir, cole a transcrição em “Texto do material”."); }
+      else if(r.tipo==="pdf"){
+        const bin=Uint8Array.from(atob(r.base64),c=>c.charCodeAt(0));
+        status("Lendo o PDF do link…"); const p=await textoDoPdf(bin.slice(),(i,n)=>status("Lendo o PDF… página "+i+" de "+n));
+        texto=p.texto; meta.paginas=p.paginas;
+        meta.arquivos.push(await subir(mid,"link.pdf",new Blob([bin],{type:"application/pdf"}),"application/pdf"));
+        titulo=titulo||u.replace(/^https?:\/\/(www\.)?/,"").slice(0,60);
+      } else { texto=r.texto||""; titulo=titulo||r.titulo||u.replace(/^https?:\/\/(www\.)?/,"").slice(0,60); }
+    } else {
+      texto=document.getElementById("am-t").value; if(!texto.trim()) throw new Error("Cole o texto.");
+      titulo=titulo||texto.trim().split("\n")[0].slice(0,60);
+    }
+    texto=texto.slice(0,MAX_TXT);
+    meta.titulo=titulo||"Material"; meta.chars=texto.length;
+    salvarDoc(tid,{tipo:"mtx",texto,imgs},50);
+    salvarDoc(mid,meta,80);
+    if(meta.paginas && texto.replace(/--- Página \d+ ---/g,"").trim().length<200) toast("O PDF parece escaneado (sem texto). Use fotos das páginas ou cole o texto.");
+    PANE={tipo:"mat",id:mid}; renderPane(); render();
+  }catch(e){ st.textContent=e.message||"Erro."; st.className="fl-f"; bt.disabled=false; }
+}
+
+/* ---- detalhe ---- */
+function abrirMat(mid){ PANE={tipo:"mat",id:mid,busy:"",colar:"",editR:false,verTexto:false}; renderPane(); }
+function statsMat(m){ const qs=m.questoes||[]; const r=m.resp||{}; let f=0,a=0; qs.forEach(q=>{ const x=r[q.id]; if(x){f++; if(x.ok)a++;} }); return {total:qs.length,feitas:f,acertos:a}; }
+function paneMat(){
+  const P=PANE, m=S.docs[P.id]; if(!m||m.apagado){ PANE=null; return ""; }
+  const t=mtx(P.id), st=statsMat(m), qs=m.questoes||[];
+  const podeIA = IA_OK && logado();
+  const orig = [];
+  if(m.url) orig.push(`<a href="${esc(m.url)}" target="_blank" rel="noopener" class="btn sm">Abrir link</a>`);
+  (m.arquivos||[]).forEach((a,i)=>orig.push(`<button class="btn sm" data-mabrir="${esc(a.path)}">${a.mime==="application/pdf"?"Abrir PDF":"Foto "+(i+1)}</button>`));
+  const nImg=(m.arquivos||[]).filter(a=>a.mime.startsWith("image/")).length+(t.imgs||[]).length;
+  const busy=P.busy?`<p class="chip" style="margin:0">${esc(P.busy)}</p>`:"";
+  const blocoColar = k => P.colar===k ? `<div><label class="lb" for="mc-${k}">${k==="resumo"?"Cole a resposta do Claude (o resumo)":"Cole a resposta do Claude (o JSON das questões)"}</label><textarea id="mc-${k}" style="min-height:160px"></textarea><div class="row" style="margin-top:6px"><button class="btn sm pri" data-msalvacolar="${k}">Salvar</button><button class="btn sm" data-mcolar="">Cancelar</button></div></div>` : "";
+  const qLista = qs.map((q,i)=>{ const r=(m.resp||{})[q.id]; return `<details class="qd"><summary><span class="mono muted">${i+1}.</span> ${esc(q.pergunta)} ${r?(r.ok?'<span class="fl-p">✓</span>':'<span class="fl-f">✗</span>'):""}</summary><ol type="A">${q.alternativas.map((a,j)=>`<li ${j===q.correta?'class="fl-p"':""}>${esc(a)}</li>`).join("")}</ol>${q.explicacao?`<p class="muted" style="margin:4px 0 0">${esc(q.explicacao)}</p>`:""}</details>`; }).join("");
+  return `<div class="shade" data-fechar></div><section class="pane wide" role="dialog" aria-label="Material">
+    <header><div style="flex:1;min-width:0">
+      <input type="text" id="mt-ti" value="${esc(m.titulo)}" aria-label="Título" style="font:700 17px var(--display);border-color:transparent;background:transparent;padding:4px 6px;margin-left:-6px">
+      <div class="row" style="margin-top:6px"><select id="mt-d" style="width:auto;flex:1;min-width:0">${['<option value="">Geral</option>'].concat(DISC.map(d=>`<option value="${d.k}" ${m.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`)).join("")}</select>${orig.join("")}</div>
+      <div class="mono muted" style="font-size:12px;margin-top:6px">${{arquivo:"Arquivo",fotos:"Fotos",link:"Link",texto:"Texto"}[m.origem]||""}${m.paginas?" · "+m.paginas+" pág.":""} · ${(m.chars||0).toLocaleString("pt-BR")} caracteres${nImg?" · "+nImg+" foto(s)":""} · ${new Date(m.criado||0).toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza"})}</div>
+    </div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+    <div class="body">
+      ${busy}
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><h3>Resumo ${info("matres")}</h3>
+          <div class="row">${podeIA?`<button class="btn sm pri" data-mgerar="resumo" ${P.busy?"disabled":""}>${m.resumo?"Refazer resumo":"Gerar resumo"}</button>`:""}
+          <button class="btn sm" data-mcopiar="resumo">Copiar pedido p/ Claude</button><button class="btn sm" data-mcolar="resumo">Colar resposta</button>
+          ${m.resumo?`<button class="btn sm" data-meditr>${P.editR?"Ver":"Editar"}</button>`:""}</div></div>
+        ${blocoColar("resumo")}
+        ${m.resumo? (P.editR?`<textarea id="mt-r" style="min-height:280px;margin-top:8px">${esc(m.resumo)}</textarea>`:`<div class="md" style="margin-top:6px">${md(m.resumo)}</div>`) : `<p class="empty">${podeIA?"Clique em “Gerar resumo”.":(IA_OK===false?"Geração automática desligada: use “Copiar pedido”, cole no app do Claude e traga a resposta em “Colar resposta”.":"")}${!logado()&&IA_OK?" Entre na conta para gerar automaticamente.":""}</p>`}
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><h3>Questões ${info("matq")} <span class="mono muted" style="font-size:13px">${st.total?st.acertos+"/"+st.feitas+" acertos · "+st.total+" no total":""}</span></h3>
+          <div class="row"><select id="mt-n" style="width:auto" aria-label="Quantidade">${[5,8,10,15].map(n=>`<option ${n===(P.n||8)?"selected":""}>${n}</option>`).join("")}</select>
+          ${podeIA?`<button class="btn sm pri" data-mgerar="questoes" ${P.busy?"disabled":""}>${qs.length?"Gerar mais":"Gerar questões"}</button>`:""}
+          <button class="btn sm" data-mcopiar="questoes">Copiar pedido</button><button class="btn sm" data-mcolar="questoes">Colar resposta</button></div></div>
+        ${blocoColar("questoes")}
+        ${qs.length?`<div class="row" style="margin:8px 0"><button class="btn sm pri" data-mestudar="${P.id}">Estudar estas questões</button><button class="btn sm danger" data-mlimparq>Apagar questões</button></div><div class="qlist">${qLista}</div>`:'<p class="empty">Nenhuma questão ainda.</p>'}
+      </div>
+      <details class="card" ${P.verTexto?"open":""} id="mt-det"><summary><strong>Texto do material</strong> ${info("mattx")} <span class="muted" style="font-size:13px">(pode corrigir ou colar mais conteúdo)</span></summary>
+        <textarea id="mt-tx" style="min-height:260px;margin-top:8px" placeholder="Sem texto. Cole aqui a transcrição, o conteúdo do slide…">${esc(t.texto||"")}</textarea></details>
+      <div class="row" style="justify-content:flex-end"><button class="btn sm danger" data-mapagar>Apagar material</button></div>
+    </div></section>`;
+}
+function pedido(mid, modo){
+  const m=S.docs[mid], t=mtx(mid); const nImg=(m.arquivos||[]).filter(a=>a.mime.startsWith("image/")).length+(t.imgs||[]).length;
+  const meta={titulo:m.titulo, disciplina:m.disc?nomeDisc(m.disc):"", n:PANE.n||8};
+  const tx=(t.texto||"").slice(0,150000);
+  return modo==="resumo"? PROMPTS.pedidoResumo(meta,tx,nImg) : PROMPTS.pedidoQuestoes(meta,tx,nImg);
+}
+function addQuestoes(mid, novas){
+  const m=S.docs[mid]; const ja=new Set((m.questoes||[]).map(q=>q.pergunta.toLowerCase()));
+  const add=novas.filter(q=>!ja.has(q.pergunta.toLowerCase())).map(q=>({id:novoId(),...q}));
+  salvarDoc(mid,{...m,questoes:[...(m.questoes||[]),...add]},50); return add.length;
+}
+async function gerar(mid, modo){
+  const m=S.docs[mid], t=mtx(mid);
+  PANE.busy= modo==="resumo"?"Gerando resumo… (até 1 minuto)":"Gerando questões… (até 1 minuto)"; renderPane();
+  try{
+    let imagens=[...(t.imgs||[])];
+    for(const a of (m.arquivos||[]).filter(a=>a.mime.startsWith("image/"))) imagens.push(await paraDataURL(await baixar(a.path)));
+    const j=await api("/api/ia",{modo,n:PANE.n||8,texto:(t.texto||""),imagens:imagens.slice(0,8),titulo:m.titulo,disciplina:m.disc?nomeDisc(m.disc):""});
+    if(modo==="resumo"){ salvarDoc(mid,{...S.docs[mid],resumo:j.resumo},50); toast(j.cortado?"Resumo pronto (material muito longo: usei o começo).":"Resumo pronto."); }
+    else { const n=addQuestoes(mid,j.questoes); toast(n+" questões novas."); }
+  }catch(e){ toast(e.message||"Falha ao gerar."); }
+  if(PANE&&PANE.id===mid){ PANE.busy=""; renderPane(); }
+  render();
+}
+async function apagarMaterial(mid){
+  const m=S.docs[mid]; const paths=(m.arquivos||[]).map(a=>a.path);
+  apagarDoc(mid); apagarDoc("mtx-"+mid.slice(4));
+  if(paths.length&&logado()){ try{ await S.sb.storage.from("caderno").remove(paths); }catch(e){} }
+}
+
+/* ---- telas ---- */
+function matItem(m){
+  const st=statsMat(m);
+  return `<button class="ni" data-mat="${m.id}"><div class="row" style="justify-content:space-between"><strong>${esc(m.titulo)}</strong><span class="mono muted" style="font-size:12px">${{arquivo:"PDF/arquivo",fotos:"fotos",link:"link",texto:"texto"}[m.origem]||""}</span></div>
+    <div class="row" style="margin-top:4px;gap:6px">${m.disc&&DK[m.disc]?`<span class="chip">${sw(m.disc)}<span class="ct">${esc(nomeDisc(m.disc))}</span></span>`:""}
+    ${m.resumo?'<span class="chip">resumo</span>':""}${st.total?`<span class="chip">${st.total} questões · ${st.acertos}/${st.feitas}</span>`:""}</div></button>`;
+}
+let FILTRO_MAT="";
+function vMateriais(){
+  const ms=mats().filter(m=>!FILTRO_MAT||m.disc===FILTRO_MAT);
+  return `<div class="row" style="justify-content:space-between"><div><h2>Materiais ${info("materiais")}</h2><p class="sub">PDFs, slides, links e fotos das aulas. Cada material ganha resumo e questões.</p></div>
+    <button class="btn pri" data-addmat="${FILTRO_MAT}">Adicionar material</button></div>
+    ${IA_OK===false?`<div class="card" style="font-size:14px"><strong>Geração automática desligada.</strong> <span class="muted">Funciona copiando o pedido para o app do Claude e colando a resposta. Para gerar direto aqui, cadastre a chave <span class="mono">ANTHROPIC_API_KEY</span> na Vercel.</span></div>`:""}
+    <div class="row"><label class="lb" for="fmd" style="margin:0">Disciplina</label><select id="fmd" style="width:auto;flex:1;min-width:0;max-width:100%"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_MAT===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+    <div class="notes">${ms.length?ms.map(matItem).join(""):'<p class="empty">Nenhum material ainda. Envie o PDF dos slides, um link ou fotos do quadro.</p>'}</div>`;
+}
+
+/* ---- modo estudo ---- */
+let ESTUDO=null; const EF={disc:"",mat:"",modo:"todas"};
+function bancoQuestoes(){
+  const out=[]; mats().forEach(m=>(m.questoes||[]).forEach(q=>out.push({mid:m.id,q,disc:m.disc,r:(m.resp||{})[q.id]}))); return out;
+}
+function iniciarEstudo(){
+  let b=bancoQuestoes().filter(x=>(!EF.disc||x.disc===EF.disc)&&(!EF.mat||x.mid===EF.mat));
+  if(EF.modo==="novas") b=b.filter(x=>!x.r); else if(EF.modo==="erradas") b=b.filter(x=>x.r&&!x.r.ok);
+  for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; }
+  ESTUDO={fila:b.map(x=>({mid:x.mid,qid:x.q.id})), i:0, acertos:0, escolha:null};
+  if(!b.length) toast("Nenhuma questão com esse filtro.");
+}
+function responder(j){
+  const it=ESTUDO.fila[ESTUDO.i]; const m=S.docs[it.mid]; const q=(m.questoes||[]).find(q=>q.id===it.qid); if(!q||ESTUDO.escolha!==null) return;
+  const ok=j===q.correta; ESTUDO.escolha=j; if(ok) ESTUDO.acertos++;
+  salvarDoc(it.mid,{...m,resp:{...(m.resp||{}),[q.id]:{e:j,ok,t:Date.now()}}},400);
+  render();
+}
+function vEstudar(){
+  const banco=bancoQuestoes();
+  const porDisc=DISC.map(d=>{ const xs=banco.filter(x=>x.disc===d.k); const f=xs.filter(x=>x.r); return {d,tot:xs.length,f:f.length,a:f.filter(x=>x.r.ok).length}; }).filter(x=>x.tot);
+  const filtros=`<div class="card row" style="align-items:end">
+      <div style="flex:1;min-width:160px"><label class="lb" for="ef-d">Disciplina</label><select id="ef-d"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${EF.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+      <div style="flex:1;min-width:160px"><label class="lb" for="ef-m">Material</label><select id="ef-m"><option value="">Todos</option>${mats().filter(m=>(m.questoes||[]).length&&(!EF.disc||m.disc===EF.disc)).map(m=>`<option value="${m.id}" ${EF.mat===m.id?"selected":""}>${esc(m.titulo)}</option>`).join("")}</select></div>
+      <div style="min-width:150px"><label class="lb" for="ef-o">Quais</label><select id="ef-o">${[["todas","Todas"],["novas","Não respondidas"],["erradas","Que errei"]].map(([v,l])=>`<option value="${v}" ${EF.modo===v?"selected":""}>${l}</option>`).join("")}</select></div>
+      <button class="btn pri" data-ecomecar>${ESTUDO?"Recomeçar":"Começar"}</button>${info("efiltro")}</div>`;
+  let sessao="";
+  if(ESTUDO&&ESTUDO.fila.length){
+    if(ESTUDO.i>=ESTUDO.fila.length){
+      const n=ESTUDO.fila.length; sessao=`<div class="card"><h3>Fim da rodada</h3><p style="font:800 30px var(--display);margin:8px 0">${ESTUDO.acertos}/${n} <span class="muted" style="font-size:16px">${Math.round(ESTUDO.acertos/n*100)}%</span></p><div class="row"><button class="btn pri" data-ecomecar>Nova rodada</button><button class="btn" data-eerradas>Refazer as que errei</button></div></div>`;
+    } else {
+      const it=ESTUDO.fila[ESTUDO.i]; const m=S.docs[it.mid]; const q=m&&(m.questoes||[]).find(q=>q.id===it.qid);
+      if(!q){ ESTUDO.i++; return vEstudar(); }
+      const e=ESTUDO.escolha;
+      sessao=`<div class="card estudo" style="border-left:6px solid ${m.disc&&DK[m.disc]?DK[m.disc].cor:"var(--accent)"}">
+        <div class="row" style="justify-content:space-between"><span class="mono muted" style="font-size:12.5px">Questão ${ESTUDO.i+1} de ${ESTUDO.fila.length} · ${ESTUDO.acertos} acerto(s)</span><button class="btn sm" data-mat="${it.mid}">${esc(m.titulo)}</button></div>
+        <p style="font:600 17px/1.45 var(--body);margin:10px 0 12px">${esc(q.pergunta)}</p>
+        <div class="alts">${q.alternativas.map((a,j)=>{ let c=""; if(e!==null){ if(j===q.correta)c="certa"; else if(j===e)c="errada"; } return `<button class="alt ${c}" data-eresp="${j}" ${e!==null?"disabled":""}><span class="mono">${"ABCDEF"[j]}</span><span>${esc(a)}</span></button>`; }).join("")}</div>
+        ${e!==null?`<div class="fb ${e===q.correta?"ok":"no"}"><strong>${e===q.correta?"Acertou.":"Não foi dessa vez. Correta: "+"ABCDEF"[q.correta]+"."}</strong> ${esc(q.explicacao||"")}</div><div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn pri" data-eprox>Próxima →</button></div>`:""}
+      </div>`;
+    }
+  }
+  return `<div><h2>Estudar ${info("estudar")}</h2><p class="sub">Responda as questões geradas dos materiais. O app guarda acertos e erros.</p></div>
+    ${porDisc.length?`<div class="card"><h3 style="margin-bottom:8px">Desempenho ${info("desemp")}</h3>${porDisc.map(x=>`<div class="row" style="gap:8px;margin:4px 0"><span style="flex:0 0 min(46%,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">${sw(x.d.k)} ${esc(nomeDisc(x.d.k))}</span><div class="bar" style="flex:1"><i style="width:${x.f?x.a/x.f*100:0}%;background:${x.d.cor}"></i></div><span class="mono" style="font-size:12.5px">${x.a}/${x.f} · ${x.tot}</span></div>`).join("")}<p class="muted" style="font-size:12px;margin:6px 0 0">acertos / respondidas · total de questões</p></div>`:""}
+    ${banco.length?filtros+sessao:'<p class="empty">Ainda não há questões. Abra um material em “Materiais” e gere as questões.</p>'}`;
+}
+
+/* ---- eventos ---- */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-addmat],[data-amaba],[data-mat],[data-mabrir],[data-mgerar],[data-mcopiar],[data-mcolar],[data-msalvacolar],[data-meditr],[data-mestudar],[data-mlimparq],[data-mapagar],[data-ecomecar],[data-eresp],[data-eprox],[data-eerradas]");
+  if(!b||b.disabled) return; const d=b.dataset;
+  if(d.addmat!==undefined){ abrirAddMat(d.addmat); return; }
+  if(d.amaba!==undefined){ PANE.aba=d.amaba; PANE.disc=document.getElementById("am-d").value; const ti=document.getElementById("am-ti").value; renderPane(); document.getElementById("am-ti").value=ti; return; }
+  if(d.mat!==undefined){ flushTudo(); abrirMat(d.mat); return; }
+  if(d.mabrir!==undefined){ abrirArquivo(d.mabrir); return; }
+  if(d.mgerar!==undefined){ PANE.n=+document.getElementById("mt-n").value; gerar(PANE.id,d.mgerar); return; }
+  if(d.mcopiar!==undefined){ PANE.n=+document.getElementById("mt-n").value; const m=S.docs[PANE.id]; const nImg=(m.arquivos||[]).filter(a=>a.mime.startsWith("image/")).length+(mtx(PANE.id).imgs||[]).length;
+    await copiar(pedido(PANE.id,d.mcopiar), nImg?"Pedido copiado. Cole no Claude e anexe as fotos antes de enviar.":"Pedido copiado. Cole no app do Claude e depois traga a resposta.");
+    PANE.colar=d.mcopiar; renderPane(); return; }
+  if(d.mcolar!==undefined){ PANE.colar=d.mcolar; renderPane(); if(d.mcolar) document.getElementById("mc-"+d.mcolar).focus(); return; }
+  if(d.msalvacolar!==undefined){
+    const k=d.msalvacolar, v=document.getElementById("mc-"+k).value.trim(); if(!v) return;
+    if(k==="resumo"){ salvarDoc(PANE.id,{...S.docs[PANE.id],resumo:v},50); toast("Resumo salvo."); }
+    else { const qs=PROMPTS.lerQuestoes(v); if(!qs.length){ toast("Não achei questões no texto. Cole a resposta inteira, com o JSON."); return; } toast(addQuestoes(PANE.id,qs)+" questões adicionadas."); }
+    PANE.colar=""; renderPane(); render(); return;
+  }
+  if(d.meditr!==undefined){ PANE.editR=!PANE.editR; renderPane(); return; }
+  if(d.mestudar!==undefined){ const m=S.docs[d.mestudar]; EF.disc=""; EF.mat=d.mestudar; EF.modo="todas"; iniciarEstudo(); flushTudo(); PANE=null; document.getElementById("paneHost").innerHTML=""; ir("estudar"); return; }
+  if(d.mlimparq!==undefined){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; return; } salvarDoc(PANE.id,{...S.docs[PANE.id],questoes:[],resp:{}},50); renderPane(); render(); return; }
+  if(d.mapagar!==undefined){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar material"; } },3000); return; } await apagarMaterial(PANE.id); fecharPane(); toast("Material apagado."); return; }
+  if(d.ecomecar!==undefined){ iniciarEstudo(); render(); return; }
+  if(d.eerradas!==undefined){ EF.modo="erradas"; iniciarEstudo(); render(); return; }
+  if(d.eresp!==undefined){ responder(+d.eresp); return; }
+  if(d.eprox!==undefined){ ESTUDO.i++; ESTUDO.escolha=null; render(); document.querySelector("main").scrollTop=0; return; }
+});
+document.addEventListener("submit",e=>{ if(e.target.id==="faddmat"){ e.preventDefault(); salvarMaterial(); } });
+document.addEventListener("input",e=>{
+  const t=e.target; if(!PANE||PANE.tipo!=="mat") return; const id=PANE.id;
+  if(t.id==="mt-ti"){ salvarDoc(id,{...S.docs[id],titulo:t.value}); }
+  else if(t.id==="mt-r"){ salvarDoc(id,{...S.docs[id],resumo:t.value}); }
+  else if(t.id==="mt-tx"){ const k="mtx-"+id.slice(4); salvarDoc(k,{...(S.docs[k]||{tipo:"mtx"}),tipo:"mtx",texto:t.value.slice(0,MAX_TXT)},1200); salvarDoc(id,{...S.docs[id],chars:t.value.length},1500); }
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="mt-d"&&PANE&&PANE.tipo==="mat"){ salvarDoc(PANE.id,{...S.docs[PANE.id],disc:t.value},50); render(); }
+  else if(t.id==="mt-n"&&PANE){ PANE.n=+t.value; }
+  else if(t.id==="fmd"){ FILTRO_MAT=t.value; render(); }
+  else if(t.id==="ef-d"){ EF.disc=t.value; EF.mat=""; render(); }
+  else if(t.id==="ef-m"){ EF.mat=t.value; }
+  else if(t.id==="ef-o"){ EF.modo=t.value; }
+});
+document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.verTexto=e.target.open; },true);
+
+/* ============ AJUDA (ícones "i") ============ */
+const AJUDA={
+  sync:{t:"Onde suas notas estão salvas",o:"Ponto verde: sincronizado na nuvem, aparece em qualquer aparelho em que você entrar. Ponto laranja: salvo só neste navegador.",c:"Clique em Entrar e use o e-mail e a senha do portal ADMIN CBMCE. Tudo o que você já escreveu aqui sobe para a nuvem. Sem internet o app continua salvando e envia depois."},
+  login:{t:"Entrar",o:"Liga o caderno à sua conta para sincronizar entre computador e celular e guardar PDFs e fotos.",c:"Use o mesmo e-mail e senha do portal ADMIN CBMCE. Só você vê as suas notas."},
+  hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
+  kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
+  kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
+  kpinotas:{t:"Notas no caderno",o:"Quantidade de notas livres criadas na aba Caderno."},
+  kpitar:{t:"Tarefas pendentes",o:"Tarefas ainda não marcadas como feitas.",c:"Crie na aba Tarefas, com disciplina e prazo."},
+  rapida:{t:"Anotação rápida",o:"Campo para escrever durante a aula. Fica salvo na aula atual (ou na próxima, antes de começar).",c:"Escreva livremente. Aceita # título, - lista e **negrito**. Salva sozinho a cada pausa na digitação.",ex:"# SRC\n- SIRGAS 2000 / UTM 24S\n- **Projeto > Propriedades > SRC**"},
+  cronograma:{t:"Cronograma",o:"As 80 aulas do QTS da AESP, dia a dia, com intervalos e almoço. 14 e 15/11 são reserva para reposição.",c:"Escolha o dia nos botões ou “Todos”. Clique numa aula para anotar, marcar presença ou estrela. Marcas na linha: ★ importante, “nota” tem anotação, presente/falta."},
+  aula:{t:"Aula",o:"Anotações de uma aula específica.",c:"Presente/Falta: controle de frequência (clique de novo para desmarcar). ★ Importante: destaca para revisar. Visualizar: mostra o texto formatado. As setas passam para a aula anterior/seguinte."},
+  markdown:{t:"Formatação do texto",o:"Atalhos simples para organizar as anotações.",c:"# Título · ## Subtítulo · - item de lista · **negrito** · *itálico* · `código` · links começando com http viram clicáveis.",ex:"## Buffer\n- Vetor > Geoprocessamento > Buffer\n- distância em **metros** (SRC projetado)"},
+  disciplinas:{t:"Disciplinas",o:"As 9 disciplinas do curso com instrutores, carga horária, dias e progresso.",c:"“Editar nome” completa o nome (no QTS veio cortado). “Resumo da disciplina” é seu resumo geral. Os números são as aulas: clique para abrir. Também dá para criar notas e materiais da disciplina."},
+  discres:{t:"Resumo da disciplina",o:"Seu resumo geral da disciplina, separado das anotações de cada aula.",c:"Use para juntar conceitos-chave, atalhos e links de material. Salva sozinho."},
+  discaulas:{t:"Aulas da disciplina",o:"Cada número é uma aula (sessão) da disciplina.",c:"Botão destacado = aula com anotação. ★ = marcada como importante. Clique para abrir."},
+  materiais:{t:"Materiais",o:"Biblioteca do curso: PDFs, slides, fotos do quadro, links e textos, separados por disciplina.",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo e questões, ou para corrigir o texto extraído."},
+  addmat:{t:"Novo material",o:"Formas de trazer conteúdo para o caderno.",c:"Arquivo: PDF ou texto (o app lê o texto do PDF). Fotos: até 8 de slides ou do quadro. Link: site, PDF, Google Drive/Docs/Slides (precisa estar como “Qualquer pessoa com o link”); YouTube fica só como link. Colar texto: conteúdo copiado de qualquer lugar."},
+  matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo no QGIS, aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
+  matq:{t:"Questões",o:"Questões de múltipla escolha geradas do material, com gabarito e explicação.",c:"Escolha a quantidade e clique em Gerar (automático) ou use Copiar pedido / Colar resposta (cole a resposta inteira do Claude; o app acha o JSON). “Gerar mais” acrescenta sem repetir. Clique numa questão para ver o gabarito, ou use “Estudar estas questões”."},
+  mattx:{t:"Texto do material",o:"O texto que o app extraiu do PDF, link ou que você colou. É ele que vai para a IA.",c:"Corrija erros, apague partes irrelevantes ou cole conteúdo extra (por exemplo, a transcrição de um vídeo). PDF escaneado vem sem texto: use fotos ou cole o conteúdo."},
+  estudar:{t:"Estudar",o:"Treino com as questões de todos os materiais.",c:"Escolha filtros e clique em Começar. Toque na alternativa: verde é a correta, vermelho a sua se errou, e aparece a explicação. Cada resposta fica guardada."},
+  desemp:{t:"Desempenho",o:"Acertos sobre questões respondidas em cada disciplina, e o total de questões disponíveis.",c:"Considera a última resposta de cada questão. Use “Que errei” para revisar os pontos fracos."},
+  efiltro:{t:"Filtros do estudo",o:"Define quais questões entram na rodada.",c:"Disciplina e Material restringem o conteúdo. Quais: Todas, Não respondidas ou Que errei. Clique em Começar/Recomeçar para aplicar; a ordem é embaralhada."},
+  caderno:{t:"Caderno",o:"Notas livres que não pertencem a uma aula específica.",c:"Nova nota → título, disciplina (opcional) e texto. Salva sozinho. Ideias: passo a passo de ferramentas, dúvidas para o instrutor, resumo da semana."},
+  tarefas:{t:"Tarefas",o:"Lista de pendências do curso.",c:"Escreva a tarefa, escolha disciplina e prazo (opcionais) e clique em Adicionar. Marque a caixa quando concluir; ✕ apaga."},
+  busca:{t:"Buscar",o:"Procura em tudo o que você escreveu e nos materiais.",c:"Digite 2 letras ou mais. Clique no resultado para abrir.",ex:"buffer · SIRGAS · mapa de calor"},
+  backup:{t:"Cópia de segurança",o:"Um arquivo com todas as suas anotações, notas, tarefas, resumos e questões.",c:"Com login, as notas já estão na nuvem: o backup é uma garantia extra. Sem login, é a única forma de não perder ao limpar o navegador ou trocar de aparelho. PDFs e fotos não entram no arquivo (ficam na nuvem)."},
+  restaurar:{t:"Restaurar backup",o:"Traz de volta o conteúdo de um arquivo de backup.",c:"Escolha o arquivo .json baixado antes. O app mostra o que tem nele e só restaura quando você confirmar. Não apaga nada: junta com o que existe e, se o mesmo item estiver nos dois, fica a versão mais nova."},
+  exportmd:{t:"Exportar para ler",o:"Todo o caderno em texto organizado por disciplina (formato Markdown).",c:"Baixe o .md ou copie e cole no Word, Google Docs, Obsidian ou Notion para imprimir ou revisar."},
+  sql:{t:"Configuração pendente",o:"A tabela do caderno ainda não existe no Supabase do Checklist.",c:"No Supabase do Checklist: SQL Editor → cole o conteúdo de supabase/caderno_notas.sql (do repositório caderno-qgis-aesp) → Run. Depois recarregue esta página."},
+};
+const info = k => AJUDA[k]?`<button type="button" class="info" data-info="${k}" aria-label="Ajuda: ${esc(AJUDA[k].t)}">i</button>`:"";
+function fecharPop(){ document.querySelector(".pop")?.remove(); }
+function abrirPop(btn){
+  const k=btn.dataset.info, a=AJUDA[k]; fecharPop(); if(!a) return;
+  const d=document.createElement("div"); d.className="pop"; d.setAttribute("role","dialog"); d.setAttribute("aria-label",a.t);
+  d.innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><strong>${esc(a.t)}</strong><button type="button" class="btn sm" data-popx aria-label="Fechar">✕</button></div>
+    <p><b>O que é:</b> ${esc(a.o)}</p>${a.c?`<p><b>Como usar:</b> ${esc(a.c)}</p>`:""}${a.ex?`<p><b>Exemplo:</b></p><pre>${esc(a.ex)}</pre>`:""}`;
+  document.body.appendChild(d);
+  const r=btn.getBoundingClientRect(), W=innerWidth, H=innerHeight, w=d.offsetWidth, h=d.offsetHeight;
+  let x=Math.min(Math.max(8,r.left-16), W-w-8), y=r.bottom+8; if(y+h>H-8) y=Math.max(8,r.top-h-8);
+  d.style.left=x+"px"; d.style.top=y+"px"; d.querySelector("[data-popx]").focus();
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-info]");
+  if(b){ e.preventDefault(); e.stopPropagation(); if(document.querySelector(".pop")&&document.querySelector(".pop").dataset.k===b.dataset.info){fecharPop();return;} abrirPop(b); document.querySelector(".pop").dataset.k=b.dataset.info; return; }
+  if(e.target.closest("[data-popx]")||!e.target.closest(".pop")) fecharPop();
+},true);
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&document.querySelector(".pop")){ fecharPop(); e.stopImmediatePropagation(); } },true);
+document.addEventListener("scroll",fecharPop,true);
+
+/* ============ BACKUP ============ */
+const LS_BK="caderno-qgis-aesp:ultimoBackup";
+function contagem(docs){
+  const v=Object.values(docs).filter(b=>b&&!b.apagado);
+  return {aulas:v.filter(b=>b.tipo==="aula"&&((b.nota||"").trim()||b.pres||b.estrela)).length, notas:v.filter(b=>b.tipo==="nota").length, tarefas:v.filter(b=>b.tipo==="tarefa").length, mats:v.filter(b=>b.tipo==="mat").length, quest:v.filter(b=>b.tipo==="mat").reduce((s,b)=>s+(b.questoes||[]).length,0), resumos:v.filter(b=>b.tipo==="disc"&&(b.nota||"").trim()).length};
+}
+const txtCont = c => `${c.aulas} aula(s) anotada(s) · ${c.notas} nota(s) · ${c.tarefas} tarefa(s) · ${c.mats} material(is) · ${c.quest} questão(ões) · ${c.resumos} resumo(s) de disciplina`;
+function baixarArquivo(nome, conteudo, tipo){
+  const url=URL.createObjectURL(new Blob([conteudo],{type:tipo})); const a=document.createElement("a"); a.href=url; a.download=nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+function dataArq(){ const d=new Date(Date.now()-3*3600e3).toISOString(); return d.slice(0,10)+"_"+d.slice(11,16).replace(":","h"); }
+function gerarBackup(){ return JSON.stringify({app:"caderno-qgis-aesp", versao:1, criado:new Date().toISOString(), docs:S.docs}); }
+let BK_LIDO=null;
+function lerBackup(txt){
+  let j; try{ j=JSON.parse(txt); }catch(e){ throw new Error("Esse arquivo não é um backup do caderno (não é JSON)."); }
+  const docs = j&&j.app==="caderno-qgis-aesp" ? j.docs : j;
+  if(!docs||typeof docs!=="object") throw new Error("Backup vazio ou inválido.");
+  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(aula|disc|nota|tarefa|mat|mtx)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
+  if(!Object.keys(ok).length) throw new Error("Não achei anotações nesse arquivo.");
+  return {docs:ok, criado:j.criado||null};
+}
+function restaurar(bk){
+  let n=0, i=0;
+  for(const [id,b] of Object.entries(bk.docs)){
+    const l=S.docs[id];
+    if(!l || (b.upd||0)>(l.upd||0)){ S.docs[id]=b; n++; if(S.push){ pend[id]=b; clearTimeout(timers[id]); timers[id]=setTimeout(()=>flush(id),200+(i++)*120); } }
+  }
+  lsSave(); setSync(); return n;
+}
+/* ============ RENDER + EVENTOS ============ */
+function render(){
+  lerHash();
+  renderNav();
+  const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
+  document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_notas.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
+  if(VIEW==="backup") ligarBackup();
+}
+
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-go],[data-aula],[data-nota],[data-novanota],[data-fechar],[data-pres],[data-estrela],[data-prev],[data-delnota],[data-dia],[data-editnome],[data-tkdel]");
+  if(!b||b.disabled) return;
+  const ds=b.dataset;
+  if(ds.aula!==undefined){ flushTudo(); abrirAula(ds.aula); return; }
+  if(ds.nota!==undefined){ abrirNota(ds.nota); return; }
+  if(ds.novanota!==undefined){ PANE={tipo:"nota",id:"nota-"+novoId(),prev:false}; renderPane(); if(ds.novanota) document.getElementById("ndisc").value=ds.novanota; return; }
+  if(ds.fechar!==undefined){ flushTudo(); fecharPane(); return; }
+  if(ds.go!==undefined){ ir(ds.go); if(ds.disc) setTimeout(()=>document.getElementById("d-"+ds.disc)?.scrollIntoView({behavior:"smooth"}),30); return; }
+  if(ds.dia!==undefined){ DIA_SEL=ds.dia; render(); return; }
+  if(ds.pres!==undefined){ const id=PANE.id, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",pres:d.pres===ds.pres?"":ds.pres},50); renderPane(); return; }
+  if(ds.estrela!==undefined){ const id=PANE.id, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",estrela:!d.estrela},50); renderPane(); return; }
+  if(ds.prev!==undefined){ PANE.prev=!PANE.prev; renderPane(); return; }
+  if(ds.delnota!==undefined){
+    if(b.dataset.conf){ apagarDoc(PANE.id); fecharPane(); toast("Nota apagada"); }
+    else { b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar nota"; } },3000); }
+    return;
+  }
+  if(ds.tkdel!==undefined){ apagarDoc(ds.tkdel); render(); return; }
+  if(ds.editnome!==undefined){
+    const k=ds.editnome; const h=document.querySelector(`[data-nome="${k}"]`);
+    h.outerHTML=`<div class="row" style="margin-bottom:4px"><input type="text" id="en-${k}" value="${esc(nomeDisc(k))}" style="flex:1;min-width:200px"><button class="btn sm pri" data-salvanome="${k}">Salvar</button></div>`;
+    const inp=document.getElementById("en-"+k); inp.focus(); inp.select();
+    return;
+  }
+});
+document.addEventListener("click",e=>{
+  if(e.target.id==="sbtn"){ if(S.uid) sair(); else abrirLogin(); return; }
+  const b=e.target.closest("[data-salvanome]"); if(!b) return;
+  const k=b.dataset.salvanome; const v=document.getElementById("en-"+k).value.trim();
+  salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nome:v===DK[k].nome?"":v},50); document.activeElement.blur(); render();
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape" && PANE){ flushTudo(); fecharPane(); }
+  if(e.key==="Enter" && e.target.id?.startsWith("en-")){ document.querySelector(`[data-salvanome="${e.target.id.slice(3)}"]`).click(); }
+});
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="pnota"){ const id=PANE.id; salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:t.value}); return; }
+  if(t.dataset.qaula){ const id=t.dataset.qaula; salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:t.value}); return; }
+  if(t.dataset.dnota){ const k=t.dataset.dnota; salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nota:t.value}); return; }
+  if(t.id==="ntit"||t.id==="ntxt"){ salvarNotaDoForm(); return; }
+  if(t.id==="q"){ BUSCA=t.value; document.getElementById("res").innerHTML=resultados(); return; }
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="ndisc"){ salvarNotaDoForm(); return; }
+  if(t.id==="fnd"){ FILTRO_NOTA=t.value; render(); return; }
+  if(t.dataset.tk){ const id=t.dataset.tk; salvarDoc(id,{...S.docs[id],feito:t.checked},100); render(); return; }
+});
+document.addEventListener("submit",e=>{
+  if(e.target.id==="flogin"){ e.preventDefault(); fazerLogin(); return; }
+  if(e.target.id!=="ftk") return; e.preventDefault();
+  const tx=document.getElementById("tk-t").value.trim(); if(!tx) return;
+  salvarDoc("tarefa-"+novoId(),{tipo:"tarefa",texto:tx,disc:document.getElementById("tk-d").value,prazo:document.getElementById("tk-p").value,feito:false,criado:Date.now()},50);
+  render(); document.getElementById("tk-t").focus();
+});
+
+async function copiar(txt,msg){ try{ await navigator.clipboard.writeText(txt); toast(msg); }catch(e){ toast("Não foi possível copiar. Selecione e copie manualmente."); } }
+function ligarBackup(){
+  const g=id=>document.getElementById(id);
+  g("bk-dl").onclick=()=>{ baixarArquivo("caderno-qgis-backup_"+dataArq()+".json", gerarBackup(), "application/json"); try{ localStorage.setItem(LS_BK,new Date().toISOString()); }catch(e){} toast("Backup baixado. Confira a pasta Downloads."); setTimeout(render,300); };
+  g("bk-cp").onclick=()=>copiar(gerarBackup(),"Backup copiado. Cole num arquivo ou e-mail para guardar.");
+  g("md-dl").onclick=()=>baixarArquivo("caderno-qgis_"+dataArq()+".md", exportarMD(), "text/markdown");
+  g("md-cp").onclick=()=>copiar(exportarMD(),"Caderno copiado. Cole no Word ou Docs.");
+  const ler=txt=>{ try{ BK_LIDO=lerBackup(txt); render(); }catch(e){ BK_LIDO=null; toast(e.message); } };
+  g("bk-f").onchange=async e=>{ const f=e.target.files[0]; if(f) ler(await f.text()); };
+  g("bk-tl").onclick=()=>ler(g("bk-t").value);
+  if(g("bk-ok")) g("bk-ok").onclick=()=>{ const n=restaurar(BK_LIDO); BK_LIDO=null; toast(n?n+" item(ns) restaurado(s).":"Nada novo: você já tinha tudo o que está no backup."); render(); };
+  if(g("bk-no")) g("bk-no").onclick=()=>{ BK_LIDO=null; render(); };
+}
+
+// atualiza "agora" a cada minuto sem atrapalhar a digitação
+setInterval(()=>{ if(!editando() && !PANE) render(); else renderNav(); },60000);
+document.getElementById("sinfo").innerHTML=info("sync");
+render(); setSync();
+conectar();
+</script>
+</body>
+</html>

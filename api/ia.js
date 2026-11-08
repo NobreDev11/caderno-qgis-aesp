@@ -1,6 +1,7 @@
 // Gera resumo ou questões com a API do Claude. Exige login (admin) e a variável ANTHROPIC_API_KEY na Vercel.
 const { verificar, lerCorpo, responder } = require("./_auth");
-const { pedidoResumo, pedidoQuestoes, lerQuestoes, SISTEMA } = require("./_prompts");
+const PROMPTS_QGIS = require("./_prompts");
+const PROMPTS_DIO = require("./_prompts_dio");
 
 const MAX_TEXTO = 150000;
 
@@ -11,6 +12,8 @@ module.exports = async (req, res) => {
   try {
     await verificar(req);
     const b = await lerCorpo(req);
+    // curso: "dio" usa os pedidos da trilha DIO; qualquer outro valor (ou nenhum) mantém os do caderno QGIS.
+    const { pedidoResumo, pedidoQuestoes, lerQuestoes, SISTEMA } = b.curso === "dio" ? PROMPTS_DIO : PROMPTS_QGIS;
     const modo = b.modo === "questoes" ? "questoes" : "resumo";
     const texto = String(b.texto || "").slice(0, MAX_TEXTO);
     const imagens = Array.isArray(b.imagens) ? b.imagens.slice(0, 8) : [];
