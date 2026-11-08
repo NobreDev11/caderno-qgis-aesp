@@ -533,27 +533,36 @@ const promptDe = it => (itemD(it.id).prompt||"").trim() || promptPadrao(it);
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function md(src){
   const linhas=String(src||"").split("\n"); let out="", lista=false, nfx=0;
-  const inl=t=>esc(t).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>")
+  const fechar=()=>{ if(lista){ out+=`</${lista}>`; lista=false; } }, abrir=t=>{ if(lista!==t){ fechar(); out+=`<${t}>`; lista=t; } };
+  const inl=t=>esc(t).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>").replace(/==([^=]+)==/g,"<mark>$1</mark>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
   for(let i=0;i<linhas.length;i++){ const l=linhas[i];
     // bloco de código; ```mermaid vira fluxograma desenhado (fluxo.js)
     const cerca=l.match(/^```\s*([\w-]*)\s*$/);
     if(cerca){ let j=i+1; const cod=[]; while(j<linhas.length && !/^```\s*$/.test(linhas[j])){ cod.push(linhas[j]); j++; }
-      if(lista){out+="</ul>";lista=false;}
+      fechar();
       const c=cod.join("\n");
       if(cerca[1].toLowerCase()==="mermaid"){ out+=`<div class="fx"><div class="fx-svg" data-src="${encodeURIComponent(c)}"><p class="muted">Desenhando fluxograma…</p></div><div class="row"><button class="btn sm" data-fxeditar="${nfx}">Editar fluxograma</button></div></div>`; nfx++; }
       else out+=`<pre><code>${esc(c)}</code></pre>`;
       i=j; continue; }
+    if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fechar(); out+="<hr>"; continue; }
+    const tk=l.match(/^\s*[-*]\s+\[([ xX])\]\s*(.*)$/);
+    if(tk){ abrir("ul"); const ok=tk[1]!==" "; out+=`<li class="tk${ok?" ok":""}">${ok?"☑":"☐"} ${inl(tk[2])}</li>`; continue; }
     const m=l.match(/^\s*[-*]\s+(.*)$/);
-    if(m){ if(!lista){out+="<ul>";lista=true;} out+="<li>"+inl(m[1].replace(/^\[ \]\s*/,"☐ ").replace(/^\[x\]\s*/i,"☑ "))+"</li>"; continue; }
-    if(lista){out+="</ul>";lista=false;}
+    if(m){ abrir("ul"); out+="<li>"+inl(m[1])+"</li>"; continue; }
+    const o=l.match(/^\s*(\d+)[.)]\s+(.*)$/);
+    if(o){ if(lista!=="ol"){ fechar(); out+=`<ol start="${+o[1]}">`; lista="ol"; } out+="<li>"+inl(o[2])+"</li>"; continue; }
+    const q=l.match(/^>\s?(.*)$/);
+    if(q){ fechar(); const cit=[q[1]]; while(i+1<linhas.length && /^>/.test(linhas[i+1])){ i++; cit.push(linhas[i].replace(/^>\s?/,"")); }
+      out+="<blockquote>"+cit.filter(x=>x.trim()).map(x=>"<p>"+inl(x)+"</p>").join("")+"</blockquote>"; continue; }
+    fechar();
     const h=l.match(/^(#{1,3})\s+(.*)$/);
     if(h){ out+=`<h${h[1].length}>${inl(h[2])}</h${h[1].length}>`; continue; }
     if(l.trim()==="") continue;
     out+="<p>"+inl(l)+"</p>";
   }
-  if(lista) out+="</ul>";
+  fechar();
   return out || '<p class="muted">Sem anotações.</p>';
 }
 function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),3200); }
@@ -823,7 +832,7 @@ function renderPane(){
           ${PANE.editP?`<textarea id="pprompt" style="min-height:260px;margin-top:8px;font:13px/1.5 var(--mono)">${esc(promptDe(a))}</textarea><div class="row" style="margin-top:6px"><button class="btn sm" data-preset>Voltar ao prompt padrão</button></div>`:""}
         </div>
         <div><label class="lb" for="prepo">Link do repositório ou da entrega (opcional) ${info("portfolio")}</label><input type="text" id="prepo" inputmode="url" placeholder="https://github.com/…" value="${esc(d.repo||"")}"></div>
-        <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações (aceita # título, - lista, **negrito**, links)</span>${info("markdown")}</div><div class="row"><button class="btn sm" data-flabrir="${a.id}" title="Abre as anotações num bloco que fica por cima das outras telas">Destacar</button><button class="btn sm" data-fxnovo title="Inserir um fluxograma na anotação">Fluxograma</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div></div>
+        <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações</span>${info("markdown")}</div><div class="row"><button class="btn sm" data-flabrir="${a.id}" title="Abre as anotações num bloco que fica por cima das outras telas">Destacar</button><button class="btn sm" data-fxnovo title="Inserir um fluxograma na anotação">Fluxograma</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div></div>
         ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<textarea id="pnota" aria-label="Anotações" placeholder="O que aprendi, comandos, trechos de código, dúvidas…">${esc(d.nota||"")}</textarea>`}
         <div class="row" style="justify-content:space-between">
           <button class="btn sm" ${i>0?`data-item="${ITENS[i-1].id}"`:"disabled"}>← Item anterior</button>
@@ -1456,5 +1465,6 @@ window.FLUXO_ALVO=()=>{
 };
 </script>
 <script src="/fluxo.js"></script>
+<script src="/formato.js"></script>
 </body>
 </html>

@@ -1,0 +1,165 @@
+/* ============ BARRA DE FORMATAÇÃO RÁPIDA ============
+   Aparece em cima das caixas de anotação (painel do item/aula, anotação rápida do Hoje,
+   anotações de fase/disciplina, notas do caderno e bloco flutuante).
+   Só escreve Markdown simples no texto; o "Visualizar" (md()) desenha o resultado.
+   Atalhos: Ctrl+B negrito, Ctrl+I itálico, Ctrl+K link, Ctrl+Shift+X tarefa ☐,
+   Enter continua a lista (Enter numa linha de lista vazia encerra a lista). */
+(function(){
+  const ALVOS='#qnota,#pnota,#ntxt,#fl-txt,textarea[data-dnota]';
+  const BOTOES=[
+    ["neg","<b>N</b>","Negrito (Ctrl+B)"],
+    ["ita","<i>I</i>","Itálico (Ctrl+I)"],
+    ["mar",'<span class="fmt-mk">M</span>',"Marca-texto"],
+    ["tit","T","Título (clique de novo para trocar o tamanho)"],
+    ["lis","•","Lista"],
+    ["num","1.","Lista numerada"],
+    ["tar","☐","Tarefa / checklist (Ctrl+Shift+X); clique de novo para marcar ☑"],
+    ["cit","❝","Citação ou destaque"],
+    ["cod","&lt;/&gt;","Código (trecho ou bloco)"],
+    ["lnk","🔗","Link (Ctrl+K)"],
+    ["div","―","Linha divisória"],
+  ];
+  const CSS=`
+.fmt{display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
+.fmt::-webkit-scrollbar{display:none}
+.fmt button{flex:none;min-width:30px;height:28px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--ink,inherit);cursor:pointer;font-size:13.5px;line-height:1}
+.fmt button:hover{background:var(--accent-soft)}
+.fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
+.fmt .fmt-mk{background:#fde68a;color:#3b2f00;padding:0 3px;border-radius:3px}
+.flut .fmt{margin:0;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:3px 6px}
+.md mark{background:#fde68a;color:#3b2f00;padding:0 2px;border-radius:3px}
+.md blockquote{margin:.5em 0;padding:4px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 6px 6px 0}
+.md blockquote p{margin:.2em 0}
+.md hr{border:0;border-top:1px solid var(--line);margin:1em 0}
+.md ol{margin:.3em 0;padding-left:1.5em}
+.md li.tk{list-style:none;margin-left:-1.1em}
+.md li.tk.ok{color:var(--muted);text-decoration:line-through}
+.md pre{background:var(--accent-soft);padding:8px 10px;border-radius:8px;overflow-x:auto}
+.md pre code{background:none;padding:0}`;
+  const st=document.createElement("style"); st.id="fmt-css"; st.textContent=CSS; document.head.appendChild(st);
+
+  function barra(doc){
+    const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
+    d.innerHTML=BOTOES.map(([k,h,t],i)=>(i===3||i===7?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    return d;
+  }
+  function equipar(raiz){
+    raiz.querySelectorAll(ALVOS).forEach(ta=>{
+      if(ta.dataset.fmtOk) return; ta.dataset.fmtOk="1";
+      const p=ta.previousElementSibling; if(p&&p.classList.contains("fmt")) return;
+      ta.parentNode.insertBefore(barra(ta.ownerDocument),ta);
+    });
+  }
+
+  // Troca o trecho [a,b) por txt mantendo o "desfazer" (Ctrl+Z) e disparando o salvamento.
+  function trocar(ta,a,b,txt,selA,selB){
+    const doc=ta.ownerDocument, v=ta.value; ta.focus(); ta.setSelectionRange(a,b);
+    if(!txt && a===b) return;
+    let ok=false;
+    try{ ok = txt ? doc.execCommand("insertText",false,txt) : doc.execCommand("delete"); }catch(e){}
+    if(!ok){ ta.value=v.slice(0,a)+txt+v.slice(b); ta.dispatchEvent(new Event("input",{bubbles:true})); }
+    ta.setSelectionRange(selA??a+txt.length, selB??selA??a+txt.length);
+  }
+  function envolver(ta,ini,fim,exemplo){
+    const v=ta.value, a=ta.selectionStart, b=ta.selectionEnd, sel=v.slice(a,b);
+    // já envolvido? tira
+    if(v.slice(a-ini.length,a)===ini && v.slice(b,b+fim.length)===fim){ trocar(ta,a-ini.length,b+fim.length,sel,a-ini.length,b-ini.length); return; }
+    if(sel.startsWith(ini)&&sel.endsWith(fim)&&sel.length>=ini.length+fim.length){ const s=sel.slice(ini.length,sel.length-fim.length); trocar(ta,a,b,s,a,a+s.length); return; }
+    const s=sel||exemplo, t=ini+s+fim; trocar(ta,a,b,t,a+ini.length,a+ini.length+s.length);
+  }
+  // Linhas inteiras cobertas pela seleção
+  function linhas(ta){
+    const v=ta.value; let a=ta.selectionStart, b=ta.selectionEnd;
+    a=v.lastIndexOf("\n",a-1)+1; if(b>a&&v[b-1]==="\n") b--; let e=v.indexOf("\n",b); if(e<0) e=v.length;
+    return {a,b:e,ls:v.slice(a,e).split("\n")};
+  }
+  const RE_LISTA=/^(\s*)(- \[[ xX]\] |[-*] |\d+[.)] |> )/;
+  function prefixar(ta,tipo){
+    const {a,b,ls}=linhas(ta);
+    const tem={lis:/^\s*[-*] (?!\[[ xX]\] )/, num:/^\s*\d+[.)] /, tar:/^\s*- \[[ xX]\] /, cit:/^> ?/}[tipo];
+    const cheias=ls.filter(l=>l.trim());
+    let novo;
+    if(tipo==="tar" && cheias.length && cheias.every(l=>tem.test(l))){
+      // alterna ☐ ↔ ☑
+      const todas=cheias.every(l=>/^\s*- \[[xX]\] /.test(l));
+      novo=ls.map(l=>l.replace(/^(\s*- \[)[ xX](\] )/,"$1"+(todas?" ":"x")+"$2"));
+    } else if(cheias.length && cheias.every(l=>tem.test(l))){
+      novo=ls.map(l=>l.replace(RE_LISTA,"$1"));            // tira
+    } else {
+      let n=0;
+      novo=ls.map(l=>{ if(!l.trim()&&ls.length>1) return l; const m=l.match(/^(\s*)/)[1], r=l.slice(m.length).replace(RE_LISTA,"");
+        const pre=tipo==="lis"?"- ":tipo==="num"?(++n)+". ":tipo==="tar"?"- [ ] ":"> ";
+        return (tipo==="cit"?"":m)+pre+r; });
+    }
+    const t=novo.join("\n");
+    if(ls.length===1) trocar(ta,a,b,t); else trocar(ta,a,b,t,a,a+t.length);
+  }
+  function titulo(ta){
+    const {a,b,ls}=linhas(ta), l=ls[0], m=l.match(/^(#{1,3}) /);
+    const n=m?m[1].length:0, r=l.replace(/^#{1,3} /,"");
+    const t=(n===0?"# ":n===1?"## ":n===2?"### ":"")+r;
+    trocar(ta,a,a+l.length,t,a+t.length);
+  }
+  function codigo(ta){
+    const v=ta.value, a=ta.selectionStart, b=ta.selectionEnd, sel=v.slice(a,b);
+    if(sel.includes("\n") || (!sel && (v.slice(v.lastIndexOf("\n",a-1)+1, (v.indexOf("\n",a)+1||v.length+1)-1).trim()===""))){
+      const antes=a>0&&v[a-1]!=="\n"?"\n":"", s=sel||"código aqui", t=antes+"```\n"+s+"\n```\n";
+      trocar(ta,a,b,t,a+antes.length+4,a+antes.length+4+s.length); return;
+    }
+    envolver(ta,"`","`","código");
+  }
+  function link(ta){
+    const v=ta.value, a=ta.selectionStart, b=ta.selectionEnd, sel=v.slice(a,b).trim();
+    if(/^https?:\/\/\S+$/.test(sel)){ const t=`[texto](${sel})`; trocar(ta,a,b,t,a+1,a+6); return; }
+    // com texto selecionado: o cursor vai para o endereço; sem seleção: para o nome do link
+    if(sel){ const t=`[${sel}](https://)`; trocar(ta,a,b,t,a+sel.length+3,a+sel.length+11); return; }
+    trocar(ta,a,b,"[texto](https://)",a+1,a+6);
+  }
+  function divisoria(ta){
+    const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":"";
+    trocar(ta,a,ta.selectionEnd,antes+"\n---\n\n");
+  }
+  function aplicar(ta,k){
+    ({neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
+      tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
+      cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta)})[k]();
+  }
+  // Enter continua a lista; Enter numa linha de lista vazia encerra a lista.
+  function enter(ta,e){
+    if(ta.selectionStart!==ta.selectionEnd) return;
+    const v=ta.value, c=ta.selectionStart, ini=v.lastIndexOf("\n",c-1)+1, l=v.slice(ini,c);
+    const m=l.match(/^(\s*)(- \[[ xX]\] |[-*] |(\d+)([.)]) |> )/); if(!m) return;
+    e.preventDefault();
+    if(l.trim()===m[0].trim() && v.slice(c,(v.indexOf("\n",c)+1||v.length+1)-1).trim()===""){ trocar(ta,ini,c,""); return; }
+    const pre=m[3]?m[1]+(+m[3]+1)+m[4]+" ":m[2].startsWith("- [")?m[1]+"- [ ] ":m[1]+m[2];
+    trocar(ta,c,c,"\n"+pre);
+  }
+  function ligar(doc){
+    if(doc.__fmt) return; doc.__fmt=true;
+    // mousedown sem tirar o foco da caixa de texto
+    doc.addEventListener("mousedown",e=>{ if(e.target.closest(".fmt button")) e.preventDefault(); });
+    doc.addEventListener("click",e=>{
+      const bt=e.target.closest(".fmt button[data-fmt]"); if(!bt) return;
+      let ta=bt.closest(".fmt").nextElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return;
+      aplicar(ta,bt.dataset.fmt);
+    });
+    doc.addEventListener("keydown",e=>{
+      const ta=e.target; if(!ta.matches||!ta.matches(ALVOS)) return;
+      if(e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing){ enter(ta,e); return; }
+      if(!(e.ctrlKey||e.metaKey) || e.altKey) return;
+      const k=e.key.toLowerCase();
+      const mapa=e.shiftKey?{x:"tar"}:{b:"neg",i:"ita",k:"lnk"};
+      if(mapa[k]){ e.preventDefault(); aplicar(ta,mapa[k]); }
+    });
+    equipar(doc);
+    new MutationObserver(()=>equipar(doc)).observe(doc.body,{childList:true,subtree:true});
+  }
+  ligar(document);
+  // Janela "por cima de outras janelas" do bloco flutuante (Picture-in-Picture)
+  if(typeof window.ligarFlutuante==="function"){
+    const orig=window.ligarFlutuante;
+    window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); } };
+  }
+  window.FORMATO={aplicar, equipar, ligar};
+})();
