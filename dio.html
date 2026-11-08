@@ -172,6 +172,22 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
   .slot.int{padding:2px 6px}
   .pane header,.pane .body{padding-left:14px;padding-right:14px}
 }
+/* bloco flutuante de anotações */
+.flut{position:fixed;z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .22);display:flex;flex-direction:column;overflow:hidden;resize:both;min-width:280px;min-height:180px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}
+.flut.min{resize:none;min-height:0}
+.fl-h{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--accent-soft);cursor:move;touch-action:none;flex:none}
+.fl-h select{flex:1;min-width:0;width:auto;padding:4px 8px;font-size:13px;background:var(--surface)}
+.flut.min .fl-h{border-bottom:0}
+.flut textarea{flex:1;min-height:0;border:0;border-radius:0;resize:none;background:var(--surface);padding:10px 12px;outline-offset:-2px}
+.fl-p{display:flex;justify-content:space-between;gap:8px;padding:6px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);flex:none}
+.fl-p a{color:var(--accent)}
+.flut.pip{position:static;width:100vw;height:100vh;max-width:none;max-height:none;border:0;border-radius:0;box-shadow:none;resize:none}
+.flut.pip .fl-h{cursor:default}
+@media (max-width:820px){
+  .flut:not(.pip){left:8px!important;right:8px;top:auto!important;bottom:8px;width:auto!important;height:46vh!important;resize:none;min-width:0}
+  .flut.min:not(.pip){height:auto!important}
+  .fl-h{cursor:default}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -190,6 +206,7 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
   <main><div class="wrap" id="view"></div></main>
 </div>
 <div id="paneHost"></div>
+<div id="floatHost"></div>
 <script src="/vendor/supabase.js"></script>
 <script src="/prompts-dio.js"></script>
 <script>
@@ -595,6 +612,7 @@ function vHoje(){
         ${d.st!=="and"?`<button class="btn sm" data-hst="and" data-hid="${a.id}">Comecei</button>`:""}
         <button class="btn sm pri" data-hst="ok" data-hid="${a.id}">Concluí este item</button>
         <button class="btn sm" data-item="${a.id}">Abrir item</button>
+        <button class="btn sm" data-flabrir="${a.id}">Bloco flutuante</button> ${info("flutuante")}
       </div>
     </div>` : `<div class="card"><p class="muted" style="margin:0">Nada pela frente. Parabéns!</p></div>`;
   const prox = a? ITENS.slice(ITENS.indexOf(a)+1).filter(i=>!feito(i)).slice(0,5) : [];
@@ -795,7 +813,7 @@ function renderPane(){
           ${PANE.editP?`<textarea id="pprompt" style="min-height:260px;margin-top:8px;font:13px/1.5 var(--mono)">${esc(promptDe(a))}</textarea><div class="row" style="margin-top:6px"><button class="btn sm" data-preset>Voltar ao prompt padrão</button></div>`:""}
         </div>
         <div><label class="lb" for="prepo">Link do repositório ou da entrega (opcional) ${info("portfolio")}</label><input type="text" id="prepo" inputmode="url" placeholder="https://github.com/…" value="${esc(d.repo||"")}"></div>
-        <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações (aceita # título, - lista, **negrito**, links)</span>${info("markdown")}</div><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div>
+        <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações (aceita # título, - lista, **negrito**, links)</span>${info("markdown")}</div><div class="row"><button class="btn sm" data-flabrir="${a.id}" title="Abre as anotações num bloco que fica por cima das outras telas">Destacar</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div></div>
         ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<textarea id="pnota" aria-label="Anotações" placeholder="O que aprendi, comandos, trechos de código, dúvidas…">${esc(d.nota||"")}</textarea>`}
         <div class="row" style="justify-content:space-between">
           <button class="btn sm" ${i>0?`data-item="${ITENS[i-1].id}"`:"disabled"}>← Item anterior</button>
@@ -1144,6 +1162,7 @@ const AJUDA={
   trilha:{t:"Trilha",o:"Os 42 itens na ordem de estudo, separados por fase, com a semana prevista no plano.",c:"Filtre pela fase nos botões. Clique num item para abrir: status, prompt de estudo, link da DIO, repositório e anotações. Marcas na linha: ★ importante, “nota” tem anotação, “repo” tem link, estudando/concluído."},
   item:{t:"Item da trilha",o:"Tudo de um item: status, prompt de estudo, repositório e anotações.",c:"A fazer / Estudando / Concluído: marca o progresso e guarda as datas. ★ Importante: destaca para revisar. As setas passam para o item anterior/seguinte."},
   prompt:{t:"Prompt de estudo",o:"Texto pronto para colar num chat novo do Claude: ele vira seu tutor daquele item e te guia num mini-projeto de portfólio.",c:"“Copiar prompt” e cole no Claude. Itens com conteúdo levantado já vêm completos; os outros pedem que você cole o sumário das aulas da DIO. “Ver / editar” permite colar um prompt novo, que fica salvo neste item."},
+  flutuante:{t:"Bloco flutuante",o:"As anotações do item numa janela pequena que fica por cima das outras telas do caderno e continua aberta quando você troca de aba.",c:"Arraste pela barra de cima para mover e pelo canto de baixo para mudar o tamanho. Troque o item na lista. – minimiza. ⧉ (Chrome e Edge no computador) solta o bloco numa janela que fica por cima de qualquer outra, como a aula da DIO. O texto é o mesmo da anotação do item e salva sozinho."},
   markdown:{t:"Formatação do texto",o:"Atalhos simples para organizar as anotações.",c:"# Título · ## Subtítulo · - item de lista · **negrito** · *itálico* · `código` · links começando com http viram clicáveis.",ex:"## Commit\n- `git commit -m \"mensagem\"`\n- mensagem **curta e clara**"},
   fases:{t:"Fases",o:"As 7 fases da trilha com horas, itens, progresso, resumo, notas e materiais.",c:"Os números são os itens da fase (✓ concluído, … estudando): clique para abrir. “Resumo da fase” é o seu resumo geral."},
   discres:{t:"Resumo da fase",o:"Seu resumo geral da fase, separado das anotações de cada item.",c:"Junte conceitos-chave, comandos e links. Salva sozinho."},
@@ -1215,6 +1234,109 @@ function restaurar(bk){
   }
   lsSave(); setSync(); return n;
 }
+/* ============ BLOCO FLUTUANTE DE ANOTAÇÕES ============ */
+// Fica por cima das telas do caderno, sem escurecer nada, e continua aberto ao trocar de aba.
+// "Por cima de outras janelas" usa a janela flutuante do navegador (Document Picture-in-Picture: Chrome e Edge no computador).
+// O texto é a anotação do item (o mesmo campo de "Anotação rápida" e do painel do item).
+const LS_FL="caderno-dio:flutuante";
+let FL={aberto:false,id:null,min:false,x:null,y:null,w:380,h:360};
+try{ Object.assign(FL,JSON.parse(localStorage.getItem(LS_FL)||"{}")); }catch(e){}
+let PIP=null, _flRO=null, _flT=null;
+const PIP_OK = "documentPictureInPicture" in window;
+function salvarFL(){ try{ localStorage.setItem(LS_FL,JSON.stringify(FL)); }catch(e){} }
+function abrirFlutuante(id){
+  FL.aberto=true; FL.min=false; FL.id=id||FL.id||(atual()||ITENS[0]).id; salvarFL();
+  if(PANE&&PANE.tipo==="item"){ flushTudo(); PANE=null; document.getElementById("paneHost").innerHTML=""; render(); }
+  renderFlutuante();
+  const ta=(PIP?PIP.document:document).getElementById("fl-txt"); if(ta){ ta.focus(); ta.selectionStart=ta.value.length; }
+}
+function fecharFlutuante(){ flushTudo(); FL.aberto=false; salvarFL(); if(PIP){ const w=PIP; PIP=null; w.close(); } renderFlutuante(); }
+function htmlFlutuante(){
+  const it=IK[FL.id]||ITENS[0], d=itemD(it.id);
+  return `<div class="fl-h" data-flarrastar title="${PIP?"":"Arraste para mover"}"><span class="sw" style="background:${DK[it.k].cor}"></span>
+    <select id="fl-item" aria-label="Item da trilha">${ITENS.map(i=>`<option value="${i.id}" ${i.id===it.id?"selected":""}>${i.n}. ${esc(i.nome)}</option>`).join("")}</select>
+    ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
+    ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: a aula da DIO)" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
+    <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
+   ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações do item" placeholder="Anote aqui enquanto estuda. Salva sozinho no item.">${esc(d.nota||"")}</textarea>
+   <div class="fl-p"><span>${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho no item"}</span>${it.url?`<a href="${esc(it.url)}" target="_blank" rel="noopener">Abrir na DIO</a>`:""}</div>`}`;
+}
+function posicionar(el){
+  if(innerWidth<=820) return;
+  const w=Math.min(FL.w,innerWidth-16); el.style.width=w+"px";
+  let h=48; if(!FL.min){ h=Math.min(FL.h,innerHeight-16); el.style.height=h+"px"; } else el.style.height="";
+  const x=FL.x??(innerWidth-w-16), y=FL.y??(innerHeight-h-16);
+  el.style.left=Math.min(Math.max(8,x),innerWidth-w-8)+"px";
+  el.style.top=Math.min(Math.max(8,y),innerHeight-h-8)+"px";
+}
+function renderFlutuante(){
+  const host=document.getElementById("floatHost");
+  if(_flRO){ _flRO.disconnect(); _flRO=null; }
+  if(!FL.aberto){ host.innerHTML=""; return; }
+  if(PIP){ host.innerHTML=""; PIP.document.getElementById("pipbox").innerHTML=htmlFlutuante(); return; }
+  host.innerHTML=`<section class="flut ${FL.min?"min":""}" id="flut" role="dialog" aria-label="Bloco de anotações">${htmlFlutuante()}</section>`;
+  const el=document.getElementById("flut"); posicionar(el);
+  if(!FL.min && innerWidth>820 && "ResizeObserver" in window){
+    _flRO=new ResizeObserver(()=>{ clearTimeout(_flT); _flT=setTimeout(()=>{ if(!el.isConnected||FL.min) return; FL.w=el.offsetWidth; FL.h=el.offsetHeight; salvarFL(); },250); });
+    _flRO.observe(el);
+  }
+}
+// Atualiza o texto do bloco quando a mesma anotação muda em outro lugar (Hoje, painel do item, outro aparelho).
+function sincronizarFlutuante(){
+  if(!FL.aberto||FL.min) return;
+  const doc=PIP?PIP.document:document, ta=doc.getElementById("fl-txt");
+  if(ta && doc.activeElement!==ta){ const v=itemD(FL.id).nota||""; if(ta.value!==v) ta.value=v; }
+}
+async function destacarFlutuante(){
+  let w;
+  try{ w=await documentPictureInPicture.requestWindow({width:Math.max(340,FL.w),height:Math.max(280,FL.h)}); }
+  catch(e){ toast("Não foi possível abrir a janela por cima. Use o Chrome ou o Edge no computador."); return; }
+  for(const ss of [...document.styleSheets]){
+    try{ const s=w.document.createElement("style"); s.textContent=[...ss.cssRules].map(r=>r.cssText).join("\n"); w.document.head.appendChild(s); }
+    catch(e){ if(ss.href){ const l=w.document.createElement("link"); l.rel="stylesheet"; l.href=ss.href; w.document.head.appendChild(l); } }
+  }
+  if(document.documentElement.dataset.theme) w.document.documentElement.dataset.theme=document.documentElement.dataset.theme;
+  w.document.title="Anotações · Trilha DIO";
+  w.document.body.innerHTML='<section class="flut pip" id="pipbox" aria-label="Bloco de anotações"></section>';
+  ligarFlutuante(w.document);
+  w.addEventListener("pagehide",()=>{ if(PIP===w){ flushTudo(); PIP=null; renderFlutuante(); } });
+  PIP=w; FL.min=false; renderFlutuante();
+  const ta=w.document.getElementById("fl-txt"); if(ta) ta.focus();
+}
+function ligarFlutuante(doc){
+  doc.addEventListener("click",e=>{
+    const b=e.target.closest("[data-flx],[data-flmin],[data-flpip],[data-flabrir]"); if(!b) return;
+    if(b.dataset.flabrir!==undefined){ abrirFlutuante(b.dataset.flabrir); return; }
+    if(b.dataset.flx!==undefined){ fecharFlutuante(); return; }
+    if(b.dataset.flmin!==undefined){ FL.min=!FL.min; salvarFL(); renderFlutuante(); return; }
+    if(b.dataset.flpip!==undefined){ destacarFlutuante(); return; }
+  });
+  doc.addEventListener("input",e=>{
+    if(e.target.id!=="fl-txt") return;
+    const id=FL.id; salvarDoc("item-"+id,{...itemD(id),tipo:"item",nota:e.target.value});
+    const q=document.querySelector(`[data-qitem="${id}"]`); if(q&&document.activeElement!==q) q.value=e.target.value;
+    if(PANE&&PANE.tipo==="item"&&PANE.id===id){ const p=document.getElementById("pnota"); if(p&&document.activeElement!==p) p.value=e.target.value; }
+  });
+  doc.addEventListener("change",e=>{
+    if(e.target.id!=="fl-item") return;
+    flushTudo(); FL.id=e.target.value; salvarFL(); renderFlutuante();
+    const ta=doc.getElementById("fl-txt"); if(ta) ta.focus();
+  });
+}
+ligarFlutuante(document);
+// Arrastar pela barra do bloco (só no computador; no celular ele fica preso embaixo).
+document.addEventListener("pointerdown",e=>{
+  const h=e.target.closest("#flut [data-flarrastar]"); if(!h||e.target.closest("button,select")||innerWidth<=820) return;
+  const el=document.getElementById("flut"), r=el.getBoundingClientRect(), dx=e.clientX-r.left, dy=e.clientY-r.top;
+  e.preventDefault(); h.setPointerCapture(e.pointerId);
+  const mv=ev=>{ FL.x=Math.min(Math.max(8,ev.clientX-dx),innerWidth-r.width-8); FL.y=Math.min(Math.max(8,ev.clientY-dy),innerHeight-r.height-8); el.style.left=FL.x+"px"; el.style.top=FL.y+"px"; };
+  const up=()=>{ h.removeEventListener("pointermove",mv); h.removeEventListener("pointerup",up); h.removeEventListener("pointercancel",up); salvarFL(); };
+  h.addEventListener("pointermove",mv); h.addEventListener("pointerup",up); h.addEventListener("pointercancel",up);
+});
+window.addEventListener("resize",()=>{ if(FL.aberto&&!PIP){ const el=document.getElementById("flut"); if(el) posicionar(el); } });
+// Atualiza o bloco quando a anotação muda em outro campo desta página.
+document.addEventListener("input",e=>{ const t=e.target; if(FL.aberto&&((t.dataset&&t.dataset.qitem===FL.id)||(t.id==="pnota"&&PANE&&PANE.id===FL.id))) setTimeout(sincronizarFlutuante,0); });
+
 /* ============ RENDER + EVENTOS ============ */
 function render(){
   lerHash();
@@ -1222,6 +1344,7 @@ function render(){
   const V={hoje:vHoje,trilha:vTrilha,fases:vFases,portfolio:vPortfolio,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno DIO no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (seu caderno continua salvo neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_dio.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
+  sincronizarFlutuante();
 }
 
 document.addEventListener("click",async e=>{
@@ -1297,7 +1420,7 @@ function ligarBackup(){
 // atualiza "agora" a cada minuto sem atrapalhar a digitação
 setInterval(()=>{ if(!editando() && !PANE) render(); else renderNav(); },60000);
 document.getElementById("sinfo").innerHTML=info("sync");
-render(); setSync();
+render(); setSync(); renderFlutuante();
 conectar();
 </script>
 </body>
