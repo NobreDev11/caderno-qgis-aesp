@@ -8,6 +8,10 @@ Cadernos pessoais de estudo num só site, sem build e sem variáveis de ambiente
 | `/qgis` (`qgis.html`) | Caderno do curso **Uso do QGIS como Estratégia de Segurança Pública** (AESP/CE, Turma 01/2026, Grupo 1, 09 a 18/11/2026). |
 | `/dio` (`dio.html`) | Caderno da **trilha DIO: do zero aos agentes de IA para dados** (42 itens em 7 fases, 1 h por dia desde 09/11/2026). |
 
+## Recursos comuns aos cadernos
+- **Bloco flutuante de anotações:** fica por cima das telas, continua aberto ao trocar de aba; ⧉ solta numa janela por cima de outros apps (Chrome/Edge no computador).
+- **Temporizador (`timer.js`):** Pomodoro (25/5, pausa longa de 15 a cada 4), 52/17, 50/10, 90/20, timer, cronômetro e personalizado. Som, notificação, início automático da próxima etapa. Registra o tempo de foco por dia em docs `tempo-AAAA-MM-DD` (sincronizam e entram no backup); no DIO, meta de 60 min/dia e tempo por item.
+
 O login é compartilhado: entrou em `/`, já está logado nos dois cadernos. Os cadernos também funcionam sem login, salvando só no navegador.
 
 ## Caderno da trilha DIO (`/dio`)

@@ -201,7 +201,8 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
     </div>
     <nav id="nav"></nav>
     <div class="prog" id="prog"></div>
-    <div class="sync"><span id="sinfo"></span><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
+    <div id="tmini" style="margin-top:auto"></div>
+    <div class="sync" style="margin-top:0"><span id="sinfo"></span><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
   </aside>
   <main><div class="wrap" id="view"></div></main>
 </div>
@@ -613,6 +614,7 @@ function vHoje(){
         <button class="btn sm pri" data-hst="ok" data-hid="${a.id}">Concluí este item</button>
         <button class="btn sm" data-item="${a.id}">Abrir item</button>
         <button class="btn sm" data-flabrir="${a.id}">Bloco flutuante</button> ${info("flutuante")}
+        <button class="btn sm" data-tmabrir>⏱ Temporizador</button>
       </div>
     </div>` : `<div class="card"><p class="muted" style="margin:0">Nada pela frente. Parabéns!</p></div>`;
   const prox = a? ITENS.slice(ITENS.indexOf(a)+1).filter(i=>!feito(i)).slice(0,5) : [];
@@ -1222,7 +1224,7 @@ function lerBackup(txt){
   if(j&&j.app==="caderno-qgis-aesp") throw new Error("Esse é um backup do caderno QGIS. Restaure-o na página do QGIS.");
   const docs = j&&j.app==="caderno-dio" ? j.docs : j;
   if(!docs||typeof docs!=="object") throw new Error("Backup vazio ou inválido.");
-  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(item|disc|port|nota|tarefa|mat|mtx)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
+  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(item|disc|port|nota|tarefa|mat|mtx|tempo)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
   if(!Object.keys(ok).length) throw new Error("Não achei anotações nesse arquivo.");
   return {docs:ok, criado:j.criado||null};
 }
@@ -1427,5 +1429,10 @@ document.getElementById("sinfo").innerHTML=info("sync");
 render(); setSync(); renderFlutuante();
 conectar();
 </script>
+<script>
+// Temporizador: meta de 1 h por dia; o tempo de foco soma no item atual da trilha.
+window.TIMER_CFG={ls:"caderno-dio:timer", meta:60, alvo:()=>{ const a=atual(); return a?{id:a.id, nome:a.n+". "+a.nome, rot:"item "+a.n}:null; }};
+</script>
+<script src="/timer.js"></script>
 </body>
 </html>

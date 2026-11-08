@@ -198,7 +198,8 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
     </div>
     <nav id="nav"></nav>
     <div class="prog" id="prog"></div>
-    <div class="sync"><span id="sinfo"></span><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
+    <div id="tmini" style="margin-top:auto"></div>
+    <div class="sync" style="margin-top:0"><span id="sinfo"></span><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
   </aside>
   <main><div class="wrap" id="view"></div></main>
 </div>
@@ -504,7 +505,7 @@ function vHoje(){
       <div class="muted">${DK[foco.k].inst.map(esc).join(" · ")}</div>
       <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida desta aula</label>${info("rapida")}</div>
       <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. Salva sozinho.">${esc(d.nota||"")}</textarea></div>
-      <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button><button class="btn sm" data-flabrir="${foco.id}">Bloco flutuante</button> ${info("flutuante")}</div>
+      <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button><button class="btn sm" data-flabrir="${foco.id}">Bloco flutuante</button> ${info("flutuante")}<button class="btn sm" data-tmabrir>⏱ Temporizador</button></div>
     </div>` : `<div class="card"><p class="muted" style="margin:0">Nenhuma aula pela frente.</p></div>`;
 
   const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
@@ -1083,7 +1084,7 @@ function lerBackup(txt){
   let j; try{ j=JSON.parse(txt); }catch(e){ throw new Error("Esse arquivo não é um backup do caderno (não é JSON)."); }
   const docs = j&&j.app==="caderno-qgis-aesp" ? j.docs : j;
   if(!docs||typeof docs!=="object") throw new Error("Backup vazio ou inválido.");
-  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(aula|disc|nota|tarefa|mat|mtx)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
+  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(aula|disc|nota|tarefa|mat|mtx|tempo)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
   if(!Object.keys(ok).length) throw new Error("Não achei anotações nesse arquivo.");
   return {docs:ok, criado:j.criado||null};
 }
@@ -1288,5 +1289,10 @@ document.getElementById("sinfo").innerHTML=info("sync");
 render(); setSync(); renderFlutuante();
 conectar();
 </script>
+<script>
+// Temporizador: o tempo de foco soma na disciplina da aula atual (ou da próxima).
+window.TIMER_CFG={ls:"caderno-qgis-aesp:timer", meta:null, alvo:()=>{ const a=focoAula(); return a?{id:a.k, nome:nomeDisc(a.k), rot:"disciplina atual"}:null; }};
+</script>
+<script src="/timer.js"></script>
 </body>
 </html>
