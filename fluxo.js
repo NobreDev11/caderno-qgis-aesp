@@ -76,7 +76,7 @@ new MutationObserver(()=>{ if(document.querySelector(".fx-svg:not([data-ok])")) 
 let ED=null; // {alvo, idx (bloco editado ou null), cursor, m (modelo) | null, codigo, modoCodigo, liga}
 function abrir(alvo, idx, cursor){
   const txt=alvo.get(), bs=blocos(txt);
-  if(idx==null && cursor!=null){ const b=bs.findIndex(b=>cursor>=b.ini&&cursor<=b.fim); if(b>=0) idx=b; }
+  if(idx==null && cursor!=null){ const b=bs.findIndex(b=>cursor>b.ini&&cursor<b.fim); if(b>=0) idx=b; }
   let m=null, codigo="";
   if(idx!=null&&bs[idx]){ m=bs[idx].modelo; codigo=bs[idx].codigo; }
   else m=JSON.parse(JSON.stringify(MODELOS.passos.m));
@@ -223,5 +223,5 @@ const css=`
 const st=document.createElement("style"); st.textContent=css; document.head.appendChild(st);
 const host=document.createElement("div"); host.id="fxHost"; document.body.appendChild(host);
 if(typeof AJUDA==="object") AJUDA.fluxograma={t:"Fluxograma na anotação",o:"Desenha um fluxograma dentro da anotação: etapas, decisões e setas.",c:"Clique em Fluxograma. Escolha um modelo ou adicione etapas (Etapa, Decisão, Comando, Início/Fim); com “ligar à anterior” marcado, cada nova etapa já ganha uma seta. Em Ligações, crie setas extras e escreva rótulos como Sim/Não. A prévia aparece ao lado. Salve: o fluxograma entra na anotação e aparece desenhado em Visualizar, onde também há o botão para editar. Exportado em Markdown, o GitHub desenha o mesmo fluxograma."};
-window.FLUXO={renderizar, blocos, paraMermaid};
+window.FLUXO={renderizar, blocos, paraMermaid, abrir};
 })();

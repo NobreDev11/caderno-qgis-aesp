@@ -18,14 +18,18 @@
     ["cod","&lt;/&gt;","Código (trecho ou bloco)"],
     ["lnk","🔗","Link (Ctrl+K)"],
     ["div","―","Linha divisória"],
+    ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
   ];
   const CSS=`
-.fmt{display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
+.fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
 .fmt::-webkit-scrollbar{display:none}
 .fmt button{flex:none;min-width:30px;height:28px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--ink,inherit);cursor:pointer;font-size:13.5px;line-height:1}
 .fmt button:hover{background:var(--accent-soft)}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
+.fmt [data-fmt=flx]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
+.fmt .fmt-tx{font-size:12.5px;font-weight:600}
+@media (max-width:820px){.fmt .fmt-tx{display:none}.fmt{flex-wrap:wrap}}
 .fmt .fmt-mk{background:#fde68a;color:#3b2f00;padding:0 3px;border-radius:3px}
 .flut .fmt{margin:0;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:3px 6px}
 .md mark{background:#fde68a;color:#3b2f00;padding:0 2px;border-radius:3px}
@@ -40,8 +44,9 @@
   const st=document.createElement("style"); st.id="fmt-css"; st.textContent=CSS; document.head.appendChild(st);
 
   function barra(doc){
+    const pip=doc!==document;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.map(([k,h,t],i)=>(i===3||i===7?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&k==="flx")).map(([k,h,t],i)=>(i===3||i===7||k==="flx"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){
@@ -120,10 +125,20 @@
     const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":"";
     trocar(ta,a,ta.selectionEnd,antes+"\n---\n\n");
   }
+  // Abre o editor de fluxograma (fluxo.js) ligado a esta caixa de texto.
+  function fluxograma(ta){
+    if(!window.FLUXO||!window.FLUXO.abrir){ return; }
+    const sel=ta.id?"#"+ta.id:ta.dataset.dnota?`textarea[data-dnota="${ta.dataset.dnota}"]`:null;
+    const achar=()=>ta.isConnected?ta:(sel&&document.querySelector(sel));
+    window.FLUXO.abrir({ ta:achar,
+      get:()=>{ const t=achar(); return t?t.value:ta.value; },
+      set:v=>{ const t=achar(); if(!t) return; t.value=v; t.dispatchEvent(new Event("input",{bubbles:true})); }
+    }, null, ta.selectionStart);
+  }
   function aplicar(ta,k){
     ({neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
-      cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta)})[k]();
+      cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta), flx:()=>fluxograma(ta)})[k]();
   }
   // Enter continua a lista; Enter numa linha de lista vazia encerra a lista.
   function enter(ta,e){
