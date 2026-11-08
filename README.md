@@ -11,6 +11,7 @@ Cadernos pessoais de estudo num só site, sem build e sem variáveis de ambiente
 ## Recursos comuns aos cadernos
 - **Bloco flutuante de anotações:** fica por cima das telas, continua aberto ao trocar de aba; ⧉ solta numa janela por cima de outros apps (Chrome/Edge no computador).
 - **Temporizador (`timer.js`):** Pomodoro (25/5, pausa longa de 15 a cada 4), 52/17, 50/10, 90/20, timer, cronômetro e personalizado. Som, notificação, início automático da próxima etapa. Registra o tempo de foco por dia em docs `tempo-AAAA-MM-DD` (sincronizam e entram no backup); no DIO, meta de 60 min/dia e tempo por item.
+- **Fluxograma (`fluxo.js` + `vendor/mermaid.min.js`, Mermaid 11.12.0, MIT):** botão "Fluxograma" nas anotações dos itens/aulas e nas notas do caderno. Editor visual (etapas, decisões, comandos, ligações com rótulo, modelos prontos, direção) ou código Mermaid. Grava na própria anotação como bloco ```mermaid (com linha `%% fluxo` para reabrir no editor); o Visualizar desenha o diagrama com botão "Editar fluxograma".
 
 O login é compartilhado: entrou em `/`, já está logado nos dois cadernos. Os cadernos também funcionam sem login, salvando só no navegador.
 

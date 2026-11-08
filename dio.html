@@ -532,11 +532,19 @@ const promptDe = it => (itemD(it.id).prompt||"").trim() || promptPadrao(it);
 /* ============ UTIL ============ */
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function md(src){
-  const linhas=String(src||"").split("\n"); let out="", lista=false;
+  const linhas=String(src||"").split("\n"); let out="", lista=false, nfx=0;
   const inl=t=>esc(t).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
-  for(const l of linhas){
+  for(let i=0;i<linhas.length;i++){ const l=linhas[i];
+    // bloco de código; ```mermaid vira fluxograma desenhado (fluxo.js)
+    const cerca=l.match(/^```\s*([\w-]*)\s*$/);
+    if(cerca){ let j=i+1; const cod=[]; while(j<linhas.length && !/^```\s*$/.test(linhas[j])){ cod.push(linhas[j]); j++; }
+      if(lista){out+="</ul>";lista=false;}
+      const c=cod.join("\n");
+      if(cerca[1].toLowerCase()==="mermaid"){ out+=`<div class="fx"><div class="fx-svg" data-src="${encodeURIComponent(c)}"><p class="muted">Desenhando fluxograma…</p></div><div class="row"><button class="btn sm" data-fxeditar="${nfx}">Editar fluxograma</button></div></div>`; nfx++; }
+      else out+=`<pre><code>${esc(c)}</code></pre>`;
+      i=j; continue; }
     const m=l.match(/^\s*[-*]\s+(.*)$/);
     if(m){ if(!lista){out+="<ul>";lista=true;} out+="<li>"+inl(m[1].replace(/^\[ \]\s*/,"☐ ").replace(/^\[x\]\s*/i,"☑ "))+"</li>"; continue; }
     if(lista){out+="</ul>";lista=false;}
@@ -815,7 +823,7 @@ function renderPane(){
           ${PANE.editP?`<textarea id="pprompt" style="min-height:260px;margin-top:8px;font:13px/1.5 var(--mono)">${esc(promptDe(a))}</textarea><div class="row" style="margin-top:6px"><button class="btn sm" data-preset>Voltar ao prompt padrão</button></div>`:""}
         </div>
         <div><label class="lb" for="prepo">Link do repositório ou da entrega (opcional) ${info("portfolio")}</label><input type="text" id="prepo" inputmode="url" placeholder="https://github.com/…" value="${esc(d.repo||"")}"></div>
-        <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações (aceita # título, - lista, **negrito**, links)</span>${info("markdown")}</div><div class="row"><button class="btn sm" data-flabrir="${a.id}" title="Abre as anotações num bloco que fica por cima das outras telas">Destacar</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div></div>
+        <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações (aceita # título, - lista, **negrito**, links)</span>${info("markdown")}</div><div class="row"><button class="btn sm" data-flabrir="${a.id}" title="Abre as anotações num bloco que fica por cima das outras telas">Destacar</button><button class="btn sm" data-fxnovo title="Inserir um fluxograma na anotação">Fluxograma</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div></div>
         ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<textarea id="pnota" aria-label="Anotações" placeholder="O que aprendi, comandos, trechos de código, dúvidas…">${esc(d.nota||"")}</textarea>`}
         <div class="row" style="justify-content:space-between">
           <button class="btn sm" ${i>0?`data-item="${ITENS[i-1].id}"`:"disabled"}>← Item anterior</button>
@@ -829,7 +837,7 @@ function renderPane(){
         <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
       <div class="body">
         <div class="row"><label class="lb" for="ndisc" style="margin:0">Fase</label><select id="ndisc" style="width:auto;flex:1;min-width:0"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${n.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select>
-          <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div>
+          <button class="btn sm" data-fxnovo title="Inserir um fluxograma na nota">Fluxograma</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div>
         ${PANE.prev? `<div class="md">${md(n.texto)}</div>` : `<textarea id="ntxt" placeholder="# Passo a passo&#10;- git init&#10;- **Atenção:** …">${esc(n.texto)}</textarea>`}
         <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">${S.docs[PANE.id]?"Salva automaticamente":"Será salva ao digitar"}</span><button class="btn sm danger" data-delnota>Apagar nota</button></div>
       </div></section>`;
@@ -1434,5 +1442,19 @@ conectar();
 window.TIMER_CFG={ls:"caderno-dio:timer", meta:60, alvo:()=>{ const a=atual(); return a?{id:a.id, nome:a.n+". "+a.nome, rot:"item "+a.n}:null; }};
 </script>
 <script src="/timer.js"></script>
+<script>
+// Fluxogramas: a anotação aberta no painel (item ou nota) é onde o fluxograma é inserido/editado.
+window.FLUXO_ALVO=()=>{
+  if(!PANE) return null;
+  if(PANE.tipo==="item"){ const id=PANE.id; return {ta:()=>document.getElementById("pnota"),
+    get:()=>{ const ta=document.getElementById("pnota"); return ta?ta.value:(itemD(id).nota||""); },
+    set:v=>{ salvarDoc("item-"+id,{...itemD(id),tipo:"item",nota:v},50); renderPane(); sincronizarFlutuante(); }}; }
+  if(PANE.tipo==="nota"){ const id=PANE.id; return {ta:()=>document.getElementById("ntxt"),
+    get:()=>{ const ta=document.getElementById("ntxt"); return ta?ta.value:((S.docs[id]||{}).texto||""); },
+    set:v=>{ const ta=document.getElementById("ntxt"); if(ta){ ta.value=v; salvarNotaDoForm(); } else salvarDoc(id,{...(S.docs[id]||{tipo:"nota",criado:Date.now()}),tipo:"nota",texto:v},50); renderPane(); }}; }
+  return null;
+};
+</script>
+<script src="/fluxo.js"></script>
 </body>
 </html>
