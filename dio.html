@@ -1342,7 +1342,7 @@ function render(){
   lerHash();
   renderNav();
   const V={hoje:vHoje,trilha:vTrilha,fases:vFases,portfolio:vPortfolio,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
-  document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno DIO no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (seu caderno continua salvo neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_dio.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
+  document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno DIO no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (seu caderno continua salvo neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_dio.sql</span> → Run → recarregue esta página.</p><div class="row" style="margin-top:8px"><button class="btn sm pri" data-copiasql>Copiar SQL</button><a class="btn sm" href="https://supabase.com/dashboard/project/ytionrwdwdmcxbdgqnkt/sql/new" target="_blank" rel="noopener">Abrir o SQL Editor</a></div></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
   sincronizarFlutuante();
 }
@@ -1371,8 +1371,12 @@ document.addEventListener("click",async e=>{
   }
   if(ds.tkdel!==undefined){ apagarDoc(ds.tkdel); render(); return; }
 });
-document.addEventListener("click",e=>{
+document.addEventListener("click",async e=>{
   if(e.target.id==="sbtn"){ if(S.uid) sair(); else abrirLogin(); return; }
+  if(e.target.closest("[data-copiasql]")){
+    try{ const r=await fetch("/supabase/caderno_dio.sql"); if(!r.ok) throw 0; await copiar(await r.text(),"SQL copiado. Cole no SQL Editor do Supabase e clique em Run."); }
+    catch(x){ toast("Não consegui buscar o SQL. Abra supabase/caderno_dio.sql no GitHub e copie de lá."); }
+  }
 });
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape" && PANE){ flushTudo(); fecharPane(); }
