@@ -179,6 +179,8 @@ document.addEventListener("click",async e=>{
 document.addEventListener("submit",e=>{ if(e.target.id==="flogin"){ e.preventDefault(); entrar(); } });
 
 (async function iniciar(){
+  // Quem entrou por link pessoal de convidado vai direto para o caderno do QGIS.
+  try{ if(localStorage.getItem("caderno-qgis-convite") && !localStorage.getItem("caderno-qgis-auth")){ location.replace("/qgis"); return; } }catch(e){}
   if(!window.supabase){ telaLogin("Não foi possível carregar o login. Confira a internet e recarregue a página."); return; }
   sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
   try{ sessao=(await sb.auth.getSession()).data.session; }catch(e){}

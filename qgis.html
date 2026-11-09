@@ -192,7 +192,7 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
 <div class="app">
   <aside>
     <div class="brand">
-      <p style="margin:0 0 6px"><a href="/" style="color:var(--accent);font-size:13px;text-decoration:none">← Cursos</a></p>
+      <p style="margin:0 0 6px" id="voltarCursos"><a href="/" style="color:var(--accent);font-size:13px;text-decoration:none">← Cursos</a></p>
       <h1>Uso do QGIS como Estratégia de Segurança Pública</h1>
       <p>AESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11</p>
     </div>
@@ -253,7 +253,15 @@ function statusAula(a){ const t=Date.now(); const i=msDe(a.data,a.ini), f=msDe(a
 const SUPA_URL="https://ytionrwdwdmcxbdgqnkt.supabase.co";
 const SUPA_KEY="sb_publishable_MFrDp-4qr0yA2vyX1UJWOw_7RN7rdMX"; // chave publicável (pública por natureza)
 const S = { faltaSQL:false, docs:{}, modo:"local", push:null, sb:null, uid:null, email:"", erro:false };
-const LS="caderno-qgis-aesp:v1";
+// Link de convidado (/qgis?c=CODIGO): caderno separado, sincronizado por código, sem conta do CBMCE.
+// ?c=0 esquece o link neste aparelho. Sem ?c, o link guardado só vale se o aparelho não tiver login do dono.
+const CONVITE=(()=>{ let c=""; try{
+  c=new URLSearchParams(location.search).get("c")||"";
+  if(c==="0"){ localStorage.removeItem("caderno-qgis-convite"); return ""; }
+  if(/^[A-Za-z0-9]{20,64}$/.test(c)) localStorage.setItem("caderno-qgis-convite",c);
+  else c=localStorage.getItem("caderno-qgis-auth") ? "" : (localStorage.getItem("caderno-qgis-convite")||"");
+}catch(e){} return /^[A-Za-z0-9]{20,64}$/.test(c)?c:""; })();
+const LS= CONVITE ? "caderno-qgis-conv:"+CONVITE.slice(0,10) : "caderno-qgis-aesp:v1";
 function lsLoad(){ try{ const j=localStorage.getItem(LS); if(j) S.docs=JSON.parse(j)||{}; }catch(e){} }
 function lsSave(){
   try{ localStorage.setItem(LS, JSON.stringify(S.docs)); return; }catch(e){}
@@ -304,11 +312,12 @@ function mesclar(remoto, inicial){
 function setSync(){
   const dot=document.getElementById("sdot"), tx=document.getElementById("stxt"), bt=document.getElementById("sbtn");
   const np=Object.keys(pend).length+Object.values(writing).filter(Boolean).length;
-  if(!navigator.onLine && (S.uid||S.esperaOnline)){ dot.className="dot loc"; tx.textContent="Sem internet · salvo neste aparelho, envia ao voltar"+(np?" ("+np+")":""); }
-  else if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? (S.erro?"Sem internet: salvo aqui, envio depois":"Salvando…") : "Sincronizado"+(S.email?" · "+S.email:""); }
+  if(S.convInvalido){ dot.className="dot loc"; tx.textContent="Link desativado ou inválido · salvo só neste aparelho"; }
+  else if(!navigator.onLine && (S.uid||S.esperaOnline||S.conv)){ dot.className="dot loc"; tx.textContent="Sem internet · salvo neste aparelho, envia ao voltar"+(np?" ("+np+")":""); }
+  else if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? (S.erro?"Sem internet: salvo aqui, envio depois":"Salvando…") : "Sincronizado"+(S.conv?" · "+(S.nomeConv||"link pessoal"):(S.email?" · "+S.email:"")); }
   else if(S.modo==="conectando"){ dot.className="dot loc"; tx.textContent="Conectando…"; }
   else { dot.className="dot loc"; tx.textContent="Salvo só neste navegador"; }
-  if(bt){ bt.hidden=!S.sb; bt.textContent= S.uid?"Sair":"Entrar"; }
+  if(bt){ bt.hidden=!S.sb||!!S.conv; bt.textContent= S.uid?"Sair":"Entrar"; }
 }
 
 /* ---- Supabase (site na Vercel) ---- */
@@ -418,7 +427,33 @@ async function conectarClaude(){
     setSync();
   }, ()=>{ clearTimeout(tm); S.modo="local"; S.push=null; setSync(); });
 }
-function conectar(){ if(window.claude&&window.claude.use) conectarClaude(); else conectarSupa(); }
+function conectar(){ if(CONVITE) conectarConvite(); else if(window.claude&&window.claude.use) conectarClaude(); else conectarSupa(); }
+
+/* ---- Convidado (link pessoal) ---- */
+async function conectarConvite(){
+  if(!window.supabase){ S.modo="local"; setSync(); return; }
+  S.sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:"caderno-qgis-conv-auth"}});
+  S.conv=true; S.modo="conectando"; setSync();
+  const rpc=(f,a)=>S.sb.rpc(f,{p_token:CONVITE,...a});
+  S.push=async(id,body)=>{ const {error}=await rpc("caderno_conv_salvar",{p_id:id,p_body:body,p_upd:body.upd||Date.now()}); if(error) throw error; };
+  let puxando=false;
+  S.pull=async(inicial)=>{
+    if(puxando) return; puxando=true;
+    try{
+      if(!S.nomeConv){ const {data,error}=await rpc("caderno_conv_info",{}); if(error) throw error; if(!data){ S.convInvalido=true; S.push=null; S.pull=null; S.modo="local"; puxando=false; setSync(); render(); return; } S.nomeConv=data; }
+      inicial = inicial || !S.inicialOk;
+      const desde = (!inicial && S.desde) ? new Date(Date.parse(S.desde)-10000).toISOString() : null;
+      const {data,error}=await rpc("caderno_conv_ler",{p_desde:desde});
+      if(error) throw error;
+      const remoto={}; (data||[]).forEach(r=>{ remoto[r.id]=r.body; if(!S.desde||r.updated_at>S.desde) S.desde=r.updated_at; });
+      mesclar(remoto, !!inicial); S.inicialOk=true;
+      S.modo="nuvem"; S.erro=false;
+    }catch(e){ if(inicial){ S.modo="nuvem"; S.erro=true; } }
+    puxando=false; setSync();
+  };
+  await S.pull(true);
+  if(!S._intervalo) S._intervalo=setInterval(()=>{ if(S.pull&&document.visibilityState==="visible") S.pull(); },60000);
+}
 
 /* ============ ACESSO AOS DADOS ============ */
 const aulaD = id => S.docs["aula-"+id] || {};
@@ -659,7 +694,7 @@ function vBackup(){
   return `<div><h2>Exportar e backup ${info("backup")}</h2><p class="sub">Guarde uma cópia das suas anotações ou leve o caderno para o Word e o Docs.</p></div>
   <div class="card" style="border-left:6px solid ${nuvem?"var(--ok)":"var(--warn)"}">
     <h3>${nuvem?"Suas notas estão na nuvem":"Suas notas estão só neste navegador"}</h3>
-    <p style="margin:6px 0">${nuvem?`Sincronizadas com a conta <b>${esc(S.email)}</b>: aparecem em qualquer aparelho em que você entrar. O backup abaixo é uma garantia extra.`:`Se você limpar os dados do navegador, formatar o computador ou trocar de aparelho, elas somem. <b>Entre na conta</b> (botão Entrar) para guardar na nuvem, ou baixe um backup.`}</p>
+    <p style="margin:6px 0">${nuvem?`${S.conv?"Sincronizadas pelo seu link pessoal":"Sincronizadas com a conta <b>"+esc(S.email)+"</b>"}: aparecem em qualquer aparelho em que você entrar. O backup abaixo é uma garantia extra.`:`Se você limpar os dados do navegador, formatar o computador ou trocar de aparelho, elas somem. <b>Entre na conta</b> (botão Entrar) para guardar na nuvem, ou baixe um backup.`}</p>
     <p class="muted" style="margin:0;font-size:13.5px">Agora: ${txtCont(c)}.<br>Último backup baixado neste aparelho: ${ult?new Date(ult).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"}):"nunca"}.</p>
   </div>
   <div class="grid2">
@@ -791,8 +826,8 @@ function paneAddMat(){
   const P=PANE; const abas=[["arquivo","Arquivo (PDF/texto)"],["fotos","Fotos"],["link","Link"],["texto","Colar texto"]];
   const campo={
     arquivo:`<label class="lb" for="am-f">PDF, .txt ou .md (até 25 MB)</label><input type="file" id="am-f" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown">`,
-    fotos:`<label class="lb" for="am-i">Fotos de slides, quadro ou apostila (até 8)</label><input type="file" id="am-i" accept="image/*" multiple>${logado()?"":'<p class="muted" style="font-size:12.5px;margin:6px 0 0">Sem login as fotos ficam só neste navegador. Entre para guardá-las na nuvem.</p>'}`,
-    link:`<label class="lb" for="am-u">Endereço (site, PDF, Google Drive/Docs/Slides, YouTube)</label><input type="text" id="am-u" inputmode="url" placeholder="https://…">${logado()?"":'<p class="fl-f" style="font-size:12.5px;margin:6px 0 0">Para importar links, entre na sua conta (botão Entrar).</p>'}`,
+    fotos:`<label class="lb" for="am-i">Fotos de slides, quadro ou apostila (até 8)</label><input type="file" id="am-i" accept="image/*" multiple>${logado()||CONVITE?"":'<p class="muted" style="font-size:12.5px;margin:6px 0 0">Sem login as fotos ficam só neste navegador. Entre para guardá-las na nuvem.</p>'}`,
+    link:`<label class="lb" for="am-u">Endereço (site, PDF, Google Drive/Docs/Slides, YouTube)</label><input type="text" id="am-u" inputmode="url" placeholder="https://…">${logado()?"":(CONVITE?'<p class="fl-f" style="font-size:12.5px;margin:6px 0 0">No link pessoal, importar link não está disponível: copie o texto do site e use “Colar texto”.</p>':'<p class="fl-f" style="font-size:12.5px;margin:6px 0 0">Para importar links, entre na sua conta (botão Entrar).</p>')}`,
     texto:`<label class="lb" for="am-t">Texto do material</label><textarea id="am-t" style="min-height:220px" placeholder="Cole aqui o conteúdo de um slide, apostila, mensagem do grupo…"></textarea>`,
   }[P.aba];
   return `<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Novo material">
@@ -835,7 +870,7 @@ async function salvarMaterial(){
       }
     } else if(P.aba==="link"){
       const u=document.getElementById("am-u").value.trim(); if(!/^https?:\/\//i.test(u)) throw new Error("Cole um link começando com http.");
-      if(!logado()) throw new Error("Entre na sua conta para importar links, ou cole o texto.");
+      if(!logado()) throw new Error(CONVITE?"Importar link não está disponível no link pessoal. Abra o site, copie o texto e use “Colar texto”.":"Entre na sua conta para importar links, ou cole o texto.");
       meta.url=u; status("Buscando o link…");
       const r=await api("/api/link",{url:u});
       if(r.tipo==="video"){ titulo=titulo||"Vídeo"; status(""); toast("Vídeo salvo como link. Para resumir, cole a transcrição em “Texto do material”."); }
@@ -887,7 +922,7 @@ function paneMat(){
           <button class="btn sm" data-mcopiar="resumo">Copiar pedido p/ Claude</button><button class="btn sm" data-mcolar="resumo">Colar resposta</button>
           ${m.resumo?`<button class="btn sm" data-meditr>${P.editR?"Ver":"Editar"}</button>`:""}</div></div>
         ${blocoColar("resumo")}
-        ${m.resumo? (P.editR?`<textarea id="mt-r" style="min-height:280px;margin-top:8px">${esc(m.resumo)}</textarea>`:`<div class="md" style="margin-top:6px">${md(m.resumo)}</div>`) : `<p class="empty">${podeIA?"Clique em “Gerar resumo”.":(IA_OK===false?"Geração automática desligada: use “Copiar pedido”, cole no app do Claude e traga a resposta em “Colar resposta”.":"")}${!logado()&&IA_OK?" Entre na conta para gerar automaticamente.":""}</p>`}
+        ${m.resumo? (P.editR?`<textarea id="mt-r" style="min-height:280px;margin-top:8px">${esc(m.resumo)}</textarea>`:`<div class="md" style="margin-top:6px">${md(m.resumo)}</div>`) : `<p class="empty">${podeIA?"Clique em “Gerar resumo”.":(IA_OK===false?"Geração automática desligada: use “Copiar pedido”, cole no app do Claude e traga a resposta em “Colar resposta”.":"")}${!logado()&&IA_OK&&!CONVITE?" Entre na conta para gerar automaticamente.":""}${CONVITE?"Use “Copiar pedido p/ Claude”, cole no app do Claude e traga a resposta em “Colar resposta”.":""}</p>`}
       </div>
       <div class="card">
         <div class="row" style="justify-content:space-between"><h3>Questões ${info("matq")} <span class="mono muted" style="font-size:13px">${st.total?st.acertos+"/"+st.feitas+" acertos · "+st.total+" no total":""}</span></h3>
@@ -1075,6 +1110,7 @@ const AJUDA={
   exportmd:{t:"Exportar para ler",o:"Todo o caderno em texto organizado por disciplina (formato Markdown).",c:"Baixe o .md ou copie e cole no Word, Google Docs, Obsidian ou Notion para imprimir ou revisar."},
   sql:{t:"Configuração pendente",o:"A tabela do caderno ainda não existe no Supabase do Checklist.",c:"No Supabase do Checklist: SQL Editor → cole o conteúdo de supabase/caderno_notas.sql (do repositório caderno-qgis-aesp) → Run. Depois recarregue esta página."},
 };
+if(CONVITE) AJUDA.sync={t:"Onde suas notas estão salvas",o:"Este é um caderno pessoal aberto pelo seu link. Ponto verde: sincronizado na nuvem; abrindo o mesmo link em outro aparelho, as notas aparecem lá. Ponto laranja: salvo só neste aparelho (sem internet).",c:"Guarde o link: ele é a sua chave. Não compartilhe, porque quem tiver o link vê e edita o seu caderno. Sem internet o app continua salvando e envia depois."};
 const info = k => AJUDA[k]?`<button type="button" class="info" data-info="${k}" aria-label="Ajuda: ${esc(AJUDA[k].t)}">i</button>`:"";
 function fecharPop(){ document.querySelector(".pop")?.remove(); }
 function abrirPop(btn){
@@ -1314,6 +1350,7 @@ function ligarBackup(){
 // atualiza "agora" a cada minuto sem atrapalhar a digitação
 setInterval(()=>{ if(!editando() && !PANE) render(); else renderNav(); },60000);
 document.getElementById("sinfo").innerHTML=info("sync");
+if(CONVITE){ const v=document.getElementById("voltarCursos"); if(v) v.hidden=true; }
 render(); setSync(); renderFlutuante();
 conectar();
 </script>

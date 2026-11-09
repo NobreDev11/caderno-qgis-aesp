@@ -48,6 +48,12 @@ Página estática única (`qgis.html`).
 - Apagar uma nota ou tarefa grava `apagado: true` (para o apagamento chegar aos outros aparelhos).
 - Conflitos: vence a versão mais recente (`upd`).
 
+### Link pessoal de convidado (`/qgis?c=CODIGO`)
+- Caderno QGIS separado para um colega, sem conta no Supabase do CBMCE. Sincroniza pelo código do link via funções `caderno_conv_info/ler/salvar` (SQL em `supabase/caderno_convites.sql`; tabelas sem acesso direto, só o hash sha256 do código fica no banco).
+- O código fica guardado no aparelho do colega (`/` e `/qgis` abrem direto no caderno dele). Num aparelho com login do dono, o link guardado é ignorado se a URL não tiver `?c=`. `?c=0` esquece o link no aparelho.
+- No convidado não há: IA automática (usa copiar pedido/colar resposta), importar link, imagens nas anotações, PDF guardado na nuvem (o texto é salvo). Fotos de material sincronizam dentro da nota.
+- Novo convite: gerar código (20+ letras/números), inserir o sha256 em `caderno_convites`. Desativar: `ativo = false`.
+
 ## Funções de servidor (`api/`)
 - `status.js`: diz se a geração automática está ligada.
 - `ia.js`: gera resumo/questões (exige login admin). Com `curso: "dio"` usa os pedidos de `prompts-dio.js`; sem esse campo, os do QGIS. Variáveis: `ANTHROPIC_API_KEY` (obrigatória para o automático), `ANTHROPIC_MODEL` (opcional, padrão `claude-sonnet-5-5`).
