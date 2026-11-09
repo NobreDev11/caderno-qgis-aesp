@@ -30,15 +30,21 @@
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
 .fmt [data-fmt=flx],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
-.fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden],.fx-tira[hidden]{display:none!important}
-.fx-tira{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.fx-tira:empty{display:none}
-.fx-mini{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px;max-width:100%;display:flex;flex-direction:column;gap:6px}
-.fx-mini .fx-svg{display:flex;justify-content:center;overflow:auto}
-.fx-mini .fx-svg svg{max-width:100%;max-height:260px;height:auto}
-.fx-mini-b{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--muted)}
-.fx-mini-b button{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:7px;padding:3px 10px;cursor:pointer;font:inherit;font-size:12.5px}
-.fmt-cheia .fx-tira{flex:none;max-height:40%;overflow:auto}
+.fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
+.fx-comp{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:4px 0;min-height:140px;cursor:text}
+.fx-comp:focus-within{outline:2px solid var(--accent);outline-offset:-1px}
+textarea.fx-seg{display:block;width:100%;box-sizing:border-box;border:0!important;outline:0!important;background:transparent!important;resize:none!important;min-height:1.9em!important;height:auto;overflow:hidden;padding:4px 12px!important;margin:0;flex:none!important;font:inherit;line-height:1.55;color:inherit}
+textarea.fx-seg:last-child{flex:1 0 auto!important;min-height:3.2em!important}
+.fx-bloco{margin:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px;display:flex;flex-direction:column;gap:6px;cursor:default}
+.fx-bloco .fx-svg{display:flex;justify-content:center;overflow:auto}
+.fx-bloco .fx-svg svg{max-width:100%;max-height:340px;height:auto}
+.fx-bloco-b{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:12.5px;color:var(--muted)}
+.fx-bloco-b span{margin-right:auto}
+.fx-bloco-b button{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:7px;padding:3px 10px;cursor:pointer;font:inherit;font-size:12.5px}
+.fx-bloco-b button.fx-rm{color:var(--bad,#b3261e)}
+.fx-comp[hidden]{display:none!important}
+.fmt-cheia .fx-comp{flex:1;min-height:0;overflow:auto}
+.fmt-cheia textarea.fx-seg{font-size:16.5px;line-height:1.7;padding:6px 16px!important}
 .fmt-cheia{position:fixed;inset:0;z-index:38;background:var(--bg);display:flex;flex-direction:column}
 .fmt-cheia header{display:flex;align-items:center;gap:10px;padding:10px max(16px,calc((100% - 900px)/2));border-bottom:1px solid var(--line);background:var(--surface);flex:none}
 .fmt-cheia header .fc-t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -80,24 +86,70 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       const p=ta.previousElementSibling; if(p&&p.classList.contains("fmt")) return;
       ta.parentNode.insertBefore(barra(ta.ownerDocument),ta);
       if(ta.ownerDocument===document){
-        const tira=document.createElement("div"); tira.className="fx-tira"; ta.after(tira); ta._tira=tira;
-        // blocos ```mermaid antigos viram linha curta + doc (o desenho aparece aqui embaixo)
+        // blocos ```mermaid antigos viram linha curta + doc (o desenho aparece no lugar)
         if(window.FLUXO&&FLUXO.converter&&/```mermaid/.test(ta.value)){ const nv=FLUXO.converter(ta.value); if(nv!==ta.value){ ta.value=nv; ta.dispatchEvent(new Event("input",{bubbles:true})); } }
-        atualizarTira(ta);
+        montar(ta);
       }
     });
   }
-  // Desenho dos fluxogramas da anotação, logo abaixo da caixa de texto.
-  function atualizarTira(ta){
-    const tira=ta._tira; if(!tira||!window.FLUXO) return;
-    const bs=FLUXO.blocos(ta.value), chave=bs.map(b=>b.fx||b.codigo).join("|")+"#"+bs.map(b=>b.codigo.length).join(",");
-    if(tira.dataset.k===chave) return; tira.dataset.k=chave;
-    tira.innerHTML=bs.map((b,i)=>`<div class="fx-mini">${b.falta?'<p class="muted" style="margin:0;font-size:13px">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>':`<div class="fx-svg" data-src="${encodeURIComponent(b.codigo)}"><p class="muted" style="margin:0;font-size:13px">Desenhando fluxograma…</p></div>`}<div class="fx-mini-b"><span>Fluxograma ${bs.length>1?i+1:""}</span><button type="button" data-fxtira="${i}">Editar</button></div></div>`).join("");
+  /* ---- Editor em blocos: quando a anotação tem fluxograma, o texto vira trechos editáveis e o
+     fluxograma aparece DESENHADO no ponto onde foi inserido. A caixa original continua sendo a fonte
+     (fica escondida) e recebe o texto completo a cada digitação, então o salvamento do app não muda. */
+  const RE_LFX=/^\s*!\[[^\]\n]*\]\(fx:([A-Za-z0-9_-]+)\)\s*$/;
+  const temFx = v => /!\[[^\]\n]*\]\(fx:[A-Za-z0-9_-]+\)/.test(v);
+  function partes(v){
+    const out=[]; let buf=[];
+    for(const l of String(v).split("\n")){ const m=l.match(RE_LFX); if(m){ out.push({t:"txt",v:buf.join("\n")}); buf=[]; out.push({t:"fx",id:m[1],linha:l.trim()}); } else buf.push(l); }
+    out.push({t:"txt",v:buf.join("\n")}); return out;
   }
-  let _tiraT=null;
-  document.addEventListener("input",e=>{ const ta=e.target; if(!ta._tira) return; clearTimeout(_tiraT); _tiraT=setTimeout(()=>atualizarTira(ta),350); });
-  document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-fxtira]"); if(!b) return;
-    const ta=b.closest(".fx-tira").previousElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return; fluxograma(ta, parseInt(b.dataset.fxtira,10)); });
+  function serializar(comp){
+    const ps=[]; for(const el of comp.children){ if(el.classList.contains("fx-seg")){ if(el.value!=="") ps.push(el.value); } else if(el.dataset.linha) ps.push(el.dataset.linha); }
+    return ps.join("\n");
+  }
+  function ajustar(seg){ seg.style.height="auto"; seg.style.height=seg.scrollHeight+"px"; }
+  function montar(ta){
+    const velho=ta._comp;
+    if(!temFx(ta.value)){ if(velho){ velho.remove(); ta._comp=null; ta.hidden=false; } return; }
+    const comp=document.createElement("div"); comp.className="fx-comp"; comp._ta=ta;
+    const bs=window.FLUXO?FLUXO.blocos(ta.value):[]; let nfx=0;
+    for(const p of partes(ta.value)){
+      if(p.t==="txt"){ const seg=document.createElement("textarea"); seg.className="fx-seg"; seg.rows=1; seg.value=p.v; seg.setAttribute("aria-label","Texto da anotação"); seg.placeholder=comp.children.length?"":(ta.placeholder||""); comp.appendChild(seg); }
+      else { const b=bs.filter(x=>x.fx)[nfx], idx=bs.indexOf(b); nfx++;
+        const d=document.createElement("div"); d.className="fx-bloco"; d.dataset.linha=p.linha; d.dataset.idx=idx;
+        d.innerHTML=(b&&!b.falta?`<div class="fx-svg" data-src="${encodeURIComponent(b.codigo)}"><p class="muted" style="margin:0;font-size:13px">Desenhando fluxograma…</p></div>`:'<p class="muted" style="margin:0;font-size:13px">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>')+
+          `<div class="fx-bloco-b"><span>Fluxograma</span><button type="button" data-fxb="editar">Editar</button><button type="button" class="fx-rm" data-fxb="tirar">Remover</button></div>`;
+        comp.appendChild(d); }
+    }
+    if(velho) velho.replaceWith(comp); else ta.after(comp);
+    ta._comp=comp; ta.hidden=true; comp.hidden=!!(CHEIA&&CHEIA.ta===ta&&CHEIA.prev&&!CHEIA.prev.hidden);
+    comp.querySelectorAll(".fx-seg").forEach(ajustar); requestAnimationFrame(()=>comp.querySelectorAll(".fx-seg").forEach(ajustar));
+  }
+  // Posição do cursor no texto completo (para inserir fluxograma onde o cursor está).
+  function cursorDe(ta){
+    const comp=ta._comp; if(!comp) return ta.selectionStart;
+    const seg=comp._seg&&comp._seg.isConnected?comp._seg:[...comp.querySelectorAll(".fx-seg")].pop();
+    const ps=[]; for(const el of comp.children){ if(el===seg){ const pre=ps.join("\n"); return pre.length+(ps.length?1:0)+seg.selectionStart; }
+      if(el.classList.contains("fx-seg")){ if(el.value!=="") ps.push(el.value); } else ps.push(el.dataset.linha); }
+    return ta.value.length;
+  }
+  function alvoDe(el){ const comp=el.closest&&el.closest(".fx-comp"); return comp?comp._ta:el; }
+  function segAtivo(ta){ const c=ta._comp; if(!c) return ta; return c._seg&&c._seg.isConnected?c._seg:[...c.querySelectorAll(".fx-seg")].pop(); }
+  document.addEventListener("focusin",e=>{ const t=e.target; if(t.classList&&t.classList.contains("fx-seg")) t.parentNode._seg=t; });
+  document.addEventListener("input",e=>{
+    const seg=e.target; if(!seg.classList||!seg.classList.contains("fx-seg")) return;
+    ajustar(seg); const comp=seg.parentNode, ta=comp._ta; if(!ta) return;
+    const v=serializar(comp); if(v!==ta.value){ ta.value=v; ta.dispatchEvent(new Event("input",{bubbles:true})); }
+  });
+  document.addEventListener("mousedown",e=>{ const c=e.target.classList&&e.target.classList.contains("fx-comp")?e.target:null; if(c){ e.preventDefault(); const s=[...c.querySelectorAll(".fx-seg")].pop(); s.focus(); s.selectionStart=s.value.length; } });
+  document.addEventListener("click",e=>{
+    const b=e.target.closest&&e.target.closest("[data-fxb]"); if(!b) return;
+    const bloco=b.closest(".fx-bloco"), comp=bloco.parentNode, ta=comp._ta; if(!ta) return;
+    if(b.dataset.fxb==="editar"){ fluxograma(ta, parseInt(bloco.dataset.idx,10)); return; }
+    if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Remover"; } },3000); return; }
+    const m=bloco.dataset.linha.match(/\(fx:([A-Za-z0-9_-]+)\)/); bloco.remove();
+    if(m&&typeof salvarDoc==="function") salvarDoc("fx-"+m[1],{tipo:"fx",apagado:true},50);
+    ta.value=serializar(comp); ta.dispatchEvent(new Event("input",{bubbles:true})); montar(ta);
+  });
 
   // Troca o trecho [a,b) por txt mantendo o "desfazer" (Ctrl+Z) e disparando o salvamento.
   function trocar(ta,a,b,txt,selA,selB){
@@ -174,8 +226,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const achar=()=>ta.isConnected?ta:(sel&&document.querySelector(sel));
     window.FLUXO.abrir({ ta:achar,
       get:()=>{ const t=achar(); return t?t.value:ta.value; },
-      set:v=>{ const t=achar(); if(!t) return; t.value=v; t.dispatchEvent(new Event("input",{bubbles:true})); if(t._tira){ t._tira.dataset.k=""; atualizarTira(t); } }
-    }, idx==null?null:idx, idx==null?ta.selectionStart:null);
+      set:v=>{ const t=achar(); if(!t) return; t.value=v; t.dispatchEvent(new Event("input",{bubbles:true})); montar(t); }
+    }, idx==null?null:idx, idx==null?cursorDe(ta):null);
   }
   /* ---------- Imagens ----------
      A imagem é reduzida (lado maior até 1600 px) e enviada para a pasta privada "caderno"
@@ -270,20 +322,20 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const ov=doc.createElement("div"); ov.className="fmt-cheia"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-label","Anotação em tela cheia");
     ov.innerHTML=`<header><span class="fc-t"></span><span class="fc-n"></span><button type="button" data-fc="ver">Visualizar</button><button type="button" data-fc="sair">Sair da tela cheia</button></header><div class="fc-b"></div>`;
     ov.querySelector(".fc-t").textContent=tituloDe(ta);
-    const corpo=ov.querySelector(".fc-b"); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._tira) corpo.appendChild(ta._tira);
+    const corpo=ov.querySelector(".fc-b"); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._comp) corpo.appendChild(ta._comp);
     const prev=doc.createElement("div"); prev.className="md fc-prev"; prev.hidden=true; corpo.appendChild(prev);
     doc.body.appendChild(ov); doc.body.style.overflow="hidden";
     CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false};
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Sair";
-    contar(); ta.focus();
+    contar(); segAtivo(ta).focus();
     const de=doc.documentElement;
     if(de.requestFullscreen && !doc.fullscreenElement && matchMedia("(min-width:821px)").matches){ de.requestFullscreen().then(()=>{ if(CHEIA) CHEIA.fs=true; }).catch(()=>{}); }
   }
   function sairCheia(){
     if(!CHEIA) return; const {ta,bar,marca,ov,fs}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Tela cheia";
-    ta.hidden=false; if(bar) bar.hidden=false;
-    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); if(ta._tira) ta.after(ta._tira); marca.remove(); ov.remove(); ta.focus(); }
+    ta.hidden=!!ta._comp; if(ta._comp) ta._comp.hidden=false; if(bar) bar.hidden=false;
+    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); if(ta._comp) ta.after(ta._comp); marca.remove(); ov.remove(); segAtivo(ta).focus(); }
     else { ov.remove(); if(typeof render==="function") try{ render(); }catch(e){} if(typeof renderPane==="function"&&typeof PANE!=="undefined"&&PANE) try{ renderPane(); }catch(e){} }
     doc.body.style.overflow="";
     if(fs && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(()=>{});
@@ -292,8 +344,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!CHEIA) return; const {ta,bar,prev,ov}=CHEIA, b=ov.querySelector('[data-fc="ver"]');
     const mostrar=prev.hidden;
     if(mostrar){ prev.innerHTML= typeof md==="function"? md(ta.value) : ""; if(!prev.innerHTML) prev.textContent=ta.value; mostrarImagens(ov.ownerDocument); }
-    prev.hidden=!mostrar; ta.hidden=mostrar; if(bar) bar.hidden=mostrar; if(ta._tira) ta._tira.hidden=mostrar; b.textContent=mostrar?"Editar":"Visualizar";
-    if(!mostrar) ta.focus();
+    prev.hidden=!mostrar; if(ta._comp){ ta.hidden=true; ta._comp.hidden=mostrar; } else ta.hidden=mostrar; if(bar) bar.hidden=mostrar; b.textContent=mostrar?"Editar":"Visualizar";
+    if(!mostrar) segAtivo(ta).focus();
   }
   document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".fmt-cheia [data-fc]"); if(!b) return; if(b.dataset.fc==="sair") sairCheia(); else verCheia(); });
   document.addEventListener("input",e=>{ if(CHEIA&&e.target===CHEIA.ta) contar(); });
@@ -307,10 +359,11 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     doc.addEventListener("click",e=>{
       const bt=e.target.closest(".fmt button[data-fmt]"); if(!bt) return;
       let ta=bt.closest(".fmt").nextElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return;
-      aplicar(ta,bt.dataset.fmt);
+      const k=bt.dataset.fmt;
+      aplicar(k==="flx"||k==="cheia"?ta:segAtivo(ta),k);
     });
     doc.addEventListener("keydown",e=>{
-      const ta=e.target; if(!ta.matches||!ta.matches(ALVOS)) return;
+      const ta=e.target; if(!ta.matches||!ta.matches(ALVOS+",textarea.fx-seg")) return;
       if(e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing){ enter(ta,e); return; }
       if(!(e.ctrlKey||e.metaKey) || e.altKey) return;
       const k=e.key.toLowerCase();
@@ -319,14 +372,14 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     });
     // colar (Ctrl+V) ou arrastar imagem para a caixa de texto
     doc.addEventListener("paste",e=>{
-      const ta=e.target; if(!ta.matches||!ta.matches(ALVOS)) return;
+      const ta=e.target; if(!ta.matches||!ta.matches(ALVOS+",textarea.fx-seg")) return;
       const fs=[...(e.clipboardData&&e.clipboardData.files||[])].filter(f=>/^image\//.test(f.type));
       if(fs.length){ e.preventDefault(); enviarImagens(ta,fs); }
     });
-    doc.addEventListener("dragover",e=>{ const ta=e.target.closest&&e.target.closest(ALVOS); if(ta&&e.dataTransfer&&[...e.dataTransfer.types].includes("Files")){ e.preventDefault(); ta.classList.add("fmt-drop"); } });
-    doc.addEventListener("dragleave",e=>{ const ta=e.target.closest&&e.target.closest(ALVOS); if(ta) ta.classList.remove("fmt-drop"); });
+    doc.addEventListener("dragover",e=>{ const ta=e.target.closest&&e.target.closest(ALVOS+",textarea.fx-seg"); if(ta&&e.dataTransfer&&[...e.dataTransfer.types].includes("Files")){ e.preventDefault(); ta.classList.add("fmt-drop"); } });
+    doc.addEventListener("dragleave",e=>{ const ta=e.target.closest&&e.target.closest(ALVOS+",textarea.fx-seg"); if(ta) ta.classList.remove("fmt-drop"); });
     doc.addEventListener("drop",e=>{
-      const ta=e.target.closest&&e.target.closest(ALVOS); if(!ta) return; ta.classList.remove("fmt-drop");
+      const ta=e.target.closest&&e.target.closest(ALVOS+",textarea.fx-seg"); if(!ta) return; ta.classList.remove("fmt-drop");
       const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])].filter(f=>/^image\//.test(f.type));
       if(fs.length){ e.preventDefault(); ta.focus(); enviarImagens(ta,fs); }
     });
@@ -340,5 +393,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const orig=window.ligarFlutuante;
     window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); } };
   }
-  window.FORMATO={aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia};
+  window.FORMATO={aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe};
 })();

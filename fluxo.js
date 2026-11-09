@@ -187,7 +187,7 @@ document.addEventListener("click",e=>{
     const alvo=typeof window.FLUXO_ALVO==="function"?window.FLUXO_ALVO():null;
     if(!alvo){ aviso("Abra uma anotação para inserir o fluxograma."); return; }
     const ta=alvo.ta&&alvo.ta();
-    abrir(alvo, d.fxeditar!==undefined?parseInt(d.fxeditar,10):null, d.fxnovo!==undefined&&ta?ta.selectionStart:null); return;
+    abrir(alvo, d.fxeditar!==undefined?parseInt(d.fxeditar,10):null, d.fxnovo!==undefined&&ta?(window.FORMATO&&FORMATO.cursorDe?FORMATO.cursorDe(ta):ta.selectionStart):null); return;
   }
   if(!ED) return;
   if(d.fxfechar!==undefined){ fechar(); return; }
