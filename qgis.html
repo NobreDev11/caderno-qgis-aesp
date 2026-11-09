@@ -146,6 +146,14 @@ h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 .pop p{margin:8px 0 0}.pop pre{margin:4px 0 0;padding:8px;background:var(--bg);border-radius:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
 .pres-lista{display:flex;flex-direction:column;gap:4px;margin-top:6px}
 .nota-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.anx-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.anx-form[hidden]{display:none}
+.anx-form input{flex:1;min-width:160px}
+.anx-lista{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.anx{display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:14px}
+.anx a,.anx .anx-a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent);background:none;border:0;padding:0;font:inherit;text-align:left;cursor:pointer}
+.anx>span:not(.anx-t){flex:1}
+.pg-x{flex:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;padding:4px}
+.pg-x:hover{color:var(--bad)}
 .micro-sp{flex:1}
 details.sec{border-top:1px solid var(--line);padding:8px 0 2px}
 .dtog{all:unset;cursor:pointer;width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none;margin:-2px 0 0 -6px}
@@ -1149,8 +1157,7 @@ function abrirAddMat(disc, aba){ PANE={tipo:"addmat", aba:aba||"arquivo", disc: 
 function acoesNotaHTML(k, aula){
   return `<div class="nota-acoes" data-nk="${k}"${aula?` data-aula-id="${aula}"`:""}>
     <button type="button" class="btn sm pri" data-na="salvar" title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button>${info("micro")}
-    <span class="micro-sp"></span>
-    <button type="button" class="btn sm" data-na="link">+ Link</button><button type="button" class="btn sm" data-na="arquivo">+ PDF/arquivo</button><button type="button" class="btn sm" data-na="fotos">+ Fotos</button></div>`;
+    </div>`;
 }
 const limparMd = t => String(t||"").replace(/^#+\s*/,"").replace(/^\s*(?:[-*]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+|>\s*)/,"").replace(/\*\*|==|`|(^|[^*])\*(?!\*)/g,"$1").replace(/<([^<>]+)>/g,"$1").trim();
 function salvarNotaEmMateriais(k, aula){
@@ -1178,7 +1185,6 @@ document.addEventListener("click",e=>{
       b.dataset.conf="1"; const o=b.textContent; b.textContent="Confirmar: mover para Materiais e limpar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent=o; } },4000); return; }
     delete b.dataset.conf; b.textContent="Salvar nota em Materiais"; flushTudo(); salvarNotaEmMateriais(k, box.dataset.aulaId); return;
   }
-  flushTudo(); abrirAddMat(DK[k]?k:"", v==="link"?"link":v==="fotos"?"fotos":"arquivo");
 });
 function paneAddMat(){
   const P=PANE; const abas=[["arquivo","Arquivo (PDF/texto)"],["fotos","Fotos"],["link","Link"],["texto","Colar texto"]];
@@ -1255,6 +1261,65 @@ async function salvarMaterial(){
 /* ---- detalhe ---- */
 function abrirMat(mid){ PANE={tipo:"mat",id:mid,busy:"",colar:"",editR:false,verTexto:false}; renderPane(); }
 function statsMat(m){ const qs=m.questoes||[]; const r=m.resp||{}; let f=0,a=0; qs.forEach(q=>{ const x=r[q.id]; if(x){f++; if(x.ok)a++;} }); return {total:qs.length,feitas:f,acertos:a}; }
+/* ---- Anexos de um material (links, PDFs, fotos) para estudar depois ---- */
+function anexosHTML(m){
+  const ls=m.links||[], ar=(m.arquivos||[]), fl=(mtx(PANE.id).imgs||[]);
+  const itens=[
+    ...ls.map((l,i)=>`<div class="anx"><span class="anx-t">🔗</span><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.titulo||l.url.replace(/^https?:\/\/(www\.)?/,"").slice(0,60))}</a><button type="button" class="pg-x" data-anx="tlink" data-i="${i}" aria-label="Remover link">✕</button></div>`),
+    ...ar.map((a,i)=>`<div class="anx"><span class="anx-t">${a.mime==="application/pdf"?"📄":a.mime.startsWith("image/")?"🖼":"📎"}</span><button type="button" class="anx-a" data-mabrir="${esc(a.path)}">${esc(a.nome||"arquivo")}</button><button type="button" class="pg-x" data-anx="tarq" data-i="${i}" aria-label="Remover arquivo">✕</button></div>`),
+    ...fl.map((u,i)=>`<div class="anx"><span class="anx-t">🖼</span><span>Foto ${i+1} (neste aparelho)</span><button type="button" class="pg-x" data-anx="tfoto" data-i="${i}" aria-label="Remover foto">✕</button></div>`)
+  ];
+  return `<div class="card"><div class="row" style="justify-content:space-between"><h3>Anexos para estudo ${info("anexos")}</h3>
+      <div class="row"><button type="button" class="btn sm" data-anx="link">+ Link</button><button type="button" class="btn sm" data-anx="arquivo">+ PDF/arquivo</button><button type="button" class="btn sm" data-anx="fotos">+ Fotos</button></div></div>
+    <form class="anx-form" hidden><input type="text" class="anx-u" inputmode="url" placeholder="https://…" aria-label="Endereço do link"><input type="text" class="anx-n" placeholder="Título (opcional)" aria-label="Título do link"><button type="submit" class="btn sm pri">Adicionar</button></form>
+    <input type="file" class="anx-f" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden><input type="file" class="anx-i" accept="image/*" multiple hidden>
+    <p class="anx-st muted" style="margin:6px 0 0;font-size:13px" hidden></p>
+    <div class="anx-lista">${itens.length?itens.join(""):'<p class="empty" style="padding:6px 0 0">Nenhum anexo. Junte aqui o link, o PDF ou as fotos que explicam esta nota.</p>'}</div></div>`;
+}
+async function anexarArquivo(mid, f, st){
+  const m=S.docs[mid], tid="mtx-"+mid.slice(4);
+  if(f.size>25*1024*1024) throw new Error("Arquivo maior que 25 MB.");
+  let extra="";
+  if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){ st("Lendo o PDF…"); const r=await textoDoPdf(new Uint8Array(await f.arrayBuffer()),(i,n)=>st("Lendo o PDF… página "+i+" de "+n)); extra=r.texto; }
+  else extra=await f.text();
+  const t=S.docs[tid]||{tipo:"mtx",texto:"",imgs:[]};
+  if(extra.trim()) salvarDoc(tid,{...t,tipo:"mtx",texto:((t.texto||"")+"\n\n--- Anexo: "+f.name+" ---\n"+extra).slice(0,MAX_TXT)},50);
+  if(logado()&&navigator.onLine){ st("Guardando na nuvem…"); const a=await subir(mid,f.name,f,f.type||"application/octet-stream"); salvarDoc(mid,{...S.docs[mid],arquivos:[...(S.docs[mid].arquivos||[]),a]},50); }
+  else toast("O texto do arquivo foi salvo no material. O arquivo em si só é guardado na nuvem com login e internet.");
+}
+async function anexarFotos(mid, fs, st){
+  const tid="mtx-"+mid.slice(4); const novos=[], imgs=[];
+  for(let i=0;i<fs.length;i++){ st("Preparando foto "+(i+1)+" de "+fs.length+"…"); const b=await comprimirImagem(fs[i]);
+    if(logado()&&navigator.onLine) novos.push(await subir(mid,"foto"+(i+1)+".jpg",b,"image/jpeg")); else imgs.push(await paraDataURL(b)); }
+  if(novos.length) salvarDoc(mid,{...S.docs[mid],arquivos:[...(S.docs[mid].arquivos||[]),...novos]},50);
+  if(imgs.length){ const t=S.docs[tid]||{tipo:"mtx",texto:"",imgs:[]}; salvarDoc(tid,{...t,tipo:"mtx",imgs:[...(t.imgs||[]),...imgs]},50); }
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest&&e.target.closest("[data-anx]"); if(!b||!PANE||PANE.tipo!=="mat") return;
+  const mid=PANE.id, m=S.docs[mid], host=b.closest(".card"), v=b.dataset.anx, i=+b.dataset.i;
+  if(v==="link"){ const f=host.querySelector(".anx-form"); f.hidden=!f.hidden; if(!f.hidden) f.querySelector(".anx-u").focus(); return; }
+  if(v==="arquivo") return host.querySelector(".anx-f").click();
+  if(v==="fotos") return host.querySelector(".anx-i").click();
+  if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Remover?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="✕"; } },3000); return; }
+  if(v==="tlink"){ const l=[...(m.links||[])]; l.splice(i,1); salvarDoc(mid,{...m,links:l},50); }
+  if(v==="tarq"){ const a=[...(m.arquivos||[])], x=a.splice(i,1)[0]; salvarDoc(mid,{...m,arquivos:a},50); if(x&&logado()){ try{ await S.sb.storage.from("caderno").remove([x.path]); }catch(err){} } }
+  if(v==="tfoto"){ const tid="mtx-"+mid.slice(4), t=S.docs[tid]||{}; const im=[...(t.imgs||[])]; im.splice(i,1); salvarDoc(tid,{...t,tipo:"mtx",imgs:im},50); }
+  renderPane();
+});
+document.addEventListener("submit",e=>{
+  const f=e.target.closest&&e.target.closest(".anx-form"); if(!f||!PANE||PANE.tipo!=="mat") return; e.preventDefault();
+  const u=f.querySelector(".anx-u").value.trim(), n=f.querySelector(".anx-n").value.trim();
+  if(!/^https?:\/\/\S+$/i.test(u)){ toast("Cole um link começando com http."); return; }
+  const m=S.docs[PANE.id]; salvarDoc(PANE.id,{...m,links:[...(m.links||[]),{url:u,titulo:n}]},50); renderPane(); toast("Link anexado.");
+});
+document.addEventListener("change",async e=>{
+  const t=e.target; if(!t.classList||!(t.classList.contains("anx-f")||t.classList.contains("anx-i"))||!PANE||PANE.tipo!=="mat") return;
+  const mid=PANE.id, el=t.closest(".card").querySelector(".anx-st"), st=x=>{ el.hidden=false; el.textContent=x; };
+  try{ if(t.classList.contains("anx-f")){ if(t.files[0]) await anexarArquivo(mid,t.files[0],st); } else await anexarFotos(mid,[...t.files].slice(0,8),st);
+    if(PANE&&PANE.id===mid) renderPane(); toast("Anexo adicionado."); }
+  catch(err){ st(err.message||"Não foi possível anexar."); }
+});
+
 function paneMat(){
   const P=PANE, m=S.docs[P.id]; if(!m||m.apagado){ PANE=null; return ""; }
   const t=mtx(P.id), st=statsMat(m), qs=m.questoes||[];
@@ -1275,6 +1340,7 @@ function paneMat(){
     <div class="body">
       ${busy}
       ${m.origem==="nota"?`<div class="card"><h3 style="margin-bottom:6px">Nota</h3><div class="md">${md(t.texto||"")}</div></div>`:""}
+      ${anexosHTML(m)}
       <div class="card">
         <div class="row" style="justify-content:space-between"><h3>Resumo ${info("matres")}</h3>
           <div class="row">${podeIA?`<button class="btn sm pri" data-mgerar="resumo" ${P.busy?"disabled":""}>${m.resumo?"Refazer resumo":"Gerar resumo"}</button>`:""}
@@ -1443,7 +1509,8 @@ const AJUDA={
   hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
   mnav:{t:"Pesquisa",o:"Dica: nas anotações, escreva um termo entre < e > (ex.: <mapa de calor>) e ele vira um atalho: clicando, a pesquisa abre aqui. Um navegador pequeno dentro do cartão da disciplina, para pesquisar no Google ou abrir um site sem sair do caderno.",c:"Digite o que procura (ou cole um link) e tecle Enter. Salvar link guarda nos Materiais desta disciplina; Expandir ocupa a tela toda (Esc volta); Abrir no navegador abre numa aba normal; Sobrepor abre uma janela que fica por cima das outras (Chrome/Edge no computador). Sites que não deixam ser abertos dentro de outra página aparecem em Modo leitura (só o texto); para ver com imagens, use Abrir no navegador. Vídeos do YouTube e arquivos do Google Drive/Docs abrem normalmente."},
   marco:{t:"Aviso ao fim da aula",o:"Quando uma aula termina, aparece uma janelinha no canto da tela perguntando se você esteve presente. Na última aula da disciplina, ela também oferece marcar a disciplina como concluída.",c:"Escolha Presente ou Falta. Depois fecha e pergunta de novo só se você abrir o caderno outro dia (cada aula é perguntada uma vez)."},
-  micro:{t:"Salvar nota em Materiais",o:"Transforma o que está escrito na nota principal em um item de Materiais (micro-nota) e deixa a nota limpa para a próxima anotação. A primeira linha vira o título; o resto, o conteúdo. As Perguntas da nota continuam onde estão.",c:"Clique em Salvar nota em Materiais e confirme. O item aparece em Materiais da disciplina, entra na busca e pode virar resumo ou questões. + Link, + PDF/arquivo e + Fotos abrem o cadastro de material já na disciplina certa.",ex:"Atalho do buffer\nVetor > Geoprocessamento > Buffer, distância em metros (SRC projetado)."},
+  micro:{t:"Salvar nota em Materiais",o:"Transforma o que está escrito na nota principal em um item de Materiais (micro-nota) e deixa a nota limpa para a próxima anotação. A primeira linha vira o título; o resto, o conteúdo. As Perguntas da nota continuam onde estão.",c:"Clique em Salvar nota em Materiais e confirme. O item aparece em Materiais da disciplina, entra na busca e pode virar resumo ou questões. Lá dentro você anexa links, PDFs e fotos para estudar depois.",ex:"Atalho do buffer\nVetor > Geoprocessamento > Buffer, distância em metros (SRC projetado)."},
+  anexos:{t:"Anexos para estudo",o:"Links, PDFs e fotos ligados a este material (por exemplo, a uma nota salva da aula), para estudar depois.",c:"+ Link cola um endereço; + PDF/arquivo lê o texto do PDF (ele passa a valer para o resumo e as questões) e guarda o arquivo na nuvem se você estiver logado; + Fotos guarda fotos de slides ou do quadro. ✕ remove (pede confirmação)."},
   linha:{t:"Linha do curso",o:"Cada risquinho é uma aula de 50 min, na cor da disciplina; os espaços maiores separam os dias. A aula em andamento vai enchendo conforme o relógio.",c:"Passe o mouse (ou toque) num risquinho para ver qual aula é. A conta é pelo horário de Fortaleza."},
   kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
   kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
