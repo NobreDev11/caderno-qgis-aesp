@@ -145,6 +145,10 @@ h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 .pop{position:fixed;z-index:50;width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgb(0 0 0 / .2);padding:12px 14px;font-size:14px;line-height:1.5}
 .pop p{margin:8px 0 0}.pop pre{margin:4px 0 0;padding:8px;background:var(--bg);border-radius:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
 .pres-lista{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.micro{border:1px dashed var(--line);border-radius:10px;padding:8px;margin:6px 0 8px;background:var(--bg)}
+.micro-t{min-height:0!important;resize:vertical;font-size:14px}
+.micro-b{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.micro-sp{flex:1}
 details.sec{border-top:1px solid var(--line);padding:8px 0 2px}
 .dtog{all:unset;cursor:pointer;width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none;margin:-2px 0 0 -6px}
 .dtog:hover{background:var(--accent-soft)}
@@ -693,6 +697,7 @@ function vHoje(){
       <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida desta aula</label>${info("rapida")}</div>
       <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. É uma anotação só para toda a disciplina; salva sozinho.">${esc(notaDaAula(foco.id))}</textarea></div>
       <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button><button class="btn sm" data-flabrir="${foco.id}">Bloco flutuante</button> ${info("flutuante")}<button class="btn sm" data-tmabrir>⏱ Temporizador</button></div>
+      <details class="sec" data-sec="micro-hoje" ${secAberta("micro-hoje")?"open":""} style="margin-top:10px"><summary><span class="lb" style="margin:0">Micro-nota e materiais da aula</span></summary>${microHTML(foco.k, foco.id)}</details>
     </div>` : `<div class="card"><p class="muted" style="margin:0">Nenhuma aula pela frente.</p></div>`;
 
   const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
@@ -768,7 +773,7 @@ function vDisciplinas(){
 let SECOES={}; try{ SECOES=JSON.parse(localStorage.getItem("caderno-qgis:secoes")||"{}")||{}; }catch(e){}
 const secAberta = id => SECOES[id]!==false;
 document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.sec) return; SECOES[d.dataset.sec]=d.open; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(x){} if(d.open&&d.dataset.sec.startsWith("nav-")) montarNavs(); },true);
-function matSecHTML(k){ const ms=mats().filter(m=>m.disc===k); return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div>`+(ms.length?ms.map(matItem).join(""):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
+function matSecHTML(k){ const ms=mats().filter(m=>m.disc===k); return microHTML(k)+(ms.length?ms.map(matItem).join(""):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
 function atualizarMatSec(k){ const el=document.querySelector(`[data-matsec="${k}"]`); if(el) el.innerHTML=matSecHTML(k); const c=document.querySelector(`[data-matcont="${k}"]`); if(c) c.textContent=`Materiais (${mats().filter(m=>m.disc===k).length})`; }
 
 /* ---- Mininavegador de pesquisa (por disciplina) ----
@@ -1060,6 +1065,7 @@ function renderPane(){
           <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button>
         </div>
         ${PANE.prev? `<div class="md">${md(notaDaAula(a.id))}</div>` : `<div class="row" style="gap:6px"><label class="lb" for="pnota" style="margin:0">Anotações de ${esc(nomeDisc(a.k))} (uma para todas as aulas do tema)</label>${info("markdown")}</div><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(notaDaAula(a.id))}</textarea>`}
+        ${microHTML(a.k, a.id)}
         <div class="row" style="justify-content:space-between">
           <button class="btn sm" ${i>0?`data-aula="${AULAS[i-1].id}"`:"disabled"}>← Aula anterior</button>
           <button class="btn sm" ${i<79?`data-aula="${AULAS[i+1].id}"`:"disabled"}>Próxima aula →</button>
@@ -1140,7 +1146,34 @@ async function api(rota, corpo){
 function discPadrao(){ const t=Date.now(); const a=AULAS.find(a=>msDe(a.data,a.fim)>t); return a?a.k:""; }
 
 /* ---- adicionar ---- */
-function abrirAddMat(disc){ PANE={tipo:"addmat", aba:"arquivo", disc: disc ?? discPadrao(), status:""}; renderPane(); }
+function abrirAddMat(disc, aba){ PANE={tipo:"addmat", aba:aba||"arquivo", disc: disc ?? discPadrao(), status:""}; renderPane(); }
+
+/* ---- Micro-notas: anotação curta da aula salva como material (1ª linha = título) + atalhos para link, PDF e fotos ---- */
+const MICRO={};
+function microHTML(k, aula){
+  return `<div class="micro" data-micro="${k}"${aula?` data-aula-id="${aula}"`:""}>
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="lb" style="margin:0">Micro-nota → Materiais</span>${info("micro")}</div>
+    <textarea class="micro-t" rows="3" aria-label="Micro-nota (a primeira linha vira o título)" placeholder="Primeira linha = título&#10;Depois, o conteúdo: um atalho, um conceito, um passo…">${esc(MICRO[k]||"")}</textarea>
+    <div class="micro-b"><button type="button" class="btn sm pri" data-mic="salvar">Salvar em Materiais</button><span class="micro-sp"></span>
+      <button type="button" class="btn sm" data-mic="link">+ Link</button><button type="button" class="btn sm" data-mic="arquivo">+ PDF/arquivo</button><button type="button" class="btn sm" data-mic="fotos">+ Fotos</button></div>
+  </div>`;
+}
+function salvarMicro(box){
+  const k=box.dataset.micro, ta=box.querySelector(".micro-t"), v=ta.value.replace(/\s+$/,"");
+  if(!v.trim()){ toast("Escreva a micro-nota antes de salvar."); ta.focus(); return; }
+  const ls=v.split("\n"); const titulo=ls[0].replace(/^#+\s*/,"").trim().slice(0,100)||"Micro-nota";
+  const corpo=ls.slice(1).join("\n").trim(), texto=corpo||titulo, x=novoId(), aula=box.dataset.aulaId||"";
+  salvarDoc("mtx-"+x,{tipo:"mtx",texto,imgs:[]},50);
+  salvarDoc("mat-"+x,{tipo:"mat",titulo,disc:DK[k]?k:"",origem:"nota",criado:Date.now(),arquivos:[],questoes:[],resp:{},chars:texto.length,aula},80);
+  ta.value=""; MICRO[k]=""; atualizarMatSec(k); renderNav(); toast("Micro-nota salva em Materiais: “"+titulo+"”.");
+}
+document.addEventListener("input",e=>{ const t=e.target; if(t.classList&&t.classList.contains("micro-t")){ MICRO[t.closest(".micro").dataset.micro]=t.value; } });
+document.addEventListener("keydown",e=>{ const t=e.target; if(t.classList&&t.classList.contains("micro-t")&&e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); salvarMicro(t.closest(".micro")); } });
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-mic]"); if(!b) return; const box=b.closest(".micro"), k=box.dataset.micro, v=b.dataset.mic;
+  if(v==="salvar") return salvarMicro(box);
+  flushTudo(); abrirAddMat(DK[k]?k:"", v==="link"?"link":v==="fotos"?"fotos":"arquivo");
+});
 function paneAddMat(){
   const P=PANE; const abas=[["arquivo","Arquivo (PDF/texto)"],["fotos","Fotos"],["link","Link"],["texto","Colar texto"]];
   const campo={
@@ -1231,7 +1264,7 @@ function paneMat(){
     <header><div style="flex:1;min-width:0">
       <input type="text" id="mt-ti" value="${esc(m.titulo)}" aria-label="Título" style="font:700 17px var(--display);border-color:transparent;background:transparent;padding:4px 6px;margin-left:-6px">
       <div class="row" style="margin-top:6px"><select id="mt-d" style="width:auto;flex:1;min-width:0">${['<option value="">Geral</option>'].concat(DISC.map(d=>`<option value="${d.k}" ${m.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`)).join("")}</select>${orig.join("")}</div>
-      <div class="mono muted" style="font-size:12px;margin-top:6px">${{arquivo:"Arquivo",fotos:"Fotos",link:"Link",texto:"Texto"}[m.origem]||""}${m.paginas?" · "+m.paginas+" pág.":""} · ${(m.chars||0).toLocaleString("pt-BR")} caracteres${nImg?" · "+nImg+" foto(s)":""} · ${new Date(m.criado||0).toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza"})}</div>
+      <div class="mono muted" style="font-size:12px;margin-top:6px">${{arquivo:"Arquivo",fotos:"Fotos",link:"Link",texto:"Texto",nota:"Micro-nota"}[m.origem]||""}${m.paginas?" · "+m.paginas+" pág.":""} · ${(m.chars||0).toLocaleString("pt-BR")} caracteres${nImg?" · "+nImg+" foto(s)":""} · ${new Date(m.criado||0).toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza"})}</div>
     </div><button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
     <div class="body">
       ${busy}
@@ -1289,7 +1322,7 @@ async function apagarMaterial(mid){
 /* ---- telas ---- */
 function matItem(m){
   const st=statsMat(m);
-  return `<button class="ni" data-mat="${m.id}"><div class="row" style="justify-content:space-between"><strong>${esc(m.titulo)}</strong><span class="mono muted" style="font-size:12px">${{arquivo:"PDF/arquivo",fotos:"fotos",link:"link",texto:"texto"}[m.origem]||""}</span></div>
+  return `<button class="ni" data-mat="${m.id}"><div class="row" style="justify-content:space-between"><strong>${esc(m.titulo)}</strong><span class="mono muted" style="font-size:12px">${{arquivo:"PDF/arquivo",fotos:"fotos",link:"link",texto:"texto",nota:"micro-nota"}[m.origem]||""}</span></div>
     <div class="row" style="margin-top:4px;gap:6px">${m.disc&&DK[m.disc]?`<span class="chip">${sw(m.disc)}<span class="ct">${esc(nomeDisc(m.disc))}</span></span>`:""}
     ${m.resumo?'<span class="chip">resumo</span>':""}${st.total?`<span class="chip">${st.total} questões · ${st.acertos}/${st.feitas}</span>`:""}</div></button>`;
 }
@@ -1403,6 +1436,7 @@ const AJUDA={
   hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
   mnav:{t:"Pesquisa",o:"Dica: nas anotações, escreva um termo entre < e > (ex.: <mapa de calor>) e ele vira um atalho: clicando, a pesquisa abre aqui. Um navegador pequeno dentro do cartão da disciplina, para pesquisar no Google ou abrir um site sem sair do caderno.",c:"Digite o que procura (ou cole um link) e tecle Enter. Salvar link guarda nos Materiais desta disciplina; Expandir ocupa a tela toda (Esc volta); Abrir no navegador abre numa aba normal; Sobrepor abre uma janela que fica por cima das outras (Chrome/Edge no computador). Sites que não deixam ser abertos dentro de outra página aparecem em Modo leitura (só o texto); para ver com imagens, use Abrir no navegador. Vídeos do YouTube e arquivos do Google Drive/Docs abrem normalmente."},
   marco:{t:"Aviso ao fim da aula",o:"Quando uma aula termina, aparece uma janelinha no canto da tela perguntando se você esteve presente. Na última aula da disciplina, ela também oferece marcar a disciplina como concluída.",c:"Escolha Presente ou Falta. Depois fecha e pergunta de novo só se você abrir o caderno outro dia (cada aula é perguntada uma vez)."},
+  micro:{t:"Micro-nota",o:"Uma anotação curta e separada, feita durante a aula, que vira um item em Materiais da disciplina. A primeira linha é o título; o resto é o conteúdo.",c:"Escreva e clique em Salvar em Materiais (ou Ctrl+Enter). Depois ela aparece em Materiais, entra na busca e pode virar resumo ou questões. Os botões + Link, + PDF/arquivo e + Fotos abrem o cadastro de material já na disciplina certa.",ex:"Atalho do buffer\nVetor > Geoprocessamento > Buffer, distância em metros (SRC projetado)."},
   linha:{t:"Linha do curso",o:"Cada risquinho é uma aula de 50 min, na cor da disciplina; os espaços maiores separam os dias. A aula em andamento vai enchendo conforme o relógio.",c:"Passe o mouse (ou toque) num risquinho para ver qual aula é. A conta é pelo horário de Fortaleza."},
   kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
   kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
