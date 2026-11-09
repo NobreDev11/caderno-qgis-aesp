@@ -1,9 +1,10 @@
 /* Cadernos de Estudo: funciona sem internet.
    - Páginas (/, /qgis, /dio): tenta a rede (até 4 s) e, sem conexão, usa a cópia guardada.
-   - Arquivos do app (js, ícones, pdf.js, mermaid): usa a cópia e atualiza em segundo plano.
+   - Scripts do app (prompts, timer, fluxo, formato): rede primeiro (3 s), cópia se não houver conexão.
+   - vendor/, ícones: usa a cópia e atualiza em segundo plano.
    - Fontes do Google: cópia guardada.
    - /api e Supabase: nunca guardados (sempre rede). As anotações em si ficam no localStorage e sobem ao voltar a internet. */
-const VERSAO = "cadernos-v1";
+const VERSAO = "cadernos-v2";
 const PAGINAS = ["/", "/qgis", "/dio"];
 const ARQUIVOS = [
   "/prompts.js", "/prompts-dio.js", "/timer.js", "/fluxo.js", "/formato.js",
@@ -48,6 +49,18 @@ async function pagina(req) {
   }
 }
 
+// Scripts do próprio app (não os de vendor/): rede primeiro (3 s), para atualizações chegarem na hora.
+async function script(req) {
+  const c = await caches.open(VERSAO);
+  try {
+    const r = await Promise.race([fetch(req), new Promise((_, rej) => setTimeout(() => rej(new Error("lento")), 3000))]);
+    if (r.ok) c.put(req, r.clone());
+    return r;
+  } catch (e) {
+    return (await c.match(req, { ignoreSearch: true })) || new Response("", { status: 504 });
+  }
+}
+
 async function arquivo(req) {
   const c = await caches.open(VERSAO);
   const guardado = await c.match(req, { ignoreSearch: true });
@@ -70,6 +83,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin === location.origin) {
     if (url.pathname.startsWith("/api/") || url.pathname === "/sw.js") return;
     if (req.mode === "navigate") return e.respondWith(pagina(req));
+    if (/\.m?js$/.test(url.pathname) && !url.pathname.startsWith("/vendor/")) return e.respondWith(script(req));
     return e.respondWith(arquivo(req));
   }
   if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") return e.respondWith(fonte(req));

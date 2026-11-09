@@ -7,6 +7,7 @@
 (function(){
   const ALVOS='#qnota,#pnota,#ntxt,#fl-txt,textarea[data-dnota]';
   const BOTOES=[
+    ["cheia",'<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5"/></svg><span class="fmt-tx">Tela cheia</span>',"Escrever em tela cheia (Esc para sair)"],
     ["neg","<b>N</b>","Negrito (Ctrl+B)"],
     ["ita","<i>I</i>","Itálico (Ctrl+I)"],
     ["mar",'<span class="fmt-mk">M</span>',"Marca-texto"],
@@ -20,7 +21,6 @@
     ["div","―","Linha divisória"],
     ["img",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3.5" width="16" height="13" rx="2"/><circle cx="7" cy="8" r="1.6"/><path d="M2.5 15l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5"/></svg><span class="fmt-tx">Imagem</span>',"Inserir imagem neste ponto do texto (também dá para colar com Ctrl+V ou arrastar a imagem para a caixa)"],
     ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
-    ["cheia",'<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5"/></svg><span class="fmt-tx">Tela cheia</span>',"Escrever em tela cheia (Esc para sair)"],
   ];
   const CSS=`
 .fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
@@ -30,7 +30,6 @@
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
 .fmt [data-fmt=flx],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
-.fmt [data-fmt=cheia]{margin-left:auto}
 .fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
 .fmt-cheia{position:fixed;inset:0;z-index:38;background:var(--bg);display:flex;flex-direction:column}
 .fmt-cheia header{display:flex;align-items:center;gap:10px;padding:10px max(16px,calc((100% - 900px)/2));border-bottom:1px solid var(--line);background:var(--surface);flex:none}
@@ -64,7 +63,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function barra(doc){
     const pip=doc!==document;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"))).map(([k,h,t],i)=>(i===3||i===7||k==="img"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){
