@@ -8,6 +8,10 @@
 // A página define window.FLUXO_ALVO() => {get():texto, set(texto), ta():textarea|null} da anotação aberta.
 // Botões: [data-fxnovo] (inserir/editar no cursor) e [data-fxeditar="i"] (editar o i-ésimo fluxograma).
 // Desenho: a função md() da página troca o bloco por <div class="fx-svg" data-src="..."> e este arquivo desenha.
+// Desde 09/11: nos cadernos, o fluxograma fica guardado num doc próprio (fx-<id>: {tipo:"fx", modelo, codigo})
+// e o texto da anotação só leva uma linha curta: ![Fluxograma](fx:<id>). O desenho aparece logo abaixo da
+// caixa de texto (formato.js) e no Visualizar. Blocos ```mermaid antigos são convertidos ao abrir a anotação.
+// No Markdown exportado, a linha volta a ser o bloco ```mermaid (expandir()).
 (function(){
 "use strict";
 const escH = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -36,12 +40,31 @@ function paraMermaid(m){
   return l.join("\n");
 }
 function bloco(m, codigo){ return "```mermaid\n"+(m?"%% fluxo "+JSON.stringify(m)+"\n":"")+(m?paraMermaid(m):codigo.trim())+"\n```"; }
-// Encontra os blocos ```mermaid no texto: [{ini, fim, codigo, modelo}]
+// Encontra os fluxogramas no texto (blocos ```mermaid e linhas ![..](fx:id)): [{ini, fim, codigo, modelo, fx?}]
+const RE_FX=/!\[([^\]\n]*)\]\(fx:([A-Za-z0-9_-]+)\)/g;
+const temDocs = () => typeof S==="object" && S && S.docs && typeof salvarDoc==="function";
+const docFx = id => { const d=temDocs()&&S.docs["fx-"+id]; return d&&!d.apagado?d:null; };
 function blocos(txt){
   const r=[], re=/```mermaid[ \t]*\r?\n([\s\S]*?)\r?\n```/g; let m;
   while((m=re.exec(txt))){ const cod=m[1]; let modelo=null; const mm=cod.match(/^%% fluxo (\{.*\})\s*$/m); if(mm){ try{ modelo=JSON.parse(mm[1]); }catch(e){} }
     r.push({ini:m.index, fim:m.index+m[0].length, codigo:cod.replace(/^%% fluxo .*$\n?/m,"").trim(), modelo}); }
-  return r;
+  RE_FX.lastIndex=0;
+  while((m=RE_FX.exec(txt))){ const d=docFx(m[2]); r.push({ini:m.index, fim:m.index+m[0].length, fx:m[2], codigo:d?String(d.codigo||""):"", modelo:d&&d.modelo?d.modelo:null, falta:!d}); }
+  return r.sort((a,b)=>a.ini-b.ini);
+}
+function novoFx(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function gravarFx(id, modelo, codigo){ salvarDoc("fx-"+id,{tipo:"fx", modelo:modelo||null, codigo:String(codigo||"")},50); }
+const linhaFx = id => "![Fluxograma](fx:"+id+")";
+// Troca os blocos ```mermaid do texto por linhas curtas, guardando cada fluxograma no seu doc.
+function converter(txt){
+  if(!temDocs()||!/```mermaid/.test(txt)) return txt;
+  const bs=blocos(txt).filter(b=>!b.fx); let out=txt;
+  for(let i=bs.length-1;i>=0;i--){ const b=bs[i], id=novoFx(); gravarFx(id, b.modelo, b.modelo?paraMermaid(b.modelo):b.codigo); out=out.slice(0,b.ini)+linhaFx(id)+out.slice(b.fim); }
+  return out;
+}
+// Para exportar: as linhas ![..](fx:id) voltam a ser blocos ```mermaid (o GitHub desenha).
+function expandir(txt){
+  return String(txt||"").replace(RE_FX,(x,alt,id)=>{ const d=docFx(id); return d? bloco(d.modelo, d.codigo) : x; });
 }
 
 /* ---- Mermaid: carregado só quando há fluxograma na tela ---- */
@@ -86,6 +109,17 @@ function abrir(alvo, idx, cursor){
 function fechar(){ ED=null; document.getElementById("fxHost").innerHTML=""; }
 function salvar(){
   const txt=ED.alvo.get(), bs=blocos(txt);
+  if(temDocs()){
+    const modelo=ED.modoCodigo?null:ED.m, codigo=ED.modoCodigo?ED.codigo.trim():paraMermaid(ED.m);
+    const b=ED.idx!=null?bs[ED.idx]:null;
+    if(b&&b.fx){ gravarFx(b.fx, modelo, codigo); ED.alvo.set(txt); fechar(); aviso("Fluxograma salvo."); return; }
+    const id=novoFx(); gravarFx(id, modelo, codigo);
+    let out;
+    if(b){ out=txt.slice(0,b.ini)+linhaFx(id)+txt.slice(b.fim); }
+    else { const p = ED.cursor!=null ? Math.min(ED.cursor, txt.length) : txt.length, antes=txt.slice(0,p), depois=txt.slice(p);
+      out = antes + (antes&&!antes.endsWith("\n")?"\n":"") + linhaFx(id) + (depois&&!depois.startsWith("\n")?"\n":(depois?"":"\n")) + depois; }
+    ED.alvo.set(out); fechar(); aviso("Fluxograma inserido na anotação."); return;
+  }
   const novo = ED.modoCodigo ? bloco(null, ED.codigo) : bloco(ED.m);
   let out;
   if(ED.idx!=null && bs[ED.idx]){ const b=bs[ED.idx]; out=txt.slice(0,b.ini)+novo+txt.slice(b.fim); }
@@ -97,6 +131,7 @@ function salvar(){
 function apagarBloco(){
   if(ED.idx==null){ fechar(); return; }
   const txt=ED.alvo.get(), b=blocos(txt)[ED.idx]; if(!b){ fechar(); return; }
+  if(b.fx&&temDocs()) salvarDoc("fx-"+b.fx,{tipo:"fx",apagado:true},50);
   ED.alvo.set((txt.slice(0,b.ini).replace(/\n+$/,"\n")+txt.slice(b.fim).replace(/^\n+/,"\n")).replace(/^\n/,"")); fechar(); aviso("Fluxograma apagado.");
 }
 function novoId(){ let i=1; const s=new Set(ED.m.nos.map(n=>n.id)); while(s.has("n"+i)) i++; return "n"+i; }
@@ -223,5 +258,5 @@ const css=`
 const st=document.createElement("style"); st.textContent=css; document.head.appendChild(st);
 const host=document.createElement("div"); host.id="fxHost"; document.body.appendChild(host);
 if(typeof AJUDA==="object") AJUDA.fluxograma={t:"Fluxograma na anotação",o:"Desenha um fluxograma dentro da anotação: etapas, decisões e setas.",c:"Clique em Fluxograma. Escolha um modelo ou adicione etapas (Etapa, Decisão, Comando, Início/Fim); com “ligar à anterior” marcado, cada nova etapa já ganha uma seta. Em Ligações, crie setas extras e escreva rótulos como Sim/Não. A prévia aparece ao lado. Salve: o fluxograma entra na anotação e aparece desenhado em Visualizar, onde também há o botão para editar. Exportado em Markdown, o GitHub desenha o mesmo fluxograma."};
-window.FLUXO={renderizar, blocos, paraMermaid, abrir};
+window.FLUXO={renderizar, blocos, paraMermaid, abrir, converter, expandir};
 })();

@@ -472,6 +472,11 @@ function md(src){
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
   for(let i=0;i<linhas.length;i++){ const l=linhas[i];
+    // linha ![..](fx:id): fluxograma guardado no doc fx-<id> (fluxo.js)
+    const fxl=l.match(/^\s*!\[[^\]]*\]\(fx:([A-Za-z0-9_-]+)\)\s*$/);
+    if(fxl){ fechar(); const d=S.docs["fx-"+fxl[1]];
+      out+= d&&!d.apagado ? `<div class="fx"><div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted">Desenhando fluxograma…</p></div><div class="row"><button class="btn sm" data-fxeditar="${nfx}">Editar fluxograma</button></div></div>` : `<p class="muted">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>`;
+      nfx++; continue; }
     // bloco de código; ```mermaid vira fluxograma desenhado (fluxo.js)
     const cerca=l.match(/^```\s*([\w-]*)\s*$/);
     if(cerca){ let j=i+1; const cod=[]; while(j<linhas.length && !/^```\s*$/.test(linhas[j])){ cod.push(linhas[j]); j++; }
@@ -686,7 +691,7 @@ function exportarMD(){
   const soltas=notas().filter(n=>!n.disc||!DK[n.disc]);
   if(soltas.length){ o+=`## Notas gerais\n\n`; soltas.forEach(n=>{o+=`### ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;}); }
   const ts=tarefas(); if(ts.length){ o+=`## Tarefas\n`+ts.map(t=>`- [${t.feito?"x":" "}] ${t.texto}${t.prazo?" (até "+t.prazo.slice(8,10)+"/"+t.prazo.slice(5,7)+")":""}`).join("\n")+"\n"; }
-  return o;
+  return window.FLUXO&&FLUXO.expandir ? FLUXO.expandir(o) : o;
 }
 function vBackup(){
   const c=contagem(S.docs); let ult=null; try{ ult=localStorage.getItem(LS_BK); }catch(e){}
@@ -1148,7 +1153,7 @@ function lerBackup(txt){
   let j; try{ j=JSON.parse(txt); }catch(e){ throw new Error("Esse arquivo não é um backup do caderno (não é JSON)."); }
   const docs = j&&j.app==="caderno-qgis-aesp" ? j.docs : j;
   if(!docs||typeof docs!=="object") throw new Error("Backup vazio ou inválido.");
-  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(aula|disc|nota|tarefa|mat|mtx|tempo)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
+  const ok={}; for(const [id,b] of Object.entries(docs)) if(/^(aula|disc|nota|tarefa|mat|mtx|tempo|fx)-[\w-]+$/.test(id)&&b&&typeof b==="object") ok[id]=b;
   if(!Object.keys(ok).length) throw new Error("Não achei anotações nesse arquivo.");
   return {docs:ok, criado:j.criado||null};
 }

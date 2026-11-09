@@ -23,14 +23,22 @@
     ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
   ];
   const CSS=`
-.fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
+.fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:wrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
 .fmt::-webkit-scrollbar{display:none}
 .fmt button{flex:none;min-width:30px;height:28px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--ink,inherit);cursor:pointer;font-size:13.5px;line-height:1}
 .fmt button:hover{background:var(--accent-soft)}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
 .fmt [data-fmt=flx],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
-.fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
+.fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden],.fx-tira[hidden]{display:none!important}
+.fx-tira{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.fx-tira:empty{display:none}
+.fx-mini{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px;max-width:100%;display:flex;flex-direction:column;gap:6px}
+.fx-mini .fx-svg{display:flex;justify-content:center;overflow:auto}
+.fx-mini .fx-svg svg{max-width:100%;max-height:260px;height:auto}
+.fx-mini-b{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--muted)}
+.fx-mini-b button{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:7px;padding:3px 10px;cursor:pointer;font:inherit;font-size:12.5px}
+.fmt-cheia .fx-tira{flex:none;max-height:40%;overflow:auto}
 .fmt-cheia{position:fixed;inset:0;z-index:38;background:var(--bg);display:flex;flex-direction:column}
 .fmt-cheia header{display:flex;align-items:center;gap:10px;padding:10px max(16px,calc((100% - 900px)/2));border-bottom:1px solid var(--line);background:var(--surface);flex:none}
 .fmt-cheia header .fc-t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -71,8 +79,25 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(ta.dataset.fmtOk) return; ta.dataset.fmtOk="1";
       const p=ta.previousElementSibling; if(p&&p.classList.contains("fmt")) return;
       ta.parentNode.insertBefore(barra(ta.ownerDocument),ta);
+      if(ta.ownerDocument===document){
+        const tira=document.createElement("div"); tira.className="fx-tira"; ta.after(tira); ta._tira=tira;
+        // blocos ```mermaid antigos viram linha curta + doc (o desenho aparece aqui embaixo)
+        if(window.FLUXO&&FLUXO.converter&&/```mermaid/.test(ta.value)){ const nv=FLUXO.converter(ta.value); if(nv!==ta.value){ ta.value=nv; ta.dispatchEvent(new Event("input",{bubbles:true})); } }
+        atualizarTira(ta);
+      }
     });
   }
+  // Desenho dos fluxogramas da anotação, logo abaixo da caixa de texto.
+  function atualizarTira(ta){
+    const tira=ta._tira; if(!tira||!window.FLUXO) return;
+    const bs=FLUXO.blocos(ta.value), chave=bs.map(b=>b.fx||b.codigo).join("|")+"#"+bs.map(b=>b.codigo.length).join(",");
+    if(tira.dataset.k===chave) return; tira.dataset.k=chave;
+    tira.innerHTML=bs.map((b,i)=>`<div class="fx-mini">${b.falta?'<p class="muted" style="margin:0;font-size:13px">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>':`<div class="fx-svg" data-src="${encodeURIComponent(b.codigo)}"><p class="muted" style="margin:0;font-size:13px">Desenhando fluxograma…</p></div>`}<div class="fx-mini-b"><span>Fluxograma ${bs.length>1?i+1:""}</span><button type="button" data-fxtira="${i}">Editar</button></div></div>`).join("");
+  }
+  let _tiraT=null;
+  document.addEventListener("input",e=>{ const ta=e.target; if(!ta._tira) return; clearTimeout(_tiraT); _tiraT=setTimeout(()=>atualizarTira(ta),350); });
+  document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-fxtira]"); if(!b) return;
+    const ta=b.closest(".fx-tira").previousElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return; fluxograma(ta, parseInt(b.dataset.fxtira,10)); });
 
   // Troca o trecho [a,b) por txt mantendo o "desfazer" (Ctrl+Z) e disparando o salvamento.
   function trocar(ta,a,b,txt,selA,selB){
@@ -143,14 +168,14 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     trocar(ta,a,ta.selectionEnd,antes+"\n---\n\n");
   }
   // Abre o editor de fluxograma (fluxo.js) ligado a esta caixa de texto.
-  function fluxograma(ta){
+  function fluxograma(ta, idx){
     if(!window.FLUXO||!window.FLUXO.abrir){ return; }
     const sel=ta.id?"#"+ta.id:ta.dataset.dnota?`textarea[data-dnota="${ta.dataset.dnota}"]`:null;
     const achar=()=>ta.isConnected?ta:(sel&&document.querySelector(sel));
     window.FLUXO.abrir({ ta:achar,
       get:()=>{ const t=achar(); return t?t.value:ta.value; },
-      set:v=>{ const t=achar(); if(!t) return; t.value=v; t.dispatchEvent(new Event("input",{bubbles:true})); }
-    }, null, ta.selectionStart);
+      set:v=>{ const t=achar(); if(!t) return; t.value=v; t.dispatchEvent(new Event("input",{bubbles:true})); if(t._tira){ t._tira.dataset.k=""; atualizarTira(t); } }
+    }, idx==null?null:idx, idx==null?ta.selectionStart:null);
   }
   /* ---------- Imagens ----------
      A imagem é reduzida (lado maior até 1600 px) e enviada para a pasta privada "caderno"
@@ -245,7 +270,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const ov=doc.createElement("div"); ov.className="fmt-cheia"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-label","Anotação em tela cheia");
     ov.innerHTML=`<header><span class="fc-t"></span><span class="fc-n"></span><button type="button" data-fc="ver">Visualizar</button><button type="button" data-fc="sair">Sair da tela cheia</button></header><div class="fc-b"></div>`;
     ov.querySelector(".fc-t").textContent=tituloDe(ta);
-    const corpo=ov.querySelector(".fc-b"); if(bar) corpo.appendChild(bar); corpo.appendChild(ta);
+    const corpo=ov.querySelector(".fc-b"); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._tira) corpo.appendChild(ta._tira);
     const prev=doc.createElement("div"); prev.className="md fc-prev"; prev.hidden=true; corpo.appendChild(prev);
     doc.body.appendChild(ov); doc.body.style.overflow="hidden";
     CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false};
@@ -258,7 +283,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!CHEIA) return; const {ta,bar,marca,ov,fs}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Tela cheia";
     ta.hidden=false; if(bar) bar.hidden=false;
-    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); marca.remove(); ov.remove(); ta.focus(); }
+    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); if(ta._tira) ta.after(ta._tira); marca.remove(); ov.remove(); ta.focus(); }
     else { ov.remove(); if(typeof render==="function") try{ render(); }catch(e){} if(typeof renderPane==="function"&&typeof PANE!=="undefined"&&PANE) try{ renderPane(); }catch(e){} }
     doc.body.style.overflow="";
     if(fs && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(()=>{});
@@ -267,7 +292,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!CHEIA) return; const {ta,bar,prev,ov}=CHEIA, b=ov.querySelector('[data-fc="ver"]');
     const mostrar=prev.hidden;
     if(mostrar){ prev.innerHTML= typeof md==="function"? md(ta.value) : ""; if(!prev.innerHTML) prev.textContent=ta.value; mostrarImagens(ov.ownerDocument); }
-    prev.hidden=!mostrar; ta.hidden=mostrar; if(bar) bar.hidden=mostrar; b.textContent=mostrar?"Editar":"Visualizar";
+    prev.hidden=!mostrar; ta.hidden=mostrar; if(bar) bar.hidden=mostrar; if(ta._tira) ta._tira.hidden=mostrar; b.textContent=mostrar?"Editar":"Visualizar";
     if(!mostrar) ta.focus();
   }
   document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".fmt-cheia [data-fc]"); if(!b) return; if(b.dataset.fc==="sair") sairCheia(); else verCheia(); });
