@@ -24,6 +24,7 @@
     ["img",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3.5" width="16" height="13" rx="2"/><circle cx="7" cy="8" r="1.6"/><path d="M2.5 15l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5"/></svg><span class="fmt-tx">Imagem</span>',"Inserir imagem neste ponto do texto (também dá para colar com Ctrl+V ou arrastar a imagem para a caixa)"],
     ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
     ["tab",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="1.5"/><path d="M2 7.5h16M2 12h16M8 3v14M13 3v14"/></svg><span class="fmt-tx">Tabela</span>',"Inserir tabela neste ponto (com o cursor numa tabela: adicionar/remover linhas e colunas). Tab passa para a próxima célula."],
+    ["rev",'<span class="fmt-rev">Aa✓</span>',"Revisão: correção ortográfica (automática ou não) e sugestão de palavras por Tab"],
   ];
   const CSS=`
 .fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:wrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
@@ -87,6 +88,12 @@
 .tb-pop .tb-pri{background:var(--accent);color:#fff;border-color:var(--accent);text-align:center}
 .tb-pop .tb-rm{color:#c0392b}
 .tb-pop .tb-t{font-weight:700;font-size:12.5px}
+.fmt .fmt-rev{font-weight:700;font-size:12px;letter-spacing:-.02em}
+.rev-pop{max-width:320px}
+.tb-pop label.rev-op{display:flex;flex-direction:row;gap:8px;align-items:flex-start;cursor:pointer;padding:4px 2px;color:inherit;font-size:13.5px}
+.tb-pop .rev-op input{width:auto;padding:0}
+.rev-op input{margin-top:3px;flex:none}.rev-op span{display:flex;flex-direction:column;gap:2px}.rev-op small{color:var(--muted);font-size:12px;line-height:1.35}
+.fmt-sug{position:fixed;pointer-events:none;color:var(--muted);opacity:.75;z-index:10002;white-space:pre}
 .tb-ctl>div{position:fixed;z-index:10001;display:none;gap:2px}
 .tb-ctl .tb-cc{flex-direction:column}
 .tb-ctl.on>div{display:flex}
@@ -177,10 +184,11 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function barra(doc){
     const pip=doc!==document;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){
+    if(typeof aplicarRev==="function") aplicarRev(raiz);
     raiz.querySelectorAll(ALVOS).forEach(ta=>{
       if(ta.dataset.fmtOk) return; ta.dataset.fmtOk="1";
       const p=ta.previousElementSibling; if(p&&p.classList.contains("fmt")) return;
@@ -400,7 +408,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function montar(ta){
     if(ta._ed){ desenhar(ta); return; }
     const ed=document.createElement("div"); ed.className="wys md"; ed.contentEditable="true"; ed.setAttribute("role","textbox"); ed.setAttribute("aria-multiline","true");
-    ed.setAttribute("aria-label",ta.getAttribute("aria-label")||"Anotação"); ed.dataset.ph=ta.placeholder||""; ed.spellcheck=true; ed._ta=ta;
+    ed.setAttribute("aria-label",ta.getAttribute("aria-label")||"Anotação"); ed.dataset.ph=ta.placeholder||""; ed.spellcheck=!!REV.sub; ed.setAttribute("lang","pt-BR"); ed._ta=ta;
     const h=ta.offsetHeight; if(h>40) ed.style.minHeight=Math.min(h,420)+"px";
     const {notas}=separar(ta.value); ed.innerHTML=mdParaHtml(notas); ed.classList.toggle("vazio",!notas.trim());
     ta.after(ed); ta._ed=ed; ta.hidden=true; montarAbas(ta); focarNovo(ed);
@@ -453,6 +461,143 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     }
     if(!algum){ cmd("outdent"); sincronizar(ed); return true; }
     voltaSel(sel); sincronizar(ed); return true;
+  }
+  /* ---------- Revisão: correção ortográfica e sugestão por Tab ----------
+     Opções guardadas neste aparelho (valem para os dois cadernos):
+     sub = sublinhar erros (corretor do navegador, em português), auto = corrigir sozinho palavras comuns
+     sem acento/erro de digitação, tab = sugerir o fim da palavra (aceita com Tab). */
+  const REV_LS="cadernos:revisao";
+  let REV={sub:true,auto:true,tab:true};
+  try{ Object.assign(REV, JSON.parse(localStorage.getItem(REV_LS)||"{}")); }catch(e){}
+  function salvarRev(){ try{ localStorage.setItem(REV_LS, JSON.stringify(REV)); }catch(e){} aplicarRev(document); }
+  const ALVO_REV=".wys, "+ALVOS+", .pergs textarea, .projs textarea, textarea.pj-auto, textarea.fx-seg";
+  function aplicarRev(raiz){ raiz.querySelectorAll(ALVO_REV).forEach(el=>{ el.spellcheck=!!REV.sub; el.setAttribute("lang","pt-BR"); }); }
+  // palavras comuns escritas sem acento ou com erro de digitação → forma certa
+  const AUTO=Object.create(null);
+  ("nao:não entao:então tambem:também voce:você voces:vocês ate:até ja:já sera:será serao:serão estao:estão sao:são mao:mão alem:além porem:porém atraves:através apos:após "+
+   "ninguem:ninguém alguem:alguém tres:três mes:mês ultimo:último ultima:última ultimos:últimos ultimas:últimas pagina:página paginas:páginas numero:número numeros:números "+
+   "area:área areas:áreas analise:análise analises:análises possivel:possível possiveis:possíveis disponivel:disponível disponiveis:disponíveis facil:fácil faceis:fáceis dificil:difícil "+
+   "util:útil uteis:úteis varios:vários varias:várias proximo:próximo proxima:próxima proximos:próximos proximas:próximas publico:público publica:pública publicos:públicos publicas:públicas "+
+   "seguranca:segurança geografico:geográfico geografica:geográfica geograficos:geográficos geograficas:geográficas cartografico:cartográfico cartografica:cartográfica "+
+   "cartograficos:cartográficos cartograficas:cartográficas tematico:temático tematica:temática tematicos:temáticos tematicas:temáticas metodo:método metodos:métodos "+
+   "periodo:período periodos:períodos codigo:código codigos:códigos logica:lógica logico:lógico grafico:gráfico graficos:gráficos critica:crítica critico:crítico "+
+   "tecnica:técnica tecnicas:técnicas tecnico:técnico tecnicos:técnicos pratica:prática praticas:práticas pratico:prático teorico:teórico teorica:teórica basico:básico basica:básica "+
+   "unico:único unica:única especifico:específico especifica:específica historico:histórico historica:histórica estatistica:estatística estatisticas:estatísticas "+
+   "indice:índice indices:índices criterio:critério criterios:critérios relatorio:relatório relatorios:relatórios territorio:território territorios:territórios "+
+   "municipio:município municipios:municípios regiao:região regioes:regiões ocorrencia:ocorrência ocorrencias:ocorrências violencia:violência frequencia:frequência "+
+   "sequencia:sequência referencia:referência referencias:referências distancia:distância distancias:distâncias importancia:importância necessario:necessário "+
+   "necessaria:necessária necessarios:necessários obrigatorio:obrigatório obrigatoria:obrigatória conteudo:conteúdo conteudos:conteúdos duvida:dúvida duvidas:dúvidas "+
+   "exercicio:exercício exercicios:exercícios inicio:início satelite:satélite satelites:satélites imovel:imóvel imoveis:imóveis policia:polícia homicidio:homicídio "+
+   "homicidios:homicídios transito:trânsito agua:água rapido:rápido rapida:rápida poligono:polígono poligonos:polígonos vertice:vértice vertices:vértices rotulo:rótulo "+
+   "rotulos:rótulos hemisferio:hemisfério topografico:topográfico topografica:topográfica nivel:nível niveis:níveis maximo:máximo maxima:máxima minimo:mínimo minima:mínima "+
+   "medio:médio media:média medias:médias simbolo:símbolo simbolos:símbolos veiculo:veículo veiculos:veículos funcionario:funcionário horario:horário horarios:horários "+
+   "calculo:cálculo calculos:cálculos calendario:calendário cenario:cenário cenarios:cenários diagnostico:diagnóstico diagnosticos:diagnósticos espaco:espaço espacos:espaços "+
+   "endereco:endereço enderecos:endereços servico:serviço servicos:serviços comeco:começo voo:voo raster:raster tambem:também "+
+   "qeu:que uqe:que nãoo:não ocm:com cmo:com praa:para apra:para pra:pra pq:pq").split(" ").forEach(p=>{ const i=p.indexOf(":"); const a=p.slice(0,i), b=p.slice(i+1); if(a!==b) AUTO[a]=b; });
+  const IGNORAR=new Set();
+  function corrigida(w){
+    const lw=w.toLowerCase(); if(IGNORAR.has(lw)) return null;
+    let r=AUTO[lw];
+    if(!r&&lw.length>=5){ let m=lw.match(/^(.*[aeiou])cao$/); if(m) r=m[1]+"ção"; else if((m=lw.match(/^(.*[aeiou])coes$/))) r=m[1]+"ções"; }
+    if(!r||r===lw) return null;
+    if(w===w.toUpperCase()&&w.length>1) return r.toUpperCase();
+    if(w[0]===w[0].toUpperCase()) return r[0].toUpperCase()+r.slice(1);
+    return r;
+  }
+  const LETRA=/[A-Za-zÀ-ÖØ-öø-ÿ]/, FIMPAL=/[\s.,;:!?)\]}"'”»]/;
+  let ULT_AUTO=null; // {de, para}
+  function autoEd(ed,ch){
+    const s=getSelection(); if(!s.rangeCount||!s.isCollapsed) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3||o<2) return;
+    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a,.pesq")) return;
+    const antes=n.nodeValue.slice(0,o-ch.length), m=antes.match(/([A-Za-zÀ-ÖØ-öø-ÿ]+)$/); if(!m) return;
+    const r=corrigida(m[1]); if(!r) return;
+    const ini=antes.length-m[1].length;
+    const rg=document.createRange(); rg.setStart(n,ini); rg.setEnd(n,antes.length); s.removeAllRanges(); s.addRange(rg);
+    let ok=false; try{ ok=document.execCommand("insertText",false,r); }catch(e){}
+    if(!ok){ n.nodeValue=n.nodeValue.slice(0,ini)+r+n.nodeValue.slice(antes.length); const c=document.createRange(); c.setStart(n,ini+r.length); c.collapse(true); s.removeAllRanges(); s.addRange(c); }
+    try{ s.modify("move","forward","character"); }catch(e){}
+    ULT_AUTO={de:m[1],para:r};
+  }
+  function autoTa(ta,ch){
+    const v=ta.value, c=ta.selectionStart; if(c!==ta.selectionEnd) return;
+    const antes=v.slice(0,c-ch.length), m=antes.match(/([A-Za-zÀ-ÖØ-öø-ÿ]+)$/); if(!m) return;
+    const r=corrigida(m[1]); if(!r) return; const ini=antes.length-m[1].length;
+    ta.setSelectionRange(ini,antes.length); let ok=false; try{ ok=ta.ownerDocument.execCommand("insertText",false,r); }catch(e){}
+    if(!ok){ ta.setRangeText(r,ini,antes.length,"end"); ta.dispatchEvent(new Event("input",{bubbles:true})); }
+    const p=ini+r.length+ch.length; ta.setSelectionRange(p,p); ULT_AUTO={de:m[1],para:r};
+  }
+  document.addEventListener("input",e=>{
+    const t=e.target; if(typeof InputEvent!=="undefined"&&!(e instanceof InputEvent)) return; // eventos de sincronização da caixa escondida
+    if(e.inputType==="historyUndo"&&ULT_AUTO){ IGNORAR.add(ULT_AUTO.de.toLowerCase()); ULT_AUTO=null; return; } // desfez a correção: não corrige mais essa palavra
+    if(e.inputType!=="insertText"||!e.data) { if(e.inputType!=="insertText") esconderSug(); return; }
+    if(!t.matches||!t.matches(ALVO_REV)) return;
+    if(FIMPAL.test(e.data)){ ULT_AUTO=null; esconderSug(); if(REV.auto){ if(t.classList.contains("wys")) autoEd(t,e.data); else if(t.tagName==="TEXTAREA") autoTa(t,e.data); } return; }
+    if(REV.tab&&t.classList.contains("wys")&&LETRA.test(e.data)) sugerir(t); else esconderSug();
+  },true);
+
+  // ---- sugestão por Tab (vocabulário: suas anotações + termos do curso) ----
+  const BASE=("georreferenciamento geoprocessamento geocodificação geográfico geográfica cartografia cartográfico cartográfica coordenadas coordenada latitude longitude "+
+    "projeção projeções sistema referência SIRGAS shapefile geopackage vetorial matricial raster polígono polígonos pontos linhas camada camadas atributos atributo tabela "+
+    "simbologia legenda rótulos layout impressão escala resolução satélite imagens ortofoto altimetria topográfico hidrografia município municípios bairros setores "+
+    "censitários IBGE OpenStreetMap QGIS complemento complementos ferramenta ferramentas processamento análise análises espacial espaciais densidade kernel mapa mapas "+
+    "calor hotspot hotspots buffer buffers interseção união recorte dissolver junção junções consulta consultas seleção selecionar filtro expressão calculadora campo campos "+
+    "ocorrências ocorrência criminalidade segurança pública policiamento patrulhamento homicídio homicídios violência roubos furtos território territorial diagnóstico "+
+    "planejamento operacional estratégico estatística estatísticas indicadores indicador taxa população habitantes período temporal tendência distribuição concentração "+
+    "metodologia objetivo justificativa resultados conclusão conclusões apresentação relatório produto produtos importante exemplo exemplos informação informações "+
+    "também porque quando então através definição principalmente necessário possível diferença diferentes utilizado utilizada utilizar trabalho trabalhos atividade atividades").split(" ");
+  let VOC=null, VOC_T=0;
+  function vocabulario(){
+    if(VOC&&Date.now()-VOC_T<60000) return VOC;
+    const f=new Map(); const add=(w,n)=>{ if(w.length<5) return; f.set(w,(f.get(w)||0)+n); };
+    BASE.forEach(w=>add(w,2));
+    try{ if(typeof S==="object"&&S&&S.docs) for(const d of Object.values(S.docs)){ if(!d||d.apagado||d.tipo==="mtx") continue;
+      for(const v of Object.values(d)){ if(typeof v!=="string"||v.length<5) continue; const ws=v.match(/[A-Za-zÀ-ÖØ-öø-ÿ]{5,}/g); if(ws) ws.forEach(w=>add(w,3)); } } }catch(e){}
+    VOC=[...f.entries()].sort((a,b)=>b[1]-a[1]); VOC_T=Date.now(); return VOC;
+  }
+  let SUG=null; // {ed, resto, el}
+  function esconderSug(){ if(SUG&&SUG.el) SUG.el.remove(); SUG=null; }
+  function sugerir(ed){
+    const s=getSelection(); if(!s.rangeCount||!s.isCollapsed){ esconderSug(); return; }
+    const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3){ esconderSug(); return; }
+    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a")){ esconderSug(); return; }
+    const depois=n.nodeValue.slice(o,o+1); if(depois&&LETRA.test(depois)){ esconderSug(); return; }
+    const m=n.nodeValue.slice(0,o).match(/([A-Za-zÀ-ÖØ-öø-ÿ]{3,})$/); if(!m){ esconderSug(); return; }
+    const pre=m[1], lp=pre.toLowerCase();
+    const achou=vocabulario().find(([w])=>w.length>=pre.length+2&&w.toLowerCase().startsWith(lp)&&w.toLowerCase()!==lp);
+    if(!achou){ esconderSug(); return; }
+    let resto=achou[0].slice(pre.length); if(pre===pre.toUpperCase()&&pre.length>1) resto=resto.toUpperCase();
+    const rg=document.createRange(); rg.setStart(n,o-1); rg.setEnd(n,o); const r=rg.getBoundingClientRect(); if(!r||!r.height){ esconderSug(); return; }
+    let el=SUG&&SUG.el; if(!el){ el=document.createElement("span"); el.className="fmt-sug"; el.setAttribute("aria-hidden","true"); document.body.appendChild(el); }
+    const cs=getComputedStyle(n.parentNode); el.style.font=cs.font; el.style.lineHeight=r.height+"px";
+    el.textContent=resto; el.style.left=r.right+"px"; el.style.top=r.top+"px";
+    SUG={ed,resto,el,n,o};
+  }
+  document.addEventListener("keydown",e=>{
+    if(!SUG) return;
+    if(e.key==="Tab"&&!e.shiftKey&&!e.ctrlKey&&!e.altKey&&e.target===SUG.ed){ e.preventDefault(); e.stopImmediatePropagation(); const t=SUG.resto; esconderSug(); try{ document.execCommand("insertText",false,t); }catch(x){} return; }
+    if(e.key==="Escape"){ e.stopImmediatePropagation(); esconderSug(); return; }
+    if(e.key.length>1&&e.key!=="Shift") esconderSug();
+  },true);
+  document.addEventListener("selectionchange",()=>{ if(!SUG) return; const s=getSelection(); if(!s.rangeCount||s.anchorNode!==SUG.n||s.anchorOffset!==SUG.o) esconderSug(); });
+  document.addEventListener("focusout",()=>esconderSug());
+  addEventListener("scroll",()=>esconderSug(),true);
+
+  // ---- botão "Revisão" na barra ----
+  function popRev(bt){
+    const doc=bt.ownerDocument; doc.querySelectorAll(".tb-pop").forEach(x=>x.remove());
+    const p=doc.createElement("div"); p.className="tb-pop rev-pop";
+    const op=(k,t,d)=>`<label class="rev-op"><input type="checkbox" data-rev="${k}" ${REV[k]?"checked":""}><span><b>${t}</b><small>${d}</small></span></label>`;
+    p.innerHTML=`<div class="tb-t">Revisão do texto</div>`+
+      op("sub","Sublinhar erros de ortografia","Corretor do navegador em português. Clique com o botão direito na palavra para ver as sugestões.")+
+      op("auto","Correção automática","Ao terminar a palavra, corrige erros comuns (nao → não, informacao → informação). Ctrl+Z desfaz e a palavra deixa de ser corrigida.")+
+      op("tab","Sugestão por Tab","Mostra o fim da palavra em cinza, com base nas suas anotações e nos termos do curso. Tab aceita, Esc ignora.");
+    doc.body.appendChild(p);
+    const r=bt.getBoundingClientRect(), W=doc.documentElement.clientWidth; p.style.left=Math.max(6,Math.min(r.left,W-p.offsetWidth-6))+"px"; p.style.top=(r.bottom+4)+"px";
+    const fechar=()=>{ p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",esc,true); };
+    const fora=e=>{ if(!p.contains(e.target)&&!bt.contains(e.target)) fechar(); };
+    const esc=e=>{ if(e.key==="Escape"){ e.stopPropagation(); fechar(); } };
+    doc.addEventListener("mousedown",fora,true); doc.addEventListener("keydown",esc,true);
+    p.addEventListener("change",e=>{ const k=e.target.dataset.rev; if(!k) return; REV[k]=e.target.checked; salvarRev(); if(!REV.tab) esconderSug(); });
   }
   let BT_ULT=null;
   function celAtual(ed){ return dentroDe(ed,"TD")||dentroDe(ed,"TH"); }
@@ -545,6 +690,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     restaurar(ed);
     if(k==="img") return escolherImagem(ta);
     if(k==="tab") return popTabela(ed,BT_ULT);
+    if(k==="rev") return popRev(BT_ULT);
     if(k==="sub"){ if(!dentroDe(ed,"LI")){ cmd("insertUnorderedList"); sincronizar(ed); return; } return recuar(ed); }
     if(k==="sob") return desrecuar(ed);
     if(/^(lis|num|tar|cit)$/.test(k)){ const bl=blocoAtual(ed); if(bl&&/^H[1-6]$/.test(bl.tagName)) cmd("formatBlock","div"); }
@@ -792,7 +938,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
   function aplicar(ta,k){
-    ({tab:()=>{ const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":""; trocar(ta,a,ta.selectionEnd,antes+"| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n"); },
+    ({rev:()=>{},
+      tab:()=>{ const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":""; trocar(ta,a,ta.selectionEnd,antes+"| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n"); },
       sub:()=>recuoTa(ta,true), sob:()=>recuoTa(ta,false), neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
       cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta), img:()=>escolherImagem(ta), flx:()=>fluxograma(ta), cheia:()=>telaCheia(ta)})[k]();
