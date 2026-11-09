@@ -755,7 +755,7 @@ function vDisciplinas(){
         <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
         <div class="row"><button class="btn sm" data-editnome="${x.k}">Editar nome</button><button class="btn sm" data-novanota="${x.k}">Nova nota</button></div>
       </div>
-      <div class="row" style="margin:10px 0 4px;gap:8px"><div style="flex:1">${barraMarcos(aulas,x.cor)}</div><span class="mono" style="font-size:12.5px">${haTxt(progresso(aulas).ha)}/${x.ha}</span></div>
+      <div style="margin:10px 0 4px">${barraMarcos(aulas,x.cor)}</div>
       <div class="dbody" id="db-${x.k}" ${ab?"":"hidden"}><div class="grid2" style="margin-top:10px">
         <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
           <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea>${acoesNotaHTML(x.k)}</div>
