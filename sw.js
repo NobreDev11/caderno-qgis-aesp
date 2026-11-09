@@ -8,7 +8,7 @@ const VERSAO = "cadernos-v2";
 const PAGINAS = ["/", "/qgis", "/dio"];
 const ARQUIVOS = [
   "/prompts.js", "/prompts-dio.js", "/timer.js", "/fluxo.js", "/formato.js",
-  "/vendor/supabase.js", "/vendor/pdf.min.mjs", "/vendor/pdf.worker.min.mjs", "/vendor/mermaid.min.js",
+  "/vendor/supabase.js", "/vendor/pdf.min.mjs", "/vendor/pdf.worker.min.mjs", "/vendor/mermaid.min.js", "/vendor/palavras-pt-br.txt",
   "/manifest.webmanifest", "/icons/icon.svg", "/icons/favicon-32.png", "/icons/apple-touch-icon.png",
   "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png",
 ];

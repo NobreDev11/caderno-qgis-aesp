@@ -476,29 +476,71 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   const AUTO=Object.create(null);
   ("nao:não entao:então tambem:também voce:você voces:vocês ate:até ja:já sera:será serao:serão estao:estão sao:são mao:mão alem:além porem:porém atraves:através apos:após "+
    "ninguem:ninguém alguem:alguém tres:três mes:mês ultimo:último ultima:última ultimos:últimos ultimas:últimas pagina:página paginas:páginas numero:número numeros:números "+
-   "area:área areas:áreas analise:análise analises:análises possivel:possível possiveis:possíveis disponivel:disponível disponiveis:disponíveis facil:fácil faceis:fáceis dificil:difícil "+
-   "util:útil uteis:úteis varios:vários varias:várias proximo:próximo proxima:próxima proximos:próximos proximas:próximas publico:público publica:pública publicos:públicos publicas:públicas "+
+   "area:área areas:áreas possivel:possível possiveis:possíveis disponivel:disponível disponiveis:disponíveis facil:fácil faceis:fáceis dificil:difícil "+
+   "util:útil uteis:úteis varios:vários varias:várias proximo:próximo proxima:próxima proximos:próximos proximas:próximas "+
    "seguranca:segurança geografico:geográfico geografica:geográfica geograficos:geográficos geograficas:geográficas cartografico:cartográfico cartografica:cartográfica "+
    "cartograficos:cartográficos cartograficas:cartográficas tematico:temático tematica:temática tematicos:temáticos tematicas:temáticas metodo:método metodos:métodos "+
-   "periodo:período periodos:períodos codigo:código codigos:códigos logica:lógica logico:lógico grafico:gráfico graficos:gráficos critica:crítica critico:crítico "+
-   "tecnica:técnica tecnicas:técnicas tecnico:técnico tecnicos:técnicos pratica:prática praticas:práticas pratico:prático teorico:teórico teorica:teórica basico:básico basica:básica "+
-   "unico:único unica:única especifico:específico especifica:específica historico:histórico historica:histórica estatistica:estatística estatisticas:estatísticas "+
+   "periodo:período periodos:períodos codigo:código codigos:códigos logica:lógica logico:lógico grafico:gráfico graficos:gráficos "+
+   "tecnica:técnica tecnicas:técnicas tecnico:técnico tecnicos:técnicos teorico:teórico teorica:teórica basico:básico basica:básica "+
+   "unico:único unica:única historico:histórico historica:histórica estatistica:estatística estatisticas:estatísticas "+
    "indice:índice indices:índices criterio:critério criterios:critérios relatorio:relatório relatorios:relatórios territorio:território territorios:territórios "+
    "municipio:município municipios:municípios regiao:região regioes:regiões ocorrencia:ocorrência ocorrencias:ocorrências violencia:violência frequencia:frequência "+
    "sequencia:sequência referencia:referência referencias:referências distancia:distância distancias:distâncias importancia:importância necessario:necessário "+
-   "necessaria:necessária necessarios:necessários obrigatorio:obrigatório obrigatoria:obrigatória conteudo:conteúdo conteudos:conteúdos duvida:dúvida duvidas:dúvidas "+
-   "exercicio:exercício exercicios:exercícios inicio:início satelite:satélite satelites:satélites imovel:imóvel imoveis:imóveis policia:polícia homicidio:homicídio "+
-   "homicidios:homicídios transito:trânsito agua:água rapido:rápido rapida:rápida poligono:polígono poligonos:polígonos vertice:vértice vertices:vértices rotulo:rótulo "+
+   "necessaria:necessária necessarios:necessários obrigatorio:obrigatório obrigatoria:obrigatória conteudo:conteúdo conteudos:conteúdos "+
+   "exercicio:exercício exercicios:exercícios satelite:satélite satelites:satélites imovel:imóvel imoveis:imóveis policia:polícia homicidio:homicídio "+
+   "homicidios:homicídios agua:água rapido:rápido rapida:rápida poligono:polígono poligonos:polígonos vertice:vértice vertices:vértices "+
    "rotulos:rótulos hemisferio:hemisfério topografico:topográfico topografica:topográfica nivel:nível niveis:níveis maximo:máximo maxima:máxima minimo:mínimo minima:mínima "+
-   "medio:médio media:média medias:médias simbolo:símbolo simbolos:símbolos veiculo:veículo veiculos:veículos funcionario:funcionário horario:horário horarios:horários "+
-   "calculo:cálculo calculos:cálculos calendario:calendário cenario:cenário cenarios:cenários diagnostico:diagnóstico diagnosticos:diagnósticos espaco:espaço espacos:espaços "+
+   "medio:médio simbolo:símbolo simbolos:símbolos veiculo:veículo veiculos:veículos funcionario:funcionário horario:horário horarios:horários "+
+   "calculos:cálculos calendario:calendário cenario:cenário cenarios:cenários diagnostico:diagnóstico diagnosticos:diagnósticos espaco:espaço espacos:espaços "+
    "endereco:endereço enderecos:endereços servico:serviço servicos:serviços comeco:começo voo:voo raster:raster tambem:também "+
    "qeu:que uqe:que nãoo:não ocm:com cmo:com praa:para apra:para pra:pra pq:pq").split(" ").forEach(p=>{ const i=p.indexOf(":"); const a=p.slice(0,i), b=p.slice(i+1); if(a!==b) AUTO[a]=b; });
-  const IGNORAR=new Set();
-  function corrigida(w){
+  // palavras que você desfez (Ctrl+Z) não são mais corrigidas neste aparelho
+  const IGN_LS="cadernos:revisao-ignorar"; const IGNORAR=new Set();
+  try{ JSON.parse(localStorage.getItem(IGN_LS)||"[]").forEach(w=>IGNORAR.add(w)); }catch(e){}
+  function ignorar(w){ IGNORAR.add(w); try{ localStorage.setItem(IGN_LS, JSON.stringify([...IGNORAR].slice(-500))); }catch(e){} }
+  /* Dicionário pt-BR (50 mil palavras mais usadas, em ordem de frequência) para corrigir qualquer palavra
+     desconhecida que esteja a 1 letra de distância de uma conhecida (trocada, faltando, sobrando, invertida)
+     ou que só difira nos acentos. Carregado na primeira vez que você digita numa caixa. */
+  let DIC=null, DESAC=null, DIC_P=null;
+  const desac = w => w.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  function carregarDic(){
+    if(DIC||DIC_P) return DIC_P;
+    DIC_P=fetch("/vendor/palavras-pt-br.txt").then(r=>r.ok?r.text():Promise.reject()).then(t=>{
+      const m=new Map(), d=new Map(); let i=0;
+      for(const l of t.split("\n")){ if(!l||l[0]==="#") continue; m.set(l,i); const k=desac(l); if(!d.has(k)) d.set(k,l); i++; }
+      DIC=m; DESAC=d; }).catch(()=>{ DIC_P=null; });
+    return DIC_P;
+  }
+  const ALFA="abcdefghijklmnopqrstuvwxyzáàâãéêíóôõúüç";
+  function edicoes(w){ const out=new Set();
+    for(let i=0;i<=w.length;i++){ const a=w.slice(0,i), b=w.slice(i);
+      if(b) out.add(a+b.slice(1));
+      if(b.length>1) out.add(a+b[1]+b[0]+b.slice(2));
+      for(const c of ALFA){ if(b) out.add(a+c+b.slice(1)); out.add(a+c+b); } }
+    out.delete(w); return out; }
+  function conhecida(lw){ if(BASE_L.has(lw)) return true; vocabulario(); return (VOC_L.get(lw)||0)>=3; }
+  function pelaLista(lw){
+    if(!DIC||lw.length<3||/[^a-zà-öø-ÿ]/.test(lw)||conhecida(lw)) return null;
+    const rw=DIC.get(lw);
+    if(rw!==undefined){ // palavra existe; só troca se for a versão sem acento, rara, de uma palavra bem mais usada (otima → ótima)
+      if(rw<8000||desac(lw)!==lw) return null; const a=DESAC.get(lw), ra=a!==undefined&&a!==lw?DIC.get(a):undefined;
+      return ra!==undefined&&ra*8<rw ? a : null; }
+    const so=DESAC.get(desac(lw)); if(so) return so; // só faltou/sobrou acento
+    if(lw.length<5) return null; // palavras curtas desconhecidas costumam ser siglas
+    // a 1 letra de distância: primeiro termos do curso e das suas anotações, depois as palavras mais usadas
+    let best=null, br=Infinity;
+    for(const c of edicoes(lw)){
+      if(BASE_L.has(c)||(VOC_L.get(c)||0)>=3){ const r=-1-(VOC_L.get(c)||0); if(r<br){ br=r; best=c; } continue; }
+      let w2=c, r=DIC.get(c); if(r===undefined){ const a=DESAC.get(desac(c)); if(a!==undefined){ w2=a; r=DIC.get(a); } } if(r!==undefined&&r<br){ br=r; best=w2; } }
+    return best;
+  }
+  function corrigida(w, inicio){
     const lw=w.toLowerCase(); if(IGNORAR.has(lw)) return null;
     let r=AUTO[lw];
     if(!r&&lw.length>=5){ let m=lw.match(/^(.*[aeiou])cao$/); if(m) r=m[1]+"ção"; else if((m=lw.match(/^(.*[aeiou])coes$/))) r=m[1]+"ções"; }
+    // nomes próprios (maiúscula no meio da frase) e siglas ficam como estão
+    const nome=/[A-ZÀ-Ö]/.test(w[0])&&!inicio, sigla=w.length>1&&w===w.toUpperCase();
+    if(!r&&!nome&&!sigla&&!/[A-ZÀ-Ö]/.test(w.slice(1))) r=pelaLista(lw);
     if(!r||r===lw) return null;
     if(w===w.toUpperCase()&&w.length>1) return r.toUpperCase();
     if(w[0]===w[0].toUpperCase()) return r[0].toUpperCase()+r.slice(1);
@@ -510,8 +552,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const s=getSelection(); if(!s.rangeCount||!s.isCollapsed) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3||o<2) return;
     if(n.parentNode.closest&&n.parentNode.closest("code,pre,a,.pesq")) return;
     const antes=n.nodeValue.slice(0,o-ch.length), m=antes.match(/([A-Za-zÀ-ÖØ-öø-ÿ]+)$/); if(!m) return;
-    const r=corrigida(m[1]); if(!r) return;
-    const ini=antes.length-m[1].length;
+    const ini=antes.length-m[1].length, prev=antes.slice(0,ini);
+    const r=corrigida(m[1], !prev.trim()&&!n.previousSibling || /[.!?]\s*$/.test(prev)); if(!r) return;
     const rg=document.createRange(); rg.setStart(n,ini); rg.setEnd(n,antes.length); s.removeAllRanges(); s.addRange(rg);
     let ok=false; try{ ok=document.execCommand("insertText",false,r); }catch(e){}
     if(!ok){ n.nodeValue=n.nodeValue.slice(0,ini)+r+n.nodeValue.slice(antes.length); const c=document.createRange(); c.setStart(n,ini+r.length); c.collapse(true); s.removeAllRanges(); s.addRange(c); }
@@ -521,20 +563,22 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function autoTa(ta,ch){
     const v=ta.value, c=ta.selectionStart; if(c!==ta.selectionEnd) return;
     const antes=v.slice(0,c-ch.length), m=antes.match(/([A-Za-zÀ-ÖØ-öø-ÿ]+)$/); if(!m) return;
-    const r=corrigida(m[1]); if(!r) return; const ini=antes.length-m[1].length;
+    const ini=antes.length-m[1].length, prev=antes.slice(0,ini);
+    const r=corrigida(m[1], !prev.trim()||/[.!?\n]\s*$/.test(prev)); if(!r) return;
     ta.setSelectionRange(ini,antes.length); let ok=false; try{ ok=ta.ownerDocument.execCommand("insertText",false,r); }catch(e){}
     if(!ok){ ta.setRangeText(r,ini,antes.length,"end"); ta.dispatchEvent(new Event("input",{bubbles:true})); }
     const p=ini+r.length+ch.length; ta.setSelectionRange(p,p); ULT_AUTO={de:m[1],para:r};
   }
   document.addEventListener("input",e=>{
     const t=e.target; if(typeof InputEvent!=="undefined"&&!(e instanceof InputEvent)) return; // eventos de sincronização da caixa escondida
-    if(e.inputType==="historyUndo"&&ULT_AUTO){ IGNORAR.add(ULT_AUTO.de.toLowerCase()); ULT_AUTO=null; return; } // desfez a correção: não corrige mais essa palavra
+    if(e.inputType==="historyUndo"&&ULT_AUTO){ ignorar(ULT_AUTO.de.toLowerCase()); ULT_AUTO=null; return; } // desfez a correção: não corrige mais essa palavra
     if(e.inputType!=="insertText"||!e.data) { if(e.inputType!=="insertText") esconderSug(); return; }
     if(!t.matches||!t.matches(ALVO_REV)) return;
     if(FIMPAL.test(e.data)){ ULT_AUTO=null; esconderSug(); if(REV.auto){ if(t.classList.contains("wys")) autoEd(t,e.data); else if(t.tagName==="TEXTAREA") autoTa(t,e.data); } return; }
     if(REV.tab&&t.classList.contains("wys")&&LETRA.test(e.data)) sugerir(t); else esconderSug();
   },true);
 
+  document.addEventListener("focusin",e=>{ if(REV.auto&&e.target.matches&&e.target.matches(ALVO_REV)) carregarDic(); });
   // ---- sugestão por Tab (vocabulário: suas anotações + termos do curso) ----
   const BASE=("georreferenciamento geoprocessamento geocodificação geográfico geográfica cartografia cartográfico cartográfica coordenadas coordenada latitude longitude "+
     "projeção projeções sistema referência SIRGAS shapefile geopackage vetorial matricial raster polígono polígonos pontos linhas camada camadas atributos atributo tabela "+
@@ -544,15 +588,19 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     "ocorrências ocorrência criminalidade segurança pública policiamento patrulhamento homicídio homicídios violência roubos furtos território territorial diagnóstico "+
     "planejamento operacional estratégico estatística estatísticas indicadores indicador taxa população habitantes período temporal tendência distribuição concentração "+
     "metodologia objetivo justificativa resultados conclusão conclusões apresentação relatório produto produtos importante exemplo exemplos informação informações "+
+    "cvli cvp cvi ais sspds ibge shp dbf shx prj csv kml kmz osm wms wfs wmts wcs utm datum epsg sirgas wgs gps gnss geojson gpkg tif tiff mde mdt dem crs src gdal postgis arcgis "+
+    "ciops cbmce aesp pmce pcce tco plugin plugins online offline link links email zoom heatmap raster rasters vetor vetores "+
     "também porque quando então através definição principalmente necessário possível diferença diferentes utilizado utilizada utilizar trabalho trabalhos atividade atividades").split(" ");
-  let VOC=null, VOC_T=0;
+  const BASE_L=new Set(BASE.map(w=>w.toLowerCase()));
+  let VOC=null, VOC_T=0, VOC_L=new Map();
   function vocabulario(){
     if(VOC&&Date.now()-VOC_T<60000) return VOC;
     const f=new Map(); const add=(w,n)=>{ if(w.length<5) return; f.set(w,(f.get(w)||0)+n); };
     BASE.forEach(w=>add(w,2));
     try{ if(typeof S==="object"&&S&&S.docs) for(const d of Object.values(S.docs)){ if(!d||d.apagado||d.tipo==="mtx") continue;
       for(const v of Object.values(d)){ if(typeof v!=="string"||v.length<5) continue; const ws=v.match(/[A-Za-zÀ-ÖØ-öø-ÿ]{5,}/g); if(ws) ws.forEach(w=>add(w,3)); } } }catch(e){}
-    VOC=[...f.entries()].sort((a,b)=>b[1]-a[1]); VOC_T=Date.now(); return VOC;
+    VOC=[...f.entries()].sort((a,b)=>b[1]-a[1]); VOC_T=Date.now();
+    VOC_L=new Map(); for(const [w,n] of f) VOC_L.set(w.toLowerCase(),(VOC_L.get(w.toLowerCase())||0)+Math.floor(n/3)); return VOC;
   }
   let SUG=null; // {ed, resto, el}
   function esconderSug(){ if(SUG&&SUG.el) SUG.el.remove(); SUG=null; }
