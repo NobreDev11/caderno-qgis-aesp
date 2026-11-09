@@ -41,7 +41,28 @@ html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.app{display:grid;grid-template-columns:260px 1fr;height:100%}
+.app{display:grid;grid-template-columns:260px 1fr;height:100%;transition:grid-template-columns .2s ease}
+.topo{display:flex;justify-content:flex-end;margin:-8px -6px -10px 0}
+.menu-bt{all:unset;cursor:pointer;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);flex:none}
+.menu-bt:hover{background:var(--accent-soft);color:var(--ink)}
+.menu-bt:focus-visible{outline:2px solid var(--accent)}
+nav button .ic{flex:none;margin-right:10px;opacity:.85}
+nav button .lbl{flex:1}
+.segs{display:flex;gap:1px;height:10px;align-items:stretch}
+.sg{flex:1;min-width:1px;background:var(--line);border-radius:2px;overflow:hidden}
+.sg.d{margin-left:3px}
+.sg>i{display:block;height:100%;transition:width .4s}
+.sg.cur{box-shadow:0 0 0 1px var(--ink);position:relative;z-index:1}
+@media (min-width:821px){
+  .app.recolhido{grid-template-columns:60px 1fr}
+  .app.recolhido aside{padding:14px 8px;align-items:stretch}
+  .app.recolhido .brand,.app.recolhido .prog,.app.recolhido #tmini,.app.recolhido #stxt,.app.recolhido #sbtn,.app.recolhido #sinfo{display:none}
+  .app.recolhido .topo{justify-content:center;margin:0}
+  .app.recolhido nav button{justify-content:center;padding:9px 0}
+  .app.recolhido nav .ic{margin:0}
+  .app.recolhido nav .lbl,.app.recolhido nav .cnt{display:none}
+  .app.recolhido .sync{justify-content:center}
+}
 aside{background:var(--surface);border-right:1px solid var(--line);padding:20px 16px;display:flex;flex-direction:column;gap:18px;overflow:auto;
   background-image:repeating-radial-gradient(circle at 120% -10%, transparent 0 22px, color-mix(in srgb,var(--accent) 7%,transparent) 22px 23px)}
 .brand h1{font:800 20px/1.15 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
@@ -166,6 +187,11 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
   nav{flex-direction:row;overflow:auto}
   nav button{white-space:nowrap}
   .prog{display:none}
+  .topo{position:absolute;right:10px;top:10px;margin:0}
+  aside{position:relative}
+  .brand{padding-right:36px}
+  .app.recolhido nav,.app.recolhido #tmini,.app.recolhido .brand>p:not(#voltarCursos){display:none}
+  nav button .ic{margin-right:6px}
   .sync{margin-top:0}
   .now{grid-template-columns:1fr}
   .kpis{grid-template-columns:repeat(2,1fr)}
@@ -197,6 +223,7 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
 <body>
 <div class="app">
   <aside>
+    <div class="topo"><button type="button" class="menu-bt" id="menuBt" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button></div>
     <div class="brand">
       <p style="margin:0 0 6px" id="voltarCursos"><a href="/" style="color:var(--accent);font-size:13px;text-decoration:none">← Cursos</a></p>
       <h1>Uso do QGIS como Estratégia de Segurança Pública</h1>
@@ -533,6 +560,18 @@ function sw(k){ return `<span class="sw" style="background:${DK[k].cor}"></span>
 function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||a.isContentEditable||(a.tagName==="INPUT"&&a.type==="text")); }
 
 /* ============ NAVEGAÇÃO ============ */
+const ICONES={
+  hoje:'<circle cx="10" cy="10" r="3.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4"/>',
+  cronograma:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/>',
+  disciplinas:'<path d="M10 3 2.5 7 10 11l7.5-4z"/><path d="M2.5 10.5 10 14.5l7.5-4"/><path d="M2.5 14 10 18l7.5-4"/>',
+  materiais:'<path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15M7.5 10h5M7.5 13h5"/>',
+  estudar:'<circle cx="10" cy="10" r="7.5"/><path d="m6.8 10.2 2.2 2.2 4.3-4.6"/>',
+  caderno:'<rect x="4" y="2.5" width="12" height="15" rx="1.5"/><path d="M7 2.5v15M9.5 6.5h4M9.5 9.5h4"/>',
+  tarefas:'<path d="M8 5.5h9M8 10h9M8 14.5h9"/><path d="m2.5 5.5 1.2 1.2 2-2.2M2.5 10l1.2 1.2 2-2.2M2.5 14.5l1.2 1.2 2-2.2"/>',
+  busca:'<circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 5 5"/>',
+  backup:'<path d="M10 3v10M6 9l4 4 4-4"/><path d="M3.5 14.5v2.5h13v-2.5"/>',
+};
+const icone = k => `<svg class="ic" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[k]||""}</svg>`;
 const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
 let VIEW = "hoje", DIA_SEL=null, PANE=null;
 function lerHash(){ const h=location.hash.slice(1); if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
@@ -542,16 +581,40 @@ function ir(v){ VIEW=v; try{ history.replaceState(null,"","#"+v);}catch(e){ loca
 function renderNav(){
   const nn=notas().length, tp=tarefas().filter(t=>!t.feito).length;
   const cnt={caderno:nn||"", tarefas:tp||"", materiais:(typeof mats==="function"&&mats().length)||""};
-  document.getElementById("nav").innerHTML=VIEWS.map(([k,l])=>`<button data-go="${k}" ${VIEW===k?'aria-current="page"':""}>${l}<span class="cnt">${cnt[k]??""}</span></button>`).join("");
-  const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
+  document.getElementById("nav").innerHTML=VIEWS.map(([k,l])=>`<button data-go="${k}" title="${l}" ${VIEW===k?'aria-current="page"':""}>${icone(k)}<span class="lbl">${l}</span><span class="cnt">${cnt[k]??""}</span></button>`).join("");
+  renderProg();
+}
+// Progresso pelo relógio (Fortaleza): cada aula de 50 min é um marco; a aula em andamento enche aos poucos.
+function fracAula(a){ const t=Date.now(), i=msDe(a.data,a.ini), f=msDe(a.data,a.fim); return t<=i?0:t>=f?1:(t-i)/(f-i); }
+function progresso(aulas){ const fs=aulas.map(fracAula), soma=fs.reduce((x,y)=>x+y,0); return {fs, ha:soma, pct:aulas.length?soma/aulas.length*100:0}; }
+const haTxt = v => (Math.round(v*10)/10).toLocaleString("pt-BR",{minimumFractionDigits:v%1?1:0,maximumFractionDigits:1});
+function barraMarcos(aulas, cor){
+  const {fs}=progresso(aulas);
+  return `<div class="segs" role="img" aria-label="${aulas.filter((a,i)=>fs[i]>=1).length} de ${aulas.length} aulas concluídas">${aulas.map((a,i)=>{
+    const novoDia=i>0&&aulas[i-1].data!==a.data, f=fs[i], cur=f>0&&f<1;
+    return `<span class="sg${novoDia?" d":""}${cur?" cur":""}" title="Aula ${a.n}/${a.tot} · ${esc(nomeDisc(a.k))} · ${fmtData(a.data)} ${a.ini}–${a.fim}${cur?" · em andamento ("+Math.round(f*50)+" de 50 min)":f>=1?" · concluída":""}"><i style="width:${(f*100).toFixed(1)}%;background:${cor||DK[a.k].cor}"></i></span>`;
+  }).join("")}</div>`;
+}
+function linhaAgora(){
+  const t=Date.now(), cur=AULAS.find(a=>statusAula(a)==="cur"), prox=AULAS.find(a=>msDe(a.data,a.ini)>t);
+  if(cur){ const r=Math.max(1,Math.round((msDe(cur.data,cur.fim)-t)/60000)); return `Agora: ${esc(nomeDisc(cur.k))} · aula ${cur.n}/${cur.tot} · faltam ${r} min`; }
+  if(prox){ const m=Math.round((msDe(prox.data,prox.ini)-t)/60000); return `Próxima: ${esc(nomeDisc(prox.k))} · ${m<60?"em "+m+" min":fmtData(prox.data)+" "+prox.ini}`; }
+  return "Curso concluído";
+}
+function renderProg(){
+  const el=document.getElementById("prog"); if(!el) return;
+  const {ha,pct}=progresso(AULAS);
   const comNota=DISC.filter(x=>(discD(x.k).nota||"").trim()).length;
   const pres=AULAS.filter(a=>aulaD(a.id).pres==="p").length;
-  document.getElementById("prog").innerHTML=`
-    <div class="row" style="justify-content:space-between"><span>Curso</span><span class="mono">${passadas}/80 h/a</span></div>
-    <div class="bar"><i style="width:${passadas/80*100}%"></i></div>
+  el.innerHTML=`
+    <div class="row" style="justify-content:space-between"><span>Curso</span><span class="mono">${haTxt(ha)}/80 h/a · ${Math.floor(pct)}%</span></div>
+    ${barraMarcos(AULAS)}
+    <div class="muted" style="font-size:12px;line-height:1.35">${linhaAgora()}</div>
     <div class="row" style="justify-content:space-between"><span>Disciplinas anotadas</span><span class="mono">${comNota}</span></div>
     <div class="row" style="justify-content:space-between"><span>Presenças marcadas</span><span class="mono">${pres}</span></div>`;
+  const hb=document.getElementById("hojeBarra"); if(hb) hb.innerHTML=barraHoje();
 }
+function barraHoje(){ const {ha,pct}=progresso(AULAS); return `<div class="row" style="justify-content:space-between;margin-bottom:6px"><h3>Linha do curso ${info("linha")}</h3><span class="mono muted" style="font-size:13px">${haTxt(ha)}/80 h/a · ${Math.floor(pct)}%</span></div>${barraMarcos(AULAS)}<div class="muted" style="font-size:13px;margin-top:6px">${linhaAgora()}</div>`; }
 
 /* ============ VIEWS ============ */
 function slotHTML(a){
@@ -602,11 +665,12 @@ function vHoje(){
   return `
     <div><h2>${titulo} ${info("hoje")}</h2><p class="sub">${sub}</p></div>
     <div class="kpis">
-      <div class="card kpi"><b>${passadas}<span class="mono" style="font-size:15px">/80</span></b><span>h/a cumpridas (50 min) ${info("kpiha")}</span></div>
+      <div class="card kpi"><b>${haTxt(progresso(AULAS).ha)}<span class="mono" style="font-size:15px">/80</span></b><span>h/a cumpridas (50 min) ${info("kpiha")}</span></div>
       <div class="card kpi"><b>${DISC.filter(x=>AULAS.filter(a=>a.k===x.k).every(a=>statusAula(a)==="past")).length}<span class="mono" style="font-size:15px">/9</span></b><span>disciplinas concluídas ${info("kpidisc")}</span></div>
       <div class="card kpi"><b>${notas().length}</b><span>notas no caderno ${info("kpinotas")}</span></div>
       <div class="card kpi"><b>${tp.length}</b><span>tarefas pendentes ${info("kpitar")}</span></div>
     </div>
+    <div class="card" id="hojeBarra">${barraHoje()}</div>
     <div class="now">
       ${heroAula}
       <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Tarefas ${info("tarefas")}</h3><button class="btn sm" data-go="tarefas">Todas</button></div>
@@ -642,7 +706,7 @@ function vDisciplinas(){
         <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
         <div class="row"><button class="btn sm" data-editnome="${x.k}">Editar nome</button><button class="btn sm" data-novanota="${x.k}">Nova nota</button></div>
       </div>
-      <div class="row" style="margin:10px 0 4px;gap:8px"><div class="bar" style="flex:1"><i style="width:${pas/x.ha*100}%;background:${x.cor}"></i></div><span class="mono" style="font-size:12.5px">${pas}/${x.ha}</span></div>
+      <div class="row" style="margin:10px 0 4px;gap:8px"><div style="flex:1">${barraMarcos(aulas,x.cor)}</div><span class="mono" style="font-size:12.5px">${haTxt(progresso(aulas).ha)}/${x.ha}</span></div>
       <div class="grid2" style="margin-top:10px">
         <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
           <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea></div>
@@ -1110,6 +1174,7 @@ const AJUDA={
   sync:{t:"Onde suas notas estão salvas",o:"Ponto verde: sincronizado na nuvem, aparece em qualquer aparelho em que você entrar. Ponto laranja: salvo só neste navegador.",c:"Clique em Entrar e use o e-mail e a senha do portal ADMIN CBMCE. Tudo o que você já escreveu aqui sobe para a nuvem. Sem internet o app continua salvando e envia depois."},
   login:{t:"Entrar",o:"Liga o caderno à sua conta para sincronizar entre computador e celular e guardar PDFs e fotos.",c:"Use o mesmo e-mail e senha do portal ADMIN CBMCE. Só você vê as suas notas."},
   hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
+  linha:{t:"Linha do curso",o:"Cada risquinho é uma aula de 50 min, na cor da disciplina; os espaços maiores separam os dias. A aula em andamento vai enchendo conforme o relógio.",c:"Passe o mouse (ou toque) num risquinho para ver qual aula é. A conta é pelo horário de Fortaleza."},
   kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
   kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
   kpinotas:{t:"Notas no caderno",o:"Quantidade de notas livres criadas na aba Caderno."},
@@ -1379,8 +1444,15 @@ function ligarBackup(){
 
 // atualiza "agora" a cada minuto sem atrapalhar a digitação
 setInterval(()=>{ if(!editando() && !PANE) render(); else renderNav(); },60000);
+setInterval(renderProg,30000);
 document.getElementById("sinfo").innerHTML=info("sync");
 if(CONVITE){ const v=document.getElementById("voltarCursos"); if(v) v.hidden=true; }
+// Menu lateral recolhível (lembrado neste aparelho)
+(function(){ const app=document.querySelector(".app"), bt=document.getElementById("menuBt");
+  const aplicar=rec=>{ app.classList.toggle("recolhido",rec); bt.setAttribute("aria-expanded",String(!rec)); const t=rec?"Expandir menu":"Recolher menu"; bt.setAttribute("aria-label",t); bt.title=t; };
+  let rec=false; try{ rec=localStorage.getItem("caderno-qgis:menu")==="recolhido"; }catch(e){} aplicar(rec);
+  bt.addEventListener("click",()=>{ rec=!app.classList.contains("recolhido"); aplicar(rec); try{ localStorage.setItem("caderno-qgis:menu",rec?"recolhido":"aberto"); }catch(e){} });
+})();
 render(); setSync(); renderFlutuante();
 conectar();
 setTimeout(()=>{ if(!S.push) migrarNotasAulas(); },4000);

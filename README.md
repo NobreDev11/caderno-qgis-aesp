@@ -38,6 +38,8 @@ Página estática única (`qgis.html`).
 ### Funções
 - **Hoje:** aula atual ou próxima (horário de Fortaleza) com anotação rápida.
 - **Cronograma:** 80 h/a do QTS (versão de 06/11/2026), presença e estrela por aula.
+- **Progresso pelo relógio (09/11):** barra "Curso" (lateral), "Linha do curso" (Hoje) e barra de cada disciplina são feitas de marcos: um risquinho por aula de 50 min, na cor da disciplina, com espaço maior entre dias; a aula em andamento enche aos poucos (atualiza a cada 30 s) e o texto mostra "Agora: … faltam N min" ou a próxima aula. h/a com uma casa decimal.
+- **Menu lateral recolhível (09/11):** botão ☰ no topo; recolhido mostra só os ícones (computador) ou esconde o menu (celular). Estado lembrado no aparelho (`caderno-qgis:menu`).
 - **Uma anotação por tema (09/11):** a anotação é da disciplina (`disc-<k>.nota`), não de cada aula de 50 min: anotação rápida, painel da aula, bloco flutuante e "Anotações da disciplina" editam o mesmo texto. Notas antigas por aula são juntadas na anotação da disciplina (com o título "### Aula n/N · data hora") depois da 1ª leitura da nuvem (ou após 4 s sem conta) e apagadas da aula; não duplica se rodar de novo.
 - **Disciplinas:** 9 disciplinas, instrutores, progresso, resumo e nome editável.
 - **Materiais:** PDF, .txt/.md, fotos (até 8), link (site, PDF, Google Drive/Docs/Slides; YouTube só como link) ou texto colado. O texto do PDF é extraído no navegador (pdf.js 5.7.284 em `vendor/`). Arquivos vão para o Storage privado `caderno` (`<user_id>/...`).
