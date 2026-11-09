@@ -581,7 +581,7 @@ function md(src){
 }
 function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),3200); }
 function sw(k){ return `<span class="sw" style="background:${DK[k].cor}"></span>`; }
-function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||(a.tagName==="INPUT"&&a.type==="text")); }
+function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||a.isContentEditable||(a.tagName==="INPUT"&&a.type==="text")); }
 
 /* ============ NAVEGAÇÃO ============ */
 const VIEWS=[["hoje","Hoje"],["trilha","Trilha"],["fases","Fases"],["portfolio","Portfólio"],["materiais","Materiais"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
