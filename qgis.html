@@ -791,7 +791,7 @@ function vDisciplinas(){
         <div style="min-width:0;flex:1"><h3 data-nome="${x.k}">${esc(nomeDisc(x.k))}${dd.concluida?' <span class="chip" style="color:var(--ok)">✓ concluída</span>':""}</h3>
         <div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
         <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
-        <div class="row"><button class="btn sm" data-editnome="${x.k}">Editar nome</button><button class="btn sm" data-novanota="${x.k}">Nova nota</button></div>
+        <div class="row"><button class="btn sm" data-editnome="${x.k}">Editar nome</button></div>
       </div>
       <div style="margin:10px 0 4px">${barraMarcos(aulas,x.cor)}</div>
       <div class="dbody" id="db-${x.k}" ${ab?"":"hidden"}><div class="grid2" style="margin-top:10px">
@@ -1595,7 +1595,7 @@ const AJUDA={
   aula:{t:"Aula",o:"Presença e destaque desta aula, e a anotação da disciplina (compartilhada por todas as aulas do mesmo tema).",c:"Presente/Falta: controle de frequência (clique de novo para desmarcar). ★ Importante: destaca para revisar. Visualizar: mostra o texto formatado. As setas passam para a aula anterior/seguinte."},
   flutuante:{t:"Bloco flutuante",o:"As anotações da aula numa janela pequena que fica por cima das outras telas do caderno e continua aberta quando você troca de aba.",c:"Arraste pela barra de cima para mover e pelo canto de baixo para mudar o tamanho. Troque a aula na lista. – minimiza. ⧉ (Chrome e Edge no computador) solta o bloco numa janela que fica por cima de qualquer outra, como o QGIS ou os slides. O texto é o mesmo da anotação da aula e salva sozinho."},
   markdown:{t:"Formatação do texto",o:"Atalhos simples para organizar as anotações.",c:"# Título · ## Subtítulo · - item de lista · **negrito** · *itálico* · `código` · links começando com http viram clicáveis.",ex:"## Buffer\n- Vetor > Geoprocessamento > Buffer\n- distância em **metros** (SRC projetado)"},
-  disciplinas:{t:"Disciplinas",o:"As 9 disciplinas do curso com instrutores, carga horária, dias e progresso.",c:"“Editar nome” completa o nome (no QTS veio cortado). “Resumo da disciplina” é seu resumo geral. Os números são as aulas: clique para abrir. Também dá para criar notas e materiais da disciplina."},
+  disciplinas:{t:"Disciplinas",o:"As 9 disciplinas do curso com instrutores, carga horária, dias e progresso.",c:"“Editar nome” completa o nome (no QTS veio cortado). “Resumo da disciplina” é seu resumo geral. Os números são as aulas: clique para abrir. Também dá para adicionar materiais da disciplina."},
   discres:{t:"Anotações da disciplina",o:"A anotação única do tema: é o mesmo texto da anotação rápida, do painel de cada aula e do bloco flutuante dessa disciplina.",c:"Use para juntar conceitos-chave, atalhos e links de material. Salva sozinho."},
   discaulas:{t:"Presença nas aulas",o:"Cada linha é uma aula (sessão de 50 min) da disciplina, com número, dia e horário.",c:"Toque em Presente ou Falta para marcar. Tocar de novo no mesmo botão desmarca."},
   materiais:{t:"Materiais",o:"Biblioteca do curso: PDFs, slides, fotos do quadro, links e textos, separados por disciplina.",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo e questões, ou para corrigir o texto extraído."},
