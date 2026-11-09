@@ -91,6 +91,9 @@
 .tb-ctl button:hover{opacity:1;color:var(--accent);background:var(--accent-soft)}
 .tb-ctl button[data-tc^="-"]:hover{color:#c0392b}
 .tb-ctl button:disabled{opacity:.15;cursor:default}
+.tb-ctl [data-tc=x]{font-size:11px}
+.tb-ctl [data-tc=x]:hover,.tb-ctl [data-tc=x].conf{color:#c0392b;background:rgba(192,57,43,.1);border-color:#c0392b}
+.tb-ctl [data-tc=x].conf{width:auto;padding:0 6px;opacity:1;font-size:11.5px}
 .wys ol,.md ol.sn{list-style:none;counter-reset:sn;padding-left:1.9em}
 .wys ol>li,.md ol.sn>li{counter-increment:sn;position:relative}
 .wys ol>li::before,.md ol.sn>li::before{content:counters(sn,".") ".";position:absolute;right:100%;margin-right:.4em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
@@ -458,10 +461,14 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function ctlTabela(doc){
     if(TBC&&TBC.ownerDocument===doc&&TBC.isConnected) return TBC;
     TBC=doc.createElement("div"); TBC.className="tb-ctl";
-    TBC.innerHTML='<div class="tb-cc"><button type="button" data-tc="+c" title="Adicionar coluna">+</button><button type="button" data-tc="-c" title="Apagar a última coluna">−</button></div><div class="tb-cl"><button type="button" data-tc="+l" title="Adicionar linha">+</button><button type="button" data-tc="-l" title="Apagar a última linha">−</button></div>';
+    TBC.innerHTML='<div class="tb-cc"><button type="button" data-tc="+c" title="Adicionar coluna">+</button><button type="button" data-tc="-c" title="Apagar a última coluna">−</button></div><div class="tb-cl"><button type="button" data-tc="+l" title="Adicionar linha">+</button><button type="button" data-tc="-l" title="Apagar a última linha">−</button></div><div class="tb-cx"><button type="button" data-tc="x" title="Apagar a tabela">✕</button></div>';
     doc.body.appendChild(TBC);
     TBC.addEventListener("mousedown",e=>e.preventDefault());
     TBC.addEventListener("click",e=>{ const b=e.target.closest("[data-tc]"); if(!b||!TBA||!TBA.isConnected) return; const tb=TBA, ed=tb.closest(".wys"); if(!ed) return;
+      if(b.dataset.tc==="x"){
+        if(!b.classList.contains("conf")){ b.classList.add("conf"); b.textContent="Apagar tabela?"; clearTimeout(b._t); b._t=setTimeout(()=>{ b.classList.remove("conf"); b.textContent="✕"; },3000); return; }
+        clearTimeout(b._t); b.classList.remove("conf"); b.textContent="✕";
+        const d=doc.createElement("div"); d.innerHTML="<br>"; tb.replaceWith(d); cursorEm(d); TBH=null; posTabela(null); sincronizar(ed); return; }
       const op=b.dataset.tc, rows=[...tb.rows], nc=Math.max(...rows.map(r=>r.children.length)), corpo=rows.filter(r=>r.parentNode.tagName!=="THEAD");
       if(op==="+c") rows.forEach(r=>{ const h=r.parentNode.tagName==="THEAD", x=doc.createElement(h?"th":"td"); x.innerHTML=h?"Coluna "+(r.children.length+1):"<br>"; r.appendChild(x); });
       else if(op==="-c"){ if(nc<2) return; rows.forEach(r=>{ if(r.lastElementChild) r.lastElementChild.remove(); }); }
@@ -481,6 +488,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const ult=tb.rows[0]&&tb.rows[0].lastElementChild, dir=Math.min(r.right, ult?ult.getBoundingClientRect().right:r.right), larg=dir-r.left;
     cc.style.left=(r.left+larg+4)+"px"; cc.style.top=(r.top+r.height/2-19)+"px";
     cl.style.left=(r.left+larg/2-19)+"px"; cl.style.top=(r.bottom+3)+"px";
+    const cx=c.querySelector(".tb-cx"); cx.style.left=(r.left+larg+4)+"px"; cx.style.top=(r.bottom+3)+"px";
+    if(tb!==c._tb){ const bx=cx.firstElementChild; clearTimeout(bx._t); bx.classList.remove("conf"); bx.textContent="✕"; c._tb=tb; }
     const nc=Math.max(...[...tb.rows].map(x=>x.children.length)), nb=[...tb.rows].filter(x=>x.parentNode.tagName!=="THEAD").length;
     cc.querySelector('[data-tc="-c"]').disabled=nc<2; cl.querySelector('[data-tc="-l"]').disabled=nb<2;
   }
