@@ -161,6 +161,10 @@ details.sec[open]>summary::before{transform:rotate(45deg)}
 .mnav-salvar{display:flex;flex-direction:column;gap:8px;padding:10px}
 .mnav-area{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);display:flex}
 .mnav-area.on{height:420px}
+.mnav-ler{flex:1;overflow:auto;padding:12px 16px;background:var(--surface);color:var(--ink)}
+.mnav-ler h2{font-size:18px;margin:0 0 8px}
+.mnav-ler .md{max-width:72ch}
+.mnav-aviso{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--warn) 12%,transparent);font-size:13px}
 .mnav-area iframe{flex:1;border:0;width:100%;height:100%;background:#fff}
 .mnav-vazio{margin:auto;padding:16px;text-align:center;color:var(--muted);font-size:13.5px;max-width:40ch}
 .mnav.cheio{position:fixed;inset:0;z-index:38;background:var(--surface);padding:12px max(12px,calc((100% - 1200px)/2));margin:0}
@@ -762,6 +766,7 @@ function navHTML(k){
   return `<div class="mnav-bar"><input type="text" class="mnav-q" placeholder="Pesquisar no Google ou colar um link…" aria-label="Pesquisar ou endereço do site"><button type="button" class="btn sm pri" data-nv="ir">Ir</button></div>
     <div class="mnav-acoes" hidden><span class="mnav-url mono"></span>
       <button type="button" class="btn sm" data-nv="salvar">Salvar link</button>
+      <button type="button" class="btn sm" data-nv="ler" title="Mostra só o texto da página aqui dentro">📄 Modo leitura</button>
       <button type="button" class="btn sm" data-nv="cheio">⛶ Expandir</button>
       <a class="btn sm" data-nv="abrir" target="_blank" rel="noopener">↗ Abrir no navegador</a>
       ${PIP_OK?'<button type="button" class="btn sm" data-nv="pip" title="Janela por cima das outras (Chrome/Edge no computador)">⧉ Sobrepor</button>':""}
@@ -770,6 +775,38 @@ function navHTML(k){
       <p class="muted" style="margin:0;font-size:12.5px">Se você navegou dentro da página, cole aqui o endereço certo (o caderno não consegue ler o endereço de dentro da página).</p>
       <div class="row"><button type="submit" class="btn sm pri">Salvar em Materiais</button><button type="button" class="btn sm" data-nv="cancsalvar">Cancelar</button></div></form>
     <div class="mnav-area"><p class="mnav-vazio">Pesquise ou cole um link para abrir aqui, sem sair do caderno. O que for útil você salva nos Materiais desta disciplina.</p></div>`;
+}
+// Versões "incorporáveis" de sites conhecidos (as que esses sites permitem abrir dentro de outra página).
+function urlEmbutivel(u){
+  let m;
+  if((m=u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([\w-]+)/))) return "https://drive.google.com/file/d/"+m[1]+"/preview";
+  if((m=u.match(/docs\.google\.com\/(document|presentation|spreadsheets)\/d\/([\w-]+)/))) return "https://docs.google.com/"+m[1]+"/d/"+m[2]+"/preview";
+  if((m=u.match(/^https?:\/\/(www\.)?google\.[a-z.]+\/search\?(.*)$/))&&!/[?&]igu=1/.test(u)) return "https://www.google.com/search?igu=1&"+m[2];
+  return u;
+}
+async function cabecalhosApi(){
+  const h={"Content-Type":"application/json"};
+  if(typeof CONVITE!=="undefined"&&CONVITE) h["X-Convite"]=CONVITE;
+  else if(S.sb&&S.uid){ try{ const ss=(await S.sb.auth.getSession()).data.session; if(ss) h.Authorization="Bearer "+ss.access_token; }catch(e){} }
+  return h;
+}
+// Modo leitura: busca o texto da página pelo servidor e mostra aqui dentro (para sites que não deixam abrir em quadro).
+async function lerNav(el, aviso){
+  const k=el.dataset.nav, st=NAVST[k], area=el.querySelector(".mnav-area"); if(!st) return;
+  const h=await cabecalhosApi();
+  if(!h.Authorization&&!h["X-Convite"]){ area.classList.remove("on"); area.innerHTML=`<div class="mnav-vazio"><p style="margin:0 0 8px">${aviso?"<b>Este site não deixa ser aberto dentro do caderno.</b> ":""}Entre na sua conta para ler o texto dele aqui.</p><a class="btn sm pri" href="${esc(st.url)}" target="_blank" rel="noopener">↗ Abrir no navegador</a></div>`; return; }
+  area.classList.add("on"); area.innerHTML='<p class="mnav-vazio">Carregando o texto da página…</p>';
+  try{
+    const r=await fetch("/api/link",{method:"POST",headers:h,body:JSON.stringify({url:st.url})}); const j=await r.json().catch(()=>({}));
+    if(NAVST[k]!==st) return;
+    if(!r.ok) throw new Error(j.erro||"não foi possível ler a página");
+    if(j.tipo==="pdf"){ const bin=Uint8Array.from(atob(j.base64),c=>c.charCodeAt(0)); const u=URL.createObjectURL(new Blob([bin],{type:"application/pdf"})); area.innerHTML=`<iframe src="${u}" title="PDF"></iframe>`; return; }
+    if(j.tipo==="video"){ area.innerHTML=`<iframe src="${esc(urlEmbutivel(st.url))}" title="Vídeo" allowfullscreen></iframe>`; return; }
+    if(j.titulo) st.titulo=j.titulo;
+    area.innerHTML=`<div class="mnav-ler">${aviso?'<p class="mnav-aviso">Este site não abre dentro de outra página; mostrando o <b>texto</b> dele (modo leitura). Para ver com imagens e layout, use “Abrir no navegador”.</p>':""}<h2>${esc(j.titulo||st.url)}</h2><div class="md">${md((j.texto||"").slice(0,120000))||'<p class="muted">Página sem texto legível.</p>'}</div></div>`;
+    area.querySelectorAll(".md a").forEach(a=>{ a.target="_blank"; a.rel="noopener"; });
+  }catch(e){ area.classList.remove("on"); area.innerHTML=`<div class="mnav-vazio"><p style="margin:0 0 8px">Não consegui ler esta página aqui (${esc(e.message)}).</p><a class="btn sm pri" href="${esc(st.url)}" target="_blank" rel="noopener">↗ Abrir no navegador</a></div>`; }
 }
 function criarNav(k){ const el=document.createElement("div"); el.className="mnav"; el.dataset.nav=k; el.innerHTML=navHTML(k); NAVS.set(k,el); return el; }
 function montarNavs(){ document.querySelectorAll("[data-navslot]").forEach(slot=>{ const d=slot.closest("details"); if(d&&!d.open) return; const k=slot.dataset.navslot; const el=NAVS.get(k)||criarNav(k); slot.replaceWith(el); }); }
@@ -788,18 +825,16 @@ function carregarNav(el){
   el.querySelector('[data-nv="abrir"]').href= st.tipo==="busca" ? "https://www.google.com/search?hl=pt-BR&q="+encodeURIComponent(st.q) : st.url;
   if(!navigator.onLine){ area.classList.remove("on"); area.innerHTML='<p class="mnav-vazio">Sem internet: a pesquisa volta quando a conexão voltar.</p>'; return; }
   area.classList.add("on");
-  area.innerHTML=`<iframe src="${esc(st.url)}" title="${esc(st.titulo||"Página")}" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>`;
-  if(st.tipo==="site") verificarQuadro(el, st);
+  const emb=urlEmbutivel(st.url);
+  area.innerHTML=`<iframe src="${esc(emb)}" title="${esc(st.titulo||"Página")}" referrerpolicy="no-referrer" allow="fullscreen; encrypted-media; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation"></iframe>`;
+  if(st.tipo==="site"&&emb===st.url) verificarQuadro(el, st);
 }
 async function verificarQuadro(el, st){
-  const h={"Content-Type":"application/json"};
-  if(typeof CONVITE!=="undefined"&&CONVITE) h["X-Convite"]=CONVITE;
-  else if(S.sb&&S.uid){ try{ const ss=(await S.sb.auth.getSession()).data.session; if(ss) h.Authorization="Bearer "+ss.access_token; }catch(e){} }
-  else return;
+  const h=await cabecalhosApi(); if(!h.Authorization&&!h["X-Convite"]) return;
   try{
     const r=await fetch("/api/quadro",{method:"POST",headers:h,body:JSON.stringify({url:st.url})}); const j=await r.json(); if(!r.ok) return;
     if(j.titulo) st.titulo=j.titulo;
-    if(!j.ok && NAVST[el.dataset.nav]===st){ el.querySelector(".mnav-area").classList.remove("on"); el.querySelector(".mnav-area").innerHTML=`<div class="mnav-vazio"><p style="margin:0 0 8px"><b>Este site não deixa ser aberto dentro do caderno.</b></p><div class="row" style="justify-content:center"><a class="btn sm pri" href="${esc(st.url)}" target="_blank" rel="noopener">↗ Abrir no navegador</a><button type="button" class="btn sm" data-nv="salvar">Salvar link</button></div></div>`; }
+    if(!j.ok && NAVST[el.dataset.nav]===st) lerNav(el, true);
   }catch(e){}
 }
 function salvarLinkNav(el){
@@ -816,7 +851,7 @@ async function sobreporNav(el){
   w.document.title=st.titulo||"Pesquisa";
   const href=st.tipo==="busca"?"https://www.google.com/search?hl=pt-BR&q="+encodeURIComponent(st.q):st.url;
   w.document.body.style.cssText="margin:0;display:flex;flex-direction:column;height:100vh;font:13px system-ui,sans-serif;background:#16211e;color:#e3ece8";
-  w.document.body.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid #2a3834"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(st.titulo||st.url)}</span><a href="${esc(href)}" target="_blank" rel="noopener" style="color:#4fb8a3">Abrir no navegador</a></div><iframe src="${esc(st.url)}" style="flex:1;border:0;width:100%;background:#fff" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>`;
+  w.document.body.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid #2a3834"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(st.titulo||st.url)}</span><a href="${esc(href)}" target="_blank" rel="noopener" style="color:#4fb8a3">Abrir no navegador</a></div><iframe src="${esc(urlEmbutivel(st.url))}" allowfullscreen style="flex:1;border:0;width:100%;background:#fff" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>`;
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest(".mnav [data-nv]"); if(!b) return;
@@ -827,6 +862,7 @@ document.addEventListener("click",e=>{
   if(v==="fechar"){ delete NAVST[k]; el.innerHTML=navHTML(k); el.classList.remove("cheio"); document.body.style.overflow=""; return; }
   if(v==="cheio"){ const on=el.classList.toggle("cheio"); b.textContent=on?"⤡ Reduzir":"⛶ Expandir"; document.body.style.overflow=on?"hidden":""; return; }
   if(v==="pip") return sobreporNav(el);
+  if(v==="ler"){ if(NAVST[k]&&NAVST[k].tipo==="busca"){ toast("O modo leitura é para páginas; na pesquisa, clique em um resultado ou cole o link."); return; } return lerNav(el, false); }
   if(v==="salvar"){ const st=NAVST[k]||{}; const f=el.querySelector(".mnav-salvar"); f.hidden=false;
     el.querySelector(".mnav-st").value=st.titulo||""; el.querySelector(".mnav-su").value= st.tipo==="busca"?"https://www.google.com/search?q="+encodeURIComponent(st.q):(st.url||""); el.querySelector(".mnav-st").focus(); return; }
   if(v==="cancsalvar"){ el.querySelector(".mnav-salvar").hidden=true; return; }
@@ -1292,7 +1328,7 @@ const AJUDA={
   sync:{t:"Onde suas notas estão salvas",o:"Ponto verde: sincronizado na nuvem, aparece em qualquer aparelho em que você entrar. Ponto laranja: salvo só neste navegador.",c:"Clique em Entrar e use o e-mail e a senha do portal ADMIN CBMCE. Tudo o que você já escreveu aqui sobe para a nuvem. Sem internet o app continua salvando e envia depois."},
   login:{t:"Entrar",o:"Liga o caderno à sua conta para sincronizar entre computador e celular e guardar PDFs e fotos.",c:"Use o mesmo e-mail e senha do portal ADMIN CBMCE. Só você vê as suas notas."},
   hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
-  mnav:{t:"Pesquisa",o:"Um navegador pequeno dentro do cartão da disciplina, para pesquisar no Google ou abrir um site sem sair do caderno.",c:"Digite o que procura (ou cole um link) e tecle Enter. Salvar link guarda nos Materiais desta disciplina; Expandir ocupa a tela toda (Esc volta); Abrir no navegador abre numa aba normal; Sobrepor abre uma janela que fica por cima das outras (Chrome/Edge no computador). Alguns sites não deixam ser abertos dentro de outra página: aí use Abrir no navegador."},
+  mnav:{t:"Pesquisa",o:"Um navegador pequeno dentro do cartão da disciplina, para pesquisar no Google ou abrir um site sem sair do caderno.",c:"Digite o que procura (ou cole um link) e tecle Enter. Salvar link guarda nos Materiais desta disciplina; Expandir ocupa a tela toda (Esc volta); Abrir no navegador abre numa aba normal; Sobrepor abre uma janela que fica por cima das outras (Chrome/Edge no computador). Sites que não deixam ser abertos dentro de outra página aparecem em Modo leitura (só o texto); para ver com imagens, use Abrir no navegador. Vídeos do YouTube e arquivos do Google Drive/Docs abrem normalmente."},
   linha:{t:"Linha do curso",o:"Cada risquinho é uma aula de 50 min, na cor da disciplina; os espaços maiores separam os dias. A aula em andamento vai enchendo conforme o relógio.",c:"Passe o mouse (ou toque) num risquinho para ver qual aula é. A conta é pelo horário de Fortaleza."},
   kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
   kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},

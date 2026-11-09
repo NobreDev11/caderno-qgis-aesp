@@ -1,6 +1,6 @@
 // Busca o conteúdo de um link (página, PDF, Google Docs/Drive) para o caderno extrair o texto.
 // Exige login (admin). Só http/https públicos; até 15 MB; 15 s.
-const { verificar, lerCorpo, responder } = require("./_auth");
+const { verificarOuConvite, lerCorpo, responder } = require("./_auth");
 const dns = require("dns").promises;
 const net = require("net");
 
@@ -55,7 +55,7 @@ function htmlParaTexto(html) {
 module.exports = async (req, res) => {
   if (req.method !== "POST") return responder(res, 405, { erro: "Use POST." });
   try {
-    await verificar(req);
+    await verificarOuConvite(req);
     const b = await lerCorpo(req);
     let url;
     try { url = new URL(String(b.url || "").trim()); } catch (e) { return responder(res, 400, { erro: "Link inválido." }); }
