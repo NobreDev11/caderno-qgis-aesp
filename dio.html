@@ -126,7 +126,7 @@ h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 .md{line-height:1.6;max-width:68ch}
 .md h1,.md h2,.md h3{font-family:var(--display);margin:.6em 0 .3em}
 .md h1{font-size:20px}.md h2{font-size:18px}.md h3{font-size:16px}
-.md p{margin:.4em 0}.md ul{margin:.3em 0;padding-left:1.3em}
+.md p{margin:.4em 0}.md ul{margin:.3em 0;padding-left:1.3em}.md li.tk{list-style:none;margin-left:-1.1em}
 .md code{font-family:var(--mono);background:var(--accent-soft);padding:0 4px;border-radius:4px}
 .md a{color:var(--accent)}
 .notes{display:flex;flex-direction:column;gap:8px}
@@ -561,6 +561,7 @@ function md(src){
       else out+=`<pre><code>${esc(c)}</code></pre>`;
       i=j; continue; }
     if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fechar(); out+="<hr>"; continue; }
+    if(window.FORMATO&&FORMATO.ehItem(l)){ fechar(); const b=[l]; while(i+1<linhas.length&&FORMATO.ehItem(linhas[i+1])){ i++; b.push(linhas[i]); } out+=FORMATO.listaHtml(b,false,inl); continue; }
     const tk=l.match(/^\s*[-*]\s+\[([ xX])\]\s*(.*)$/);
     if(tk){ abrir("ul"); const ok=tk[1]!==" "; out+=`<li class="tk${ok?" ok":""}">${ok?"☑":"☐"} ${inl(tk[2])}</li>`; continue; }
     const m=l.match(/^\s*[-*]\s+(.*)$/);

@@ -14,6 +14,8 @@
     ["tit","T","Título (clique de novo para trocar o tamanho)"],
     ["lis","•","Lista"],
     ["num","1.","Lista numerada"],
+    ["sub","⇥","Sublista: o item entra um nível (Tab). Em lista numerada vira 1.1, 1.2…"],
+    ["sob","⇤","Volta o item um nível (Shift+Tab)"],
     ["tar","☐","Tarefa / checklist (Ctrl+Shift+X); clique de novo para marcar ☑"],
     ["cit","❝","Citação ou destaque"],
     ["cod","&lt;/&gt;","Código (trecho ou bloco)"],
@@ -68,6 +70,12 @@
 .wys ul.tk>li[data-tk="1"]::before{content:"☑";color:var(--accent)}
 .wys ul.tk>li[data-tk="1"]{color:var(--muted);text-decoration:line-through}
 .wys li[data-ind]{margin-left:1.2em}
+.wys ol,.md ol.sn{list-style:none;counter-reset:sn;padding-left:1.9em}
+.wys ol>li,.md ol.sn>li{counter-increment:sn;position:relative}
+.wys ol>li::before,.md ol.sn>li::before{content:counters(sn,".") ".";position:absolute;right:100%;margin-right:.4em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
+.wys li>ul,.wys li>ol,.md li>ul,.md li>ol{margin:.1em 0}.wys li>ol,.md li>ol.sn{padding-left:2.4em}
+.md ul ul{list-style:circle}.md ul ul ul{list-style:square}
+.wys ul ul{list-style:circle}.wys ul ul ul{list-style:square}
 .wys blockquote{margin:.4em 0;padding:4px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 6px 6px 0}
 .wys pre{background:var(--accent-soft);padding:8px 10px;border-radius:8px;font:13px/1.5 var(--mono,monospace);white-space:pre-wrap;margin:.4em 0}
 .wys code{font-family:var(--mono,monospace);background:var(--accent-soft);padding:0 4px;border-radius:4px}
@@ -186,6 +194,23 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       (ok?`<div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted" style="margin:0;font-size:13px">Desenhando fluxograma…</p></div>`:'<p class="muted" style="margin:0;font-size:13px">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>')+
       `</div>`;
   }
+  // Linhas de lista (com recuo) → listas aninhadas. wys=true: editor; false: Visualizar (inl = conversor da página).
+  const RE_ITEM=/^(\s*)(?:([-*])\s+\[([ xX])\]\s?|([-*])\s+|(\d+)[.)]\s+)(.*)$/;
+  function ehItem(l){ return RE_ITEM.test(l); }
+  function listaHtml(ls, wys, inl){
+    let o="", st=[];
+    for(const l of ls){ const m=l.match(RE_ITEM); const ind=m[1].replace(/\t/g,"  ").length, tk=!!m[2], tag=m[5]?"ol":"ul", txt=m[6];
+      while(st.length&&ind<st[st.length-1].ind&&!(st.length>1&&ind>st[st.length-2].ind)){ o+=`</li></${st.pop().tag}>`; }
+      const top=st[st.length-1];
+      const abrir=()=>{ o+=`<${tag}${tk?' class="tk"':!wys&&tag==="ol"?' class="sn"':""}>`; st.push({ind,tag,tk}); };
+      if(top&&ind<=top.ind){ if(top.tag===tag&&top.tk===tk) o+="</li>"; else { o+=`</li></${st.pop().tag}>`; abrir(); } }
+      else abrir();
+      const ok=tk&&m[3]!==" ";
+      o+= wys ? `<li${tk?` data-tk="${ok?1:0}"`:""}>${inlineHtml(txt)||"<br>"}` : `<li${tk?` class="tk${ok?" ok":""}"`:""}>${tk?(ok?"☑ ":"☐ "):""}${inl(txt)}`;
+    }
+    while(st.length) o+=`</li></${st.pop().tag}>`;
+    return o;
+  }
   function mdParaHtml(v){
     const ls=String(v||"").split("\n"); let o="", lista=null, ultFx=false; const AUX='<div data-aux="1"><br></div>';
     const fecha=()=>{ if(lista){ o+=`</${lista.tag}>`; lista=null; } };
@@ -195,9 +220,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       let m=l.match(RE_LFX); if(m){ fecha(); if(eraFx||!o) o+=AUX; o+=fxHtml(m[1], l.trim()); ultFx=true; continue; }
       if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fecha(); o+="<hr>"; continue; }
       m=l.match(/^(#{1,3})\s+(.*)$/); if(m){ fecha(); o+=`<h${m[1].length}>${inlineHtml(m[2])||"<br>"}</h${m[1].length}>`; continue; }
-      m=l.match(/^(\s*)[-*]\s+\[([ xX])\]\s?(.*)$/); if(m){ abre("ul",true); o+=`<li data-tk="${m[2]===" "?0:1}"${m[1].length?` data-ind="${m[1].length}"`:""}>${inlineHtml(m[3])||"<br>"}</li>`; continue; }
-      m=l.match(/^(\s*)[-*]\s+(.*)$/); if(m){ abre("ul",false); o+=`<li${m[1].length?` data-ind="${m[1].length}"`:""}>${inlineHtml(m[2])||"<br>"}</li>`; continue; }
-      m=l.match(/^(\s*)\d+[.)]\s+(.*)$/); if(m){ abre("ol",false); o+=`<li${m[1].length?` data-ind="${m[1].length}"`:""}>${inlineHtml(m[2])||"<br>"}</li>`; continue; }
+      if(ehItem(l)){ fecha(); const b=[l]; while(i+1<ls.length&&ehItem(ls[i+1])){ i++; b.push(ls[i]); } o+=listaHtml(b,true); continue; }
       if(/^>/.test(l)){ fecha(); const q=[l]; while(i+1<ls.length&&/^>/.test(ls[i+1])){ i++; q.push(ls[i]); } o+="<blockquote>"+q.map(x=>`<div>${inlineHtml(x.replace(/^>\s?/,""))||"<br>"}</div>`).join("")+"</blockquote>"; continue; }
       fecha(); o+=`<div>${inlineHtml(l)||"<br>"}</div>`;
     }
@@ -347,12 +370,43 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const l2=dentroDe(ed,"LI"); if(l2){ l2.parentNode.classList.add("tk"); [...l2.parentNode.children].forEach(x=>{ if(x.dataset.tk===undefined) x.dataset.tk="0"; }); }
     sincronizar(ed);
   }
+  // Sublista (Tab) e voltar nível (Shift+Tab) sem execCommand: a sublista fica dentro do item de cima,
+  // o que dá a numeração 1.1, 1.2… e o Markdown com recuo de 2 espaços.
+  function guardaSel(){ const s=getSelection(); if(!s.rangeCount) return null; const r=s.getRangeAt(0); return [r.startContainer,r.startOffset,r.endContainer,r.endOffset]; }
+  function voltaSel(x){ if(!x) return; try{ const r=document.createRange(); r.setStart(x[0],x[1]); r.setEnd(x[2],x[3]); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }catch(e){} }
+  function itensSel(ed){ const s=getSelection(); if(!s.rangeCount) return []; const r=s.getRangeAt(0);
+    const li0=dentroDe(ed,"LI"); if(r.collapsed) return li0?[li0]:[];
+    // itens cujo texto próprio (fora das sublistas) está na seleção
+    return [...ed.querySelectorAll("li")].filter(li=>[...li.childNodes].some(c=>!/^(UL|OL)$/.test(c.tagName||"")&&r.intersectsNode(c))); }
+  function recuar(ed){
+    const lis=itensSel(ed); if(!lis.length) return false; const sel=guardaSel();
+    for(const li of lis){ const pai=li.parentNode, ant=li.previousElementSibling; if(!ant||ant.tagName!=="LI") continue;
+      let sub=[...ant.children].reverse().find(c=>/^(UL|OL)$/.test(c.tagName));
+      if(!sub||sub.tagName!==pai.tagName){ sub=document.createElement(pai.tagName); if(pai.classList.contains("tk")) sub.className="tk"; ant.appendChild(sub); }
+      sub.appendChild(li);
+      const filhos=[...li.children].filter(c=>/^(UL|OL)$/.test(c.tagName)); // sublistas do item sobem para irmãs dele
+      filhos.forEach(f=>{ while(f.firstElementChild) sub.appendChild(f.firstElementChild); f.remove(); });
+    }
+    voltaSel(sel); sincronizar(ed); return true;
+  }
+  function desrecuar(ed){
+    const lis=itensSel(ed); if(!lis.length) return false; const sel=guardaSel(); let algum=false;
+    for(const li of lis.slice().reverse()){ const pai=li.parentNode, avo=pai.parentNode; if(!avo||avo.tagName!=="LI") continue; algum=true;
+      const depois=[]; let n=li.nextElementSibling; while(n){ depois.push(n); n=n.nextElementSibling; }
+      if(depois.length){ const nl=document.createElement(pai.tagName); nl.className=pai.className; depois.forEach(x=>nl.appendChild(x)); li.appendChild(nl); }
+      avo.after(li); if(!pai.children.length) pai.remove();
+    }
+    if(!algum){ cmd("outdent"); sincronizar(ed); return true; }
+    voltaSel(sel); sincronizar(ed); return true;
+  }
   function aplicarEd(ed,k){
     const ta=ed._ta;
     if(k==="cheia") return telaCheia(ta);
     if(k==="flx") return fluxograma(ta);
     restaurar(ed);
     if(k==="img") return escolherImagem(ta);
+    if(k==="sub"){ if(!dentroDe(ed,"LI")){ cmd("insertUnorderedList"); sincronizar(ed); return; } return recuar(ed); }
+    if(k==="sob") return desrecuar(ed);
     if(/^(lis|num|tar|cit)$/.test(k)){ const bl=blocoAtual(ed); if(bl&&/^H[1-6]$/.test(bl.tagName)) cmd("formatBlock","div"); }
     if(k==="neg") cmd("bold"); else if(k==="ita") cmd("italic");
     else if(k==="mar") envolverEd(ed,"mark","destaque");
@@ -405,7 +459,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   });
   document.addEventListener("keydown",e=>{
     const ed=e.target; if(!ed.classList||!ed.classList.contains("wys")) return;
-    if(e.key==="Tab"&&dentroDe(ed,"LI")){ e.preventDefault(); cmd(e.shiftKey?"outdent":"indent"); sincronizar(ed); return; }
+    if(e.key==="Tab"&&dentroDe(ed,"LI")){ e.preventDefault(); if(e.shiftKey) desrecuar(ed); else recuar(ed); return; }
+    // Enter num item vazio de sublista: volta um nível (como no Word)
+    if(e.key==="Enter"&&!e.shiftKey){ const li=dentroDe(ed,"LI"); if(li&&!li.textContent.replace(/[\u200b\s]/g,"")&&!li.querySelector("img")&&li.parentNode.parentNode.tagName==="LI"){ e.preventDefault(); desrecuar(ed); return; } }
     if(!(e.ctrlKey||e.metaKey)||e.altKey) return; const k=e.key.toLowerCase();
     if(k==="k"){ e.preventDefault(); aplicarEd(ed,"lnk"); } else if(e.shiftKey&&k==="x"){ e.preventDefault(); aplicarEd(ed,"tar"); }
   });
@@ -592,8 +648,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       urlAssinada(img.dataset.sb).then(u=>{ img.src=u; }).catch(()=>falhou("não encontrada"));
     });
   }
+  function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
   function aplicar(ta,k){
-    ({neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
+    ({sub:()=>recuoTa(ta,true), sob:()=>recuoTa(ta,false), neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
       cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta), img:()=>escolherImagem(ta), flx:()=>fluxograma(ta), cheia:()=>telaCheia(ta)})[k]();
   }
@@ -667,6 +724,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     doc.addEventListener("keydown",e=>{
       const ta=e.target; if(!ta.matches||!ta.matches(ALVOS+",textarea.fx-seg")) return;
       if(e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing){ enter(ta,e); return; }
+      if(e.key==="Tab" && !e.ctrlKey && !e.altKey){ const v=ta.value, i=v.lastIndexOf("\n",ta.selectionStart-1)+1; if(RE_LISTA.test(v.slice(i))&&!/^>/.test(v.slice(i).trim())){ e.preventDefault(); recuoTa(ta,!e.shiftKey); return; } }
       if(!(e.ctrlKey||e.metaKey) || e.altKey) return;
       const k=e.key.toLowerCase();
       const mapa=e.shiftKey?{x:"tar"}:{b:"neg",i:"ita",k:"lnk"};
@@ -695,5 +753,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const orig=window.ligarFlutuante;
     window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); } };
   }
-  window.FORMATO={aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
+  window.FORMATO={listaHtml, ehItem, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();
