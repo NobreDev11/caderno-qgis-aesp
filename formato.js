@@ -84,6 +84,13 @@
 .tb-pop .tb-pri{background:var(--accent);color:#fff;border-color:var(--accent);text-align:center}
 .tb-pop .tb-rm{color:#c0392b}
 .tb-pop .tb-t{font-weight:700;font-size:12.5px}
+.tb-ctl>div{position:fixed;z-index:10001;display:none;gap:2px}
+.tb-ctl .tb-cc{flex-direction:column}
+.tb-ctl.on>div{display:flex}
+.tb-ctl button{width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:5px;background:var(--surface,#fff);color:var(--muted);font:600 13px/1 system-ui,sans-serif;cursor:pointer;opacity:.45;transition:opacity .15s,color .15s,background .15s}
+.tb-ctl button:hover{opacity:1;color:var(--accent);background:var(--accent-soft)}
+.tb-ctl button[data-tc^="-"]:hover{color:#c0392b}
+.tb-ctl button:disabled{opacity:.15;cursor:default}
 .wys ol,.md ol.sn{list-style:none;counter-reset:sn;padding-left:1.9em}
 .wys ol>li,.md ol.sn>li{counter-increment:sn;position:relative}
 .wys ol>li::before,.md ol.sn>li::before{content:counters(sn,".") ".";position:absolute;right:100%;margin-right:.4em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
@@ -434,6 +441,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function novaTabela(ed,nl,nc){
     const th=Array.from({length:nc},(_,i)=>`<th>Coluna ${i+1}</th>`).join(""), td=`<tr>${"<td><br></td>".repeat(nc)}</tr>`;
     cmd("insertHTML",`<table><thead><tr>${th}</tr></thead><tbody>${td.repeat(Math.max(1,nl-1))}</tbody></table><div><br></div>`);
+    const b=blocoAtual(ed), tb=b&&b.previousElementSibling; if(tb&&tb.tagName==="TABLE"){ focarCel(tb.rows[0].cells[0]); requestAnimationFrame(()=>posTabela(tb)); }
     sincronizar(ed);
   }
   function opTabela(ed,op){
@@ -445,6 +453,47 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     else if(op==="tirar"){ const d=document.createElement("div"); d.innerHTML="<br>"; tb.replaceWith(d); cursorEm(d); }
     sincronizar(ed);
   }
+  // Controles sutis + / − ao lado da última coluna e abaixo da última linha.
+  let TBC=null, TBA=null, TBH=null;
+  function ctlTabela(doc){
+    if(TBC&&TBC.ownerDocument===doc&&TBC.isConnected) return TBC;
+    TBC=doc.createElement("div"); TBC.className="tb-ctl";
+    TBC.innerHTML='<div class="tb-cc"><button type="button" data-tc="+c" title="Adicionar coluna">+</button><button type="button" data-tc="-c" title="Apagar a última coluna">−</button></div><div class="tb-cl"><button type="button" data-tc="+l" title="Adicionar linha">+</button><button type="button" data-tc="-l" title="Apagar a última linha">−</button></div>';
+    doc.body.appendChild(TBC);
+    TBC.addEventListener("mousedown",e=>e.preventDefault());
+    TBC.addEventListener("click",e=>{ const b=e.target.closest("[data-tc]"); if(!b||!TBA||!TBA.isConnected) return; const tb=TBA, ed=tb.closest(".wys"); if(!ed) return;
+      const op=b.dataset.tc, rows=[...tb.rows], nc=Math.max(...rows.map(r=>r.children.length)), corpo=rows.filter(r=>r.parentNode.tagName!=="THEAD");
+      if(op==="+c") rows.forEach(r=>{ const h=r.parentNode.tagName==="THEAD", x=doc.createElement(h?"th":"td"); x.innerHTML=h?"Coluna "+(r.children.length+1):"<br>"; r.appendChild(x); });
+      else if(op==="-c"){ if(nc<2) return; rows.forEach(r=>{ if(r.lastElementChild) r.lastElementChild.remove(); }); }
+      else if(op==="+l"){ let bd=tb.tBodies[0]; if(!bd){ bd=doc.createElement("tbody"); tb.appendChild(bd); } const tr=doc.createElement("tr"); tr.innerHTML="<td><br></td>".repeat(nc); bd.appendChild(tr); }
+      else if(op==="-l"){ if(corpo.length<2) return; corpo[corpo.length-1].remove(); }
+      const sel=getSelection(); if(sel.rangeCount&&!tb.contains(sel.anchorNode)){} else if(sel.rangeCount&&!sel.anchorNode.isConnected) focarCel(tb.rows[tb.rows.length-1].children[0]);
+      sincronizar(ed); posTabela(tb); });
+    return TBC;
+  }
+  function posTabela(tb){
+    const doc=(tb||TBA||{}).ownerDocument||document;
+    if(!tb||!tb.isConnected){ if(TBC) TBC.classList.remove("on"); TBA=null; return; }
+    const c=ctlTabela(doc); TBA=tb;
+    const r=tb.getBoundingClientRect(), er=(tb.closest(".wys")||tb).getBoundingClientRect();
+    c.classList.toggle("on", !(r.bottom<er.top||r.top>er.bottom));
+    const cc=c.querySelector(".tb-cc"), cl=c.querySelector(".tb-cl");
+    const ult=tb.rows[0]&&tb.rows[0].lastElementChild, dir=Math.min(r.right, ult?ult.getBoundingClientRect().right:r.right), larg=dir-r.left;
+    cc.style.left=(r.left+larg+4)+"px"; cc.style.top=(r.top+r.height/2-19)+"px";
+    cl.style.left=(r.left+larg/2-19)+"px"; cl.style.top=(r.bottom+3)+"px";
+    const nc=Math.max(...[...tb.rows].map(x=>x.children.length)), nb=[...tb.rows].filter(x=>x.parentNode.tagName!=="THEAD").length;
+    cc.querySelector('[data-tc="-c"]').disabled=nc<2; cl.querySelector('[data-tc="-l"]').disabled=nb<2;
+  }
+  function tabelaDaSel(){ const s=getSelection(); if(!s.rangeCount) return null; let n=s.anchorNode; n=n&&(n.nodeType===1?n:n.parentNode); return n&&n.closest?n.closest(".wys table"):null; }
+  function revisarTabela(alvo){ const tb=alvo||TBH||tabelaDaSel(); posTabela(tb); }
+  document.addEventListener("mousemove",e=>{ const t=e.target; if(!t.closest) return; if(t.closest(".tb-ctl")) return;
+    let tb=t.closest(".wys table");
+    if(!tb&&TBA&&TBA.isConnected){ const r=TBA.getBoundingClientRect(); const u=TBA.rows[0]&&TBA.rows[0].lastElementChild, d=Math.min(r.right,u?u.getBoundingClientRect().right:r.right); if(e.clientX>=r.left-6&&e.clientX<=d+34&&e.clientY>=r.top-6&&e.clientY<=r.bottom+30) tb=TBA; }
+    if(tb===TBH) { if(tb) posTabela(tb); return; } TBH=tb; revisarTabela(); },{passive:true});
+  document.addEventListener("selectionchange",()=>{ if(!TBH) revisarTabela(); });
+  document.addEventListener("input",e=>{ if(TBA&&e.target.classList&&e.target.classList.contains("wys")) requestAnimationFrame(()=>posTabela(TBA.isConnected?TBA:tabelaDaSel())); });
+  addEventListener("scroll",()=>{ if(TBA) posTabela(TBA); },true);
+  addEventListener("resize",()=>{ if(TBA) posTabela(TBA); });
   function popTabela(ed,bt){
     const doc=ed.ownerDocument; doc.querySelectorAll(".tb-pop").forEach(x=>x.remove());
     const em=!!celAtual(ed), p=doc.createElement("div"); p.className="tb-pop";
