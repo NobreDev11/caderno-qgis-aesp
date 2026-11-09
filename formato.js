@@ -43,7 +43,9 @@ textarea.fx-seg:last-child{flex:1 0 auto!important;min-height:3.2em!important}
 .fx-bloco-b button{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:7px;padding:3px 10px;cursor:pointer;font:inherit;font-size:12.5px}
 .fx-bloco-b button.fx-rm{color:var(--bad,#b3261e)}
 .fx-comp[hidden]{display:none!important}
-.fmt-cheia .fx-comp{flex:1;min-height:0;overflow:auto}
+.fmt-cheia .fx-comp{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:block}
+.fmt-cheia .fx-comp>*{flex:none!important}
+.fmt-cheia .fx-bloco .fx-svg svg{max-height:60vh}
 .fmt-cheia textarea.fx-seg{font-size:16.5px;line-height:1.7;padding:6px 16px!important}
 .fmt-cheia{position:fixed;inset:0;z-index:38;background:var(--bg);display:flex;flex-direction:column}
 .fmt-cheia header{display:flex;align-items:center;gap:10px;padding:10px max(16px,calc((100% - 900px)/2));border-bottom:1px solid var(--line);background:var(--surface);flex:none}
@@ -52,7 +54,7 @@ textarea.fx-seg:last-child{flex:1 0 auto!important;min-height:3.2em!important}
 .fmt-cheia header button{border:1px solid var(--line);background:var(--surface);color:var(--ink,inherit);border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:14px}
 .fmt-cheia header button:hover{border-color:var(--accent)}
 .fmt-cheia .fc-b{flex:1;min-height:0;display:flex;flex-direction:column;width:100%;max-width:900px;margin:0 auto;padding:12px 16px 16px;box-sizing:border-box}
-.fmt-cheia .fc-b textarea{flex:1;min-height:0!important;height:auto!important;resize:none;font-size:16.5px;line-height:1.7;padding:14px 16px}
+.fmt-cheia .fc-b textarea:not(.fx-seg){flex:1;min-height:0!important;height:auto!important;resize:none;font-size:16.5px;line-height:1.7;padding:14px 16px}
 .fmt-cheia .fc-prev{flex:1;min-height:0;overflow:auto;padding:4px 2px;max-width:none}
 @media (max-width:820px){.fmt-cheia header .fc-n{display:none}}
 .fmt .fmt-tx{font-size:12.5px;font-weight:600}
@@ -107,6 +109,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     return ps.join("\n");
   }
   function ajustar(seg){ seg.style.height="auto"; seg.style.height=seg.scrollHeight+"px"; }
+  function reajustar(ta){ const c=ta&&ta._comp; if(!c) return; const f=()=>c.querySelectorAll(".fx-seg").forEach(ajustar); f(); requestAnimationFrame(f); }
+  addEventListener("resize",()=>document.querySelectorAll(".fx-comp").forEach(c=>c._ta&&reajustar(c._ta)));
   function montar(ta){
     const velho=ta._comp;
     if(!temFx(ta.value)){ if(velho){ velho.remove(); ta._comp=null; ta.hidden=false; } return; }
@@ -327,7 +331,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     doc.body.appendChild(ov); doc.body.style.overflow="hidden";
     CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false};
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Sair";
-    contar(); segAtivo(ta).focus();
+    contar(); reajustar(ta); segAtivo(ta).focus();
     const de=doc.documentElement;
     if(de.requestFullscreen && !doc.fullscreenElement && matchMedia("(min-width:821px)").matches){ de.requestFullscreen().then(()=>{ if(CHEIA) CHEIA.fs=true; }).catch(()=>{}); }
   }
@@ -335,7 +339,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!CHEIA) return; const {ta,bar,marca,ov,fs}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Tela cheia";
     ta.hidden=!!ta._comp; if(ta._comp) ta._comp.hidden=false; if(bar) bar.hidden=false;
-    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); if(ta._comp) ta.after(ta._comp); marca.remove(); ov.remove(); segAtivo(ta).focus(); }
+    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); if(ta._comp) ta.after(ta._comp); marca.remove(); ov.remove(); reajustar(ta); segAtivo(ta).focus(); }
     else { ov.remove(); if(typeof render==="function") try{ render(); }catch(e){} if(typeof renderPane==="function"&&typeof PANE!=="undefined"&&PANE) try{ renderPane(); }catch(e){} }
     doc.body.style.overflow="";
     if(fs && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(()=>{});
@@ -345,7 +349,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const mostrar=prev.hidden;
     if(mostrar){ prev.innerHTML= typeof md==="function"? md(ta.value) : ""; if(!prev.innerHTML) prev.textContent=ta.value; mostrarImagens(ov.ownerDocument); }
     prev.hidden=!mostrar; if(ta._comp){ ta.hidden=true; ta._comp.hidden=mostrar; } else ta.hidden=mostrar; if(bar) bar.hidden=mostrar; b.textContent=mostrar?"Editar":"Visualizar";
-    if(!mostrar) segAtivo(ta).focus();
+    if(!mostrar){ reajustar(ta); segAtivo(ta).focus(); }
   }
   document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".fmt-cheia [data-fc]"); if(!b) return; if(b.dataset.fc==="sair") sairCheia(); else verCheia(); });
   document.addEventListener("input",e=>{ if(CHEIA&&e.target===CHEIA.ta) contar(); });
