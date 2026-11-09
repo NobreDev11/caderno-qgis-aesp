@@ -53,7 +53,7 @@ function blocos(txt){
   return r.sort((a,b)=>a.ini-b.ini);
 }
 function novoFx(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-function gravarFx(id, modelo, codigo){ salvarDoc("fx-"+id,{tipo:"fx", modelo:modelo||null, codigo:String(codigo||"")},50); }
+function gravarFx(id, modelo, codigo){ const a=(S.docs["fx-"+id]&&!S.docs["fx-"+id].apagado)?S.docs["fx-"+id]:{}; salvarDoc("fx-"+id,{...a, tipo:"fx", modelo:modelo||null, codigo:String(codigo||"")},50); }
 const linhaFx = id => "![Fluxograma](fx:"+id+")";
 // Troca os blocos ```mermaid do texto por linhas curtas, guardando cada fluxograma no seu doc.
 function converter(txt){
@@ -113,7 +113,7 @@ function salvar(){
     const modelo=ED.modoCodigo?null:ED.m, codigo=ED.modoCodigo?ED.codigo.trim():paraMermaid(ED.m);
     const b=ED.idx!=null?bs[ED.idx]:null;
     if(b&&b.fx){ gravarFx(b.fx, modelo, codigo); ED.alvo.set(txt); fechar(); aviso("Fluxograma salvo."); return; }
-    const id=novoFx(); gravarFx(id, modelo, codigo);
+    const id=novoFx(); gravarFx(id, modelo, codigo); window.__fxNovo=id;
     let out;
     if(b){ out=txt.slice(0,b.ini)+linhaFx(id)+txt.slice(b.fim); }
     else { const p = ED.cursor!=null ? Math.min(ED.cursor, txt.length) : txt.length, antes=txt.slice(0,p), depois=txt.slice(p);

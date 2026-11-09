@@ -76,7 +76,20 @@
 .wys a{color:var(--accent);text-decoration:underline}
 .wys img.md-img{display:block;max-width:100%;height:auto;margin:6px 0;border-radius:8px;border:1px solid var(--line);background:var(--accent-soft);min-height:40px}
 .wys img.md-img-falha{min-width:160px;min-height:60px;opacity:.6}
-.wys .fx-bloco{margin:8px 0}
+.wys .fx-bloco{margin:12px 0 10px}
+.wys>div[data-aux]{min-height:1.7em}
+.fx-bloco-h{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+.fx-bloco-h button{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:7px;padding:3px 10px;cursor:pointer;font:inherit;font-size:12.5px}
+.fx-bloco-h .fx-rm{color:var(--bad,#b3261e)}
+.fx-bloco-h .fx-sp{flex:1}
+.fx-bloco-h .fx-tema{border:0;background:transparent;color:var(--ink,inherit);font-weight:600;font-size:13.5px;padding:2px 4px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+.fx-bloco-h .fx-tema:hover{text-decoration:underline dotted}
+.fx-bloco-h .fx-tema::before{content:"⬡ ";color:var(--accent)}
+.fx-dobra{border:0!important;background:transparent!important;padding:4px!important;display:inline-flex}
+.fx-dobra .chev{width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s;display:inline-block}
+.fx-bloco.recolhido .fx-dobra .chev{transform:rotate(-45deg)}
+.fx-bloco.recolhido{padding:4px 8px}
+.fx-bloco.recolhido>:not(.fx-bloco-h){display:none!important}
 .wys.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}
 .wys[hidden]{display:none!important}
 .fmt-cheia .wys{flex:1;min-height:0;max-height:none;resize:none;font-size:16.5px;line-height:1.7;padding:14px 18px}
@@ -164,19 +177,22 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2">$1</a>');
     return s.replace(/(\d+)/g,(x,i)=>"<code>"+escH(codigos[+i])+"</code>").replace(/\uE003(\d+)\uE004/g,(x,i)=>`<span class="pesq" contenteditable="false" data-q="${escH(termos[+i])}" title="Pesquisar “${escH(termos[+i])}”">${escH(termos[+i])}</span>`);
   }
+  // Tema do fluxograma: o nome dado pelo usuário ou o primeiro passo que não seja Início/Fim.
+  function temaFx(d){ if(!d) return "Fluxograma"; if(d.titulo) return d.titulo; const n=((d.modelo&&d.modelo.nos)||[]).map(x=>x.texto).find(t=>t&&!/^(in[ií]cio|fim)$/i.test(t.trim())); return n||"Fluxograma"; }
   function fxHtml(id, linha){
-    const d=typeof S==="object"&&S&&S.docs?S.docs["fx-"+id]:null, ok=d&&!d.apagado;
-    return `<div class="fx-bloco" contenteditable="false" data-linha="${escH(linha)}" data-fxid="${id}">`+
+    const d=typeof S==="object"&&S&&S.docs?S.docs["fx-"+id]:null, ok=d&&!d.apagado, rec=ok&&d.recolhido;
+    return `<div class="fx-bloco${rec?" recolhido":""}" contenteditable="false" data-linha="${escH(linha)}" data-fxid="${id}">`+
+      `<div class="fx-bloco-h"><button type="button" class="fx-dobra" data-fxb="dobrar" aria-expanded="${!rec}" title="${rec?"Mostrar":"Recolher"} fluxograma"><span class="chev"></span></button><button type="button" class="fx-tema" data-fxb="nome" title="Renomear o tema do fluxograma">${escH(temaFx(d))}</button><span class="fx-sp"></span><button type="button" data-fxb="editar">Editar</button><button type="button" class="fx-rm" data-fxb="tirar">Remover</button></div>`+
       (ok?`<div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted" style="margin:0;font-size:13px">Desenhando fluxograma…</p></div>`:'<p class="muted" style="margin:0;font-size:13px">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>')+
-      `<div class="fx-bloco-b"><span>Fluxograma</span><button type="button" data-fxb="editar">Editar</button><button type="button" class="fx-rm" data-fxb="tirar">Remover</button></div></div>`;
+      `</div>`;
   }
   function mdParaHtml(v){
-    const ls=String(v||"").split("\n"); let o="", lista=null;
+    const ls=String(v||"").split("\n"); let o="", lista=null, ultFx=false; const AUX='<div data-aux="1"><br></div>';
     const fecha=()=>{ if(lista){ o+=`</${lista.tag}>`; lista=null; } };
     const abre=(tag,tk)=>{ if(!lista||lista.tag!==tag||lista.tk!==tk){ fecha(); o+=`<${tag}${tk?' class="tk"':""}>`; lista={tag,tk}; } };
-    for(let i=0;i<ls.length;i++){ const l=ls[i];
+    for(let i=0;i<ls.length;i++){ const l=ls[i]; const eraFx=ultFx; ultFx=false;
       if(/^```/.test(l)){ fecha(); let j=i+1; const c=[]; while(j<ls.length&&!/^```\s*$/.test(ls[j])){ c.push(ls[j]); j++; } o+=`<pre>${escH(c.join("\n"))||"<br>"}</pre>`; i=j; continue; }
-      let m=l.match(RE_LFX); if(m){ fecha(); o+=fxHtml(m[1], l.trim()); continue; }
+      let m=l.match(RE_LFX); if(m){ fecha(); if(eraFx||!o) o+=AUX; o+=fxHtml(m[1], l.trim()); ultFx=true; continue; }
       if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fecha(); o+="<hr>"; continue; }
       m=l.match(/^(#{1,3})\s+(.*)$/); if(m){ fecha(); o+=`<h${m[1].length}>${inlineHtml(m[2])||"<br>"}</h${m[1].length}>`; continue; }
       m=l.match(/^(\s*)[-*]\s+\[([ xX])\]\s?(.*)$/); if(m){ abre("ul",true); o+=`<li data-tk="${m[2]===" "?0:1}"${m[1].length?` data-ind="${m[1].length}"`:""}>${inlineHtml(m[3])||"<br>"}</li>`; continue; }
@@ -185,7 +201,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(/^>/.test(l)){ fecha(); const q=[l]; while(i+1<ls.length&&/^>/.test(ls[i+1])){ i++; q.push(ls[i]); } o+="<blockquote>"+q.map(x=>`<div>${inlineHtml(x.replace(/^>\s?/,""))||"<br>"}</div>`).join("")+"</blockquote>"; continue; }
       fecha(); o+=`<div>${inlineHtml(l)||"<br>"}</div>`;
     }
-    fecha(); return o||"<div><br></div>";
+    fecha(); if(ultFx) o+=AUX; return o||"<div><br></div>";
   }
   // HTML do editor → Markdown
   const BLOCO=/^(DIV|P|H1|H2|H3|H4|H5|H6|UL|OL|LI|BLOCKQUOTE|PRE|HR|TABLE|SECTION|ARTICLE|HEADER|FOOTER)$/;
@@ -225,6 +241,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(n.nodeType===3||(n.nodeType===1&&!BLOCO.test(t)&&!(n.classList&&n.classList.contains("fx-bloco")))){ if(n.nodeType===3&&!n.nodeValue.trim()&&!buf) continue; if(!buf) buf=document.createElement("div"); buf.appendChild(n.cloneNode(true)); continue; }
       flush(); if(n.nodeType!==1) continue;
       if(n.classList.contains("fx-bloco")){ out.push(n.dataset.linha); continue; }
+      if(n.dataset&&n.dataset.aux&&!n.textContent.replace(/[\u200b\u00a0\s]/g,"")&&!n.querySelector("img,.pesq,.fx-bloco")) continue;
       if(/^H[1-6]$/.test(t)){ out.push("#".repeat(Math.min(3,+t[1]))+" "+inl(n).replace(/\n/g," ").trim()); continue; }
       if(t==="UL"||t==="OL"){ itens(n,0,out); continue; }
       if(t==="BLOCKQUOTE"){ linhasDe(n).forEach(x=>out.push("> "+x)); continue; }
@@ -256,7 +273,11 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   const pergsMd = l => l.filter(x=>x.p.trim()||x.r.trim()).map(x=>`**P:** ${x.p.replace(/\s*\n\s*/g," ").trim()}\n**R:** ${x.r.replace(/\n{2,}/g,"\n").trim()}`).join("\n\n");
   function sincronizar(ed){ const ta=ed._ta, n=htmlParaMd(ed), v=juntar(n, separar(ta.value).pergs); ed.classList.toggle("vazio",!n.trim()&&!ed.querySelector("img,hr,.fx-bloco,li")); if(v!==ta.value) escrever(ta,v); }
-  function desenhar(ta){ const ed=ta._ed; if(!ed) return; const {notas}=separar(ta.value); if(htmlParaMd(ed)!==notas){ ed.innerHTML=mdParaHtml(notas); ed.classList.toggle("vazio",!notas.trim()); } if(ta._pg&&ta._aba==="p"&&!ta._pg.contains(document.activeElement)) desenharPergs(ta); contarPergs(ta); }
+  function focarNovo(ed){ const id=window.__fxNovo; if(!id) return; if(!ed.querySelector(`.fx-bloco[data-fxid="${id}"]`)) return; window.__fxNovo=null;
+    setTimeout(()=>{ const b=ed.querySelector(`.fx-bloco[data-fxid="${id}"]`); if(!b) return;
+      let n=b.nextElementSibling; if(!n||n.classList.contains("fx-bloco")){ n=document.createElement("div"); n.dataset.aux="1"; n.innerHTML="<br>"; b.after(n); }
+      ed.focus(); const r=document.createRange(); r.setStart(n,0); r.collapse(true); const s=getSelection(); s.removeAllRanges(); s.addRange(r); n.scrollIntoView({block:"nearest"}); },60); }
+  function desenhar(ta){ const ed=ta._ed; if(!ed) return; const {notas}=separar(ta.value); if(htmlParaMd(ed)!==notas.replace(/\s+$/,"")){ ed.innerHTML=mdParaHtml(notas); ed.classList.toggle("vazio",!notas.trim()); } focarNovo(ed); if(ta._pg&&ta._aba==="p"&&!ta._pg.contains(document.activeElement)) desenharPergs(ta); contarPergs(ta); }
   function contarPergs(ta){ if(!ta._abas) return; const l=lerPergs(separar(ta.value).pergs), sem=l.filter(x=>!x.r.trim()).length; ta._abas.querySelector(".fa-n").textContent=l.length?(sem?`${l.length} · ${sem} sem resposta`:String(l.length)):""; }
   function desenharPergs(ta){
     const l=lerPergs(separar(ta.value).pergs), pg=ta._pg;
@@ -304,7 +325,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     ed.setAttribute("aria-label",ta.getAttribute("aria-label")||"Anotação"); ed.dataset.ph=ta.placeholder||""; ed.spellcheck=true; ed._ta=ta;
     const h=ta.offsetHeight; if(h>40) ed.style.minHeight=Math.min(h,420)+"px";
     const {notas}=separar(ta.value); ed.innerHTML=mdParaHtml(notas); ed.classList.toggle("vazio",!notas.trim());
-    ta.after(ed); ta._ed=ed; ta.hidden=true; montarAbas(ta);
+    ta.after(ed); ta._ed=ed; ta.hidden=true; montarAbas(ta); focarNovo(ed);
     Object.defineProperty(ta,"value",{configurable:true,get(){ return descV.get.call(this); },set(v){ descV.set.call(this,v); if(!this._sync&&this._ed) requestAnimationFrame(()=>desenhar(this)); }});
     const lab=ta.id&&document.querySelector(`label[for="${ta.id}"]`); if(lab) lab.addEventListener("click",()=>ed.focus());
   }
@@ -419,6 +440,11 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const bloco=b.closest(".fx-bloco"), ed=bloco.closest(".wys"), ta=ed&&ed._ta; if(!ta) return;
     const id=bloco.dataset.fxid;
     if(b.dataset.fxb==="editar"){ const bs=window.FLUXO?FLUXO.blocos(ta.value):[]; const i=bs.findIndex(x=>x.fx===id); fluxograma(ta, i<0?null:i); return; }
+    const d=S.docs["fx-"+id];
+    if(b.dataset.fxb==="dobrar"){ const rec=!bloco.classList.contains("recolhido"); bloco.classList.toggle("recolhido",rec); b.setAttribute("aria-expanded",String(!rec)); b.title=(rec?"Mostrar":"Recolher")+" fluxograma";
+      if(d&&!d.apagado) salvarDoc("fx-"+id,{...d,recolhido:rec},300); return; }
+    if(b.dataset.fxb==="nome"){ const n=prompt("Tema do fluxograma:", temaFx(d)); if(n==null) return; const t=n.trim().slice(0,80);
+      if(d&&!d.apagado) salvarDoc("fx-"+id,{...d,titulo:t},50); b.textContent=t||temaFx({...d,titulo:""}); return; }
     if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Remover"; } },3000); return; }
     bloco.remove(); if(id&&typeof salvarDoc==="function") salvarDoc("fx-"+id,{tipo:"fx",apagado:true},50);
     sincronizar(ed);
