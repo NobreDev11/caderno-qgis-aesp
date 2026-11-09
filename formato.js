@@ -31,6 +31,28 @@
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
 .fmt [data-fmt=flx],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
 .fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
+.fmt-abas{display:flex;gap:2px;margin:0 0 -1px;position:relative;z-index:1}
+.fmt-abas button{border:1px solid var(--line);border-bottom:0;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:5px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.fmt-abas button.on{background:var(--surface);color:var(--ink,inherit)}
+.fmt-abas button:hover{color:var(--accent)}
+.fmt-abas .fa-n{font:500 11.5px var(--mono,monospace);color:var(--accent);margin-left:4px}
+.fmt-abas+.fmt{border-top-left-radius:0}
+.pergs{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:0 8px 8px 8px;background:var(--bg);padding:10px;max-height:min(60vh,560px);overflow-y:auto}
+.pergs[hidden]{display:none}
+.pg-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pg-f{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
+.pg-it{border:1px solid var(--line);border-left:4px solid var(--warn,#a86400);border-radius:8px;background:var(--surface);padding:6px 8px;display:flex;flex-direction:column;gap:4px}
+.pg-it.ok{border-left-color:var(--ok,#2f7d32)}
+.pg-it[hidden]{display:none}
+.pg-l{display:flex;gap:8px;align-items:flex-start}
+.pg-tag{flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:700 12px var(--mono,monospace);background:color-mix(in srgb,var(--warn,#a86400) 18%,transparent);color:var(--warn,#a86400);margin-top:4px}
+.pg-tag.r{background:color-mix(in srgb,var(--ok,#2f7d32) 18%,transparent);color:var(--ok,#2f7d32)}
+.pergs textarea{flex:1;min-height:0!important;resize:none;overflow:hidden;border:0!important;background:transparent!important;padding:4px 2px!important;font:inherit;line-height:1.5;color:inherit;outline:none}
+.pergs textarea.pg-p{font-weight:600}
+.pg-x{flex:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;padding:4px}
+.pg-x:hover{color:var(--bad,#b3261e)}
+.pg-vazio{margin:4px 0;color:var(--muted);font-size:13.5px}
+.fmt-cheia .pergs{flex:1;max-height:none}
 .wys{position:relative;display:block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:120px;max-height:min(60vh,560px);overflow-y:auto;overflow-x:hidden;resize:vertical;line-height:1.6;outline:none;cursor:text;overflow-wrap:anywhere;max-width:none;color:var(--ink,inherit)}
 .wys:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .wys.vazio::before{content:attr(data-ph);position:absolute;left:12px;top:8px;right:12px;color:var(--muted);pointer-events:none}
@@ -210,15 +232,72 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
 
   const descV=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value");
   function escrever(ta,v){ ta._sync=true; ta.value=v; ta._sync=false; ta.dispatchEvent(new Event("input",{bubbles:true})); }
-  function sincronizar(ed){ const ta=ed._ta, v=htmlParaMd(ed); ed.classList.toggle("vazio",!v.trim()&&!ed.querySelector("img,hr,.fx-bloco,li")); if(v!==ta.value) escrever(ta,v); }
-  function desenhar(ta){ const ed=ta._ed; if(!ed) return; if(htmlParaMd(ed)===ta.value) return; ed.innerHTML=mdParaHtml(ta.value); ed.classList.toggle("vazio",!ta.value.trim()); }
+  /* ---- Perguntas e respostas: ficam no fim da mesma anotação, numa seção "## Perguntas e respostas"
+     com pares "**P:** …" / "**R:** …". A aba Anotações edita só o texto de cima; a aba Perguntas, só a seção. */
+  const MARCA_P="## Perguntas e respostas";
+  function separar(v){ v=String(v||""); const m=v.match(/^## Perguntas e respostas[ \t]*$/m); if(!m) return {notas:v,pergs:""}; return {notas:v.slice(0,m.index).replace(/\s+$/,""), pergs:v.slice(m.index+m[0].length).replace(/^\s*\n/,"").replace(/\s+$/,"")}; }
+  function juntar(notas,pergs){ notas=String(notas||""); return pergs&&pergs.trim()? (notas.trim()?notas.replace(/\s+$/,"")+"\n\n":"")+MARCA_P+"\n"+pergs.trim() : notas; }
+  function lerPergs(txt){
+    const out=[]; let cur=null;
+    for(const l of String(txt||"").split("\n")){
+      let m=l.match(/^\*\*P:\*\*\s?(.*)$/); if(m){ cur={p:m[1],r:"",modo:"p"}; out.push(cur); continue; }
+      m=l.match(/^\*\*R:\*\*\s?(.*)$/); if(m&&cur){ cur.r=m[1]; cur.modo="r"; continue; }
+      if(!cur){ if(l.trim()) { cur={p:l.trim(),r:"",modo:"p"}; out.push(cur); } continue; }
+      if(cur.modo==="r") cur.r+="\n"+l; else if(l.trim()) cur.p+=" "+l.trim();
+    }
+    return out.map(x=>({p:x.p.trim(), r:x.r.replace(/\s+$/,"").replace(/^\s*\n/,"")}));
+  }
+  const pergsMd = l => l.filter(x=>x.p.trim()||x.r.trim()).map(x=>`**P:** ${x.p.replace(/\s*\n\s*/g," ").trim()}\n**R:** ${x.r.replace(/\n{2,}/g,"\n").trim()}`).join("\n\n");
+  function sincronizar(ed){ const ta=ed._ta, n=htmlParaMd(ed), v=juntar(n, separar(ta.value).pergs); ed.classList.toggle("vazio",!n.trim()&&!ed.querySelector("img,hr,.fx-bloco,li")); if(v!==ta.value) escrever(ta,v); }
+  function desenhar(ta){ const ed=ta._ed; if(!ed) return; const {notas}=separar(ta.value); if(htmlParaMd(ed)!==notas){ ed.innerHTML=mdParaHtml(notas); ed.classList.toggle("vazio",!notas.trim()); } if(ta._pg&&ta._aba==="p"&&!ta._pg.contains(document.activeElement)) desenharPergs(ta); contarPergs(ta); }
+  function contarPergs(ta){ if(!ta._abas) return; const l=lerPergs(separar(ta.value).pergs), sem=l.filter(x=>!x.r.trim()).length; ta._abas.querySelector(".fa-n").textContent=l.length?(sem?`${l.length} · ${sem} sem resposta`:String(l.length)):""; }
+  function desenharPergs(ta){
+    const l=lerPergs(separar(ta.value).pergs), pg=ta._pg;
+    pg.innerHTML=`<div class="pg-topo"><button type="button" class="btn sm pri" data-pg="nova">+ Nova pergunta</button><label class="pg-f"><input type="checkbox" data-pg="filtro" ${ta._pgFiltro?"checked":""}> só sem resposta</label></div>`+
+      (l.length? l.map((x,i)=>`<div class="pg-it${x.r.trim()?" ok":""}" data-i="${i}" ${ta._pgFiltro&&x.r.trim()?"hidden":""}><div class="pg-l"><span class="pg-tag">P</span><textarea class="pg-p" rows="1" placeholder="Escreva a pergunta…">${escH(x.p)}</textarea><button type="button" class="pg-x" data-pg="tirar" title="Apagar pergunta" aria-label="Apagar pergunta">✕</button></div><div class="pg-l"><span class="pg-tag r">R</span><textarea class="pg-r" rows="1" placeholder="Resposta (do instrutor, do material ou sua)…">${escH(x.r)}</textarea></div></div>`).join("")
+        : '<p class="pg-vazio">Nenhuma pergunta ainda. Anote dúvidas da aula para perguntar ao instrutor e registre a resposta depois.</p>');
+    pg.querySelectorAll("textarea").forEach(ajustarPg);
+  }
+  function ajustarPg(t){ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }
+  function salvarPergs(ta){
+    const l=[...ta._pg.querySelectorAll(".pg-it")].map(it=>({p:it.querySelector(".pg-p").value, r:it.querySelector(".pg-r").value}));
+    const v=juntar(separar(ta.value).notas, pergsMd(l)); if(v!==ta.value) escrever(ta,v); contarPergs(ta);
+  }
+  function trocarAba(ta,aba){
+    ta._aba=aba; const ab=ta._abas, bar=ab.nextElementSibling&&ab.nextElementSibling.classList.contains("fmt")?ab.nextElementSibling:null;
+    ab.querySelectorAll("[data-faba]").forEach(b=>{ const on=b.dataset.faba===aba; b.classList.toggle("on",on); b.setAttribute("aria-selected",String(on)); });
+    if(bar) bar.hidden=aba==="p"; if(ta._ed) ta._ed.hidden=aba==="p"; ta._pg.hidden=aba!=="p";
+    if(aba==="p"){ desenharPergs(ta); const t=ta._pg.querySelector(".pg-p"); if(!t) ta._pg.querySelector('[data-pg="nova"]').focus(); } else if(ta._ed) ta._ed.focus();
+  }
+  document.addEventListener("click",e=>{
+    const a=e.target.closest&&e.target.closest("[data-faba]"); if(a){ const ta=a.closest(".fmt-abas")._ta; if(ta) trocarAba(ta,a.dataset.faba); return; }
+    const b=e.target.closest&&e.target.closest(".pergs [data-pg]"); if(!b||b.tagName==="INPUT") return; const pg=b.closest(".pergs"), ta=pg._ta;
+    if(b.dataset.pg==="nova"){ const l=lerPergs(separar(ta.value).pergs); l.push({p:"",r:""}); ta._pgNova=true; ta._pgFiltro=false;
+      // pergunta vazia só vai para o texto quando tiver conteúdo; aqui só desenha
+      desenharPergs(ta); const it=document.createElement("div"); it.className="pg-it"; it.dataset.i="novo";
+      it.innerHTML=`<div class="pg-l"><span class="pg-tag">P</span><textarea class="pg-p" rows="1" placeholder="Escreva a pergunta…"></textarea><button type="button" class="pg-x" data-pg="tirar" aria-label="Apagar pergunta">✕</button></div><div class="pg-l"><span class="pg-tag r">R</span><textarea class="pg-r" rows="1" placeholder="Resposta (do instrutor, do material ou sua)…"></textarea></div>`;
+      const vz=pg.querySelector(".pg-vazio"); if(vz) vz.remove(); pg.appendChild(it); it.querySelector(".pg-p").focus(); return; }
+    if(b.dataset.pg==="tirar"){ const it=b.closest(".pg-it"); if(!b.dataset.conf&&(it.querySelector(".pg-p").value.trim()||it.querySelector(".pg-r").value.trim())){ b.dataset.conf="1"; b.textContent="Apagar?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="✕"; } },3000); return; }
+      it.remove(); salvarPergs(ta); if(!pg.querySelector(".pg-it")) desenharPergs(ta); }
+  });
+  document.addEventListener("change",e=>{ const t=e.target; if(t.dataset&&t.dataset.pg==="filtro"){ const ta=t.closest(".pergs")._ta; ta._pgFiltro=t.checked; salvarPergs(ta); desenharPergs(ta); } });
+  document.addEventListener("input",e=>{ const t=e.target; if(!t.classList||!(t.classList.contains("pg-p")||t.classList.contains("pg-r"))) return; ajustarPg(t); const it=t.closest(".pg-it"); it.classList.toggle("ok",!!it.querySelector(".pg-r").value.trim()); salvarPergs(t.closest(".pergs")._ta); });
+  document.addEventListener("keydown",e=>{ const t=e.target; if(t.classList&&t.classList.contains("pg-p")&&e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); const r=t.closest(".pg-it").querySelector(".pg-r"); r.focus(); } });
+  function montarAbas(ta){
+    const bar=ta.previousElementSibling; if(!bar||!bar.classList.contains("fmt")) return;
+    const ab=document.createElement("div"); ab.className="fmt-abas"; ab.setAttribute("role","tablist"); ab._ta=ta;
+    ab.innerHTML=`<button type="button" role="tab" class="on" aria-selected="true" data-faba="n">Anotações</button><button type="button" role="tab" aria-selected="false" data-faba="p">Perguntas <span class="fa-n"></span></button>`;
+    bar.before(ab); ta._abas=ab;
+    const pg=document.createElement("div"); pg.className="pergs"; pg.hidden=true; pg._ta=ta; (ta._ed||ta).after(pg); ta._pg=pg; ta._aba="n";
+    contarPergs(ta);
+  }
   function montar(ta){
     if(ta._ed){ desenhar(ta); return; }
     const ed=document.createElement("div"); ed.className="wys md"; ed.contentEditable="true"; ed.setAttribute("role","textbox"); ed.setAttribute("aria-multiline","true");
     ed.setAttribute("aria-label",ta.getAttribute("aria-label")||"Anotação"); ed.dataset.ph=ta.placeholder||""; ed.spellcheck=true; ed._ta=ta;
     const h=ta.offsetHeight; if(h>40) ed.style.minHeight=Math.min(h,420)+"px";
-    ed.innerHTML=mdParaHtml(ta.value); ed.classList.toggle("vazio",!ta.value.trim());
-    ta.after(ed); ta._ed=ed; ta.hidden=true;
+    const {notas}=separar(ta.value); ed.innerHTML=mdParaHtml(notas); ed.classList.toggle("vazio",!notas.trim());
+    ta.after(ed); ta._ed=ed; ta.hidden=true; montarAbas(ta);
     Object.defineProperty(ta,"value",{configurable:true,get(){ return descV.get.call(this); },set(v){ descV.set.call(this,v); if(!this._sync&&this._ed) requestAnimationFrame(()=>desenhar(this)); }});
     const lab=ta.id&&document.querySelector(`label[for="${ta.id}"]`); if(lab) lab.addEventListener("click",()=>ed.focus());
   }
@@ -491,11 +570,11 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function telaCheia(ta){
     if(CHEIA){ sairCheia(); return; }
     const doc=ta.ownerDocument, bar=ta.previousElementSibling&&ta.previousElementSibling.classList.contains("fmt")?ta.previousElementSibling:null;
-    const marca=doc.createComment("tela-cheia"); (bar||ta).before(marca);
+    const marca=doc.createComment("tela-cheia"); (ta._abas||bar||ta).before(marca);
     const ov=doc.createElement("div"); ov.className="fmt-cheia"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-label","Anotação em tela cheia");
     ov.innerHTML=`<header><span class="fc-t"></span><span class="fc-n"></span><button type="button" data-fc="ver">Visualizar</button><button type="button" data-fc="sair">Sair da tela cheia</button></header><div class="fc-b"></div>`;
     ov.querySelector(".fc-t").textContent=tituloDe(ta);
-    const corpo=ov.querySelector(".fc-b"); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._ed) corpo.appendChild(ta._ed);
+    const corpo=ov.querySelector(".fc-b"); if(ta._abas) corpo.appendChild(ta._abas); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._ed) corpo.appendChild(ta._ed); if(ta._pg) corpo.appendChild(ta._pg);
     const prev=doc.createElement("div"); prev.className="md fc-prev"; prev.hidden=true; corpo.appendChild(prev);
     doc.body.appendChild(ov); doc.body.style.overflow="hidden";
     CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false};
@@ -508,7 +587,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!CHEIA) return; const {ta,bar,marca,ov,fs}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Tela cheia";
     ta.hidden=!!ta._ed; if(ta._ed) ta._ed.hidden=false; if(bar) bar.hidden=false;
-    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); if(ta._ed) ta.after(ta._ed); marca.remove(); ov.remove(); reajustar(ta); segAtivo(ta).focus(); }
+    if(marca.isConnected){ if(ta._abas) marca.before(ta._abas); if(bar) marca.before(bar); marca.before(ta); if(ta._ed) ta.after(ta._ed); if(ta._pg) (ta._ed||ta).after(ta._pg); marca.remove(); ov.remove(); reajustar(ta); segAtivo(ta).focus(); }
     else { ov.remove(); if(typeof render==="function") try{ render(); }catch(e){} if(typeof renderPane==="function"&&typeof PANE!=="undefined"&&PANE) try{ renderPane(); }catch(e){} }
     doc.body.style.overflow="";
     if(fs && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(()=>{});
