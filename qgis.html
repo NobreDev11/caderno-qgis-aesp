@@ -122,6 +122,12 @@ input[type=file]{width:100%;font-size:14px}
 h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 .pop{position:fixed;z-index:50;width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgb(0 0 0 / .2);padding:12px 14px;font-size:14px;line-height:1.5}
 .pop p{margin:8px 0 0}.pop pre{margin:4px 0 0;padding:8px;background:var(--bg);border-radius:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
+.pres-lista{display:flex;flex-direction:column;gap:4px}
+.pres-l{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pres-l .mono{flex:1;min-width:120px;font-size:12.5px;color:var(--muted)}
+.pres-l .pres-p.on{background:color-mix(in srgb,var(--ok) 18%,var(--surface));border-color:var(--ok);color:var(--ok)}
+.pres-l .pres-f.on{background:color-mix(in srgb,var(--bad) 14%,var(--surface));border-color:var(--bad);color:var(--bad)}
+textarea[data-dnota]{max-height:50vh}
 .shade{position:fixed;inset:0;background:rgb(0 0 0 / .25);z-index:19}
 .md{line-height:1.6;max-width:68ch}
 .md h1,.md h2,.md h3{font-family:var(--display);margin:.6em 0 .3em}
@@ -640,8 +646,8 @@ function vDisciplinas(){
       <div class="grid2" style="margin-top:10px">
         <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
           <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea></div>
-        <div class="notes"><span class="lb">Aulas (${anot.length} com presença) ${info("discaulas")}</span>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">${aulas.map(a=>{const ad=aulaD(a.id);const has=ad.pres==="p";return `<button class="btn sm ${has?"on":""}" data-aula="${a.id}" title="${fmtData(a.data)} ${a.ini}">${a.n}${ad.estrela?" ★":""}</button>`}).join("")}</div>
+        <div class="notes"><span class="lb">Presença (${anot.length} de ${aulas.length}) ${info("discaulas")}</span>
+          <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
           ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
           ${(()=>{const ms=mats().filter(m=>m.disc===x.k);return `<div class="row" style="justify-content:space-between;margin-top:6px"><span class="lb" style="margin:0">Materiais (${ms.length})</span><button class="btn sm" data-addmat="${x.k}">Adicionar</button></div>`+ms.map(matItem).join("")})()}
         </div>
@@ -1115,7 +1121,7 @@ const AJUDA={
   markdown:{t:"Formatação do texto",o:"Atalhos simples para organizar as anotações.",c:"# Título · ## Subtítulo · - item de lista · **negrito** · *itálico* · `código` · links começando com http viram clicáveis.",ex:"## Buffer\n- Vetor > Geoprocessamento > Buffer\n- distância em **metros** (SRC projetado)"},
   disciplinas:{t:"Disciplinas",o:"As 9 disciplinas do curso com instrutores, carga horária, dias e progresso.",c:"“Editar nome” completa o nome (no QTS veio cortado). “Resumo da disciplina” é seu resumo geral. Os números são as aulas: clique para abrir. Também dá para criar notas e materiais da disciplina."},
   discres:{t:"Anotações da disciplina",o:"A anotação única do tema: é o mesmo texto da anotação rápida, do painel de cada aula e do bloco flutuante dessa disciplina.",c:"Use para juntar conceitos-chave, atalhos e links de material. Salva sozinho."},
-  discaulas:{t:"Aulas da disciplina",o:"Cada número é uma aula (sessão) da disciplina.",c:"Botão destacado = aula com anotação. ★ = marcada como importante. Clique para abrir."},
+  discaulas:{t:"Presença nas aulas",o:"Cada linha é uma aula (sessão de 50 min) da disciplina, com número, dia e horário.",c:"Toque em Presente ou Falta para marcar. Tocar de novo no mesmo botão desmarca."},
   materiais:{t:"Materiais",o:"Biblioteca do curso: PDFs, slides, fotos do quadro, links e textos, separados por disciplina.",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo e questões, ou para corrigir o texto extraído."},
   addmat:{t:"Novo material",o:"Formas de trazer conteúdo para o caderno.",c:"Arquivo: PDF ou texto (o app lê o texto do PDF). Fotos: até 8 de slides ou do quadro. Link: site, PDF, Google Drive/Docs/Slides (precisa estar como “Qualquer pessoa com o link”); YouTube fica só como link. Colar texto: conteúdo copiado de qualquer lugar."},
   matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo no QGIS, aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
@@ -1299,7 +1305,7 @@ function render(){
 }
 
 document.addEventListener("click",async e=>{
-  const b=e.target.closest("[data-go],[data-aula],[data-nota],[data-novanota],[data-fechar],[data-pres],[data-estrela],[data-prev],[data-delnota],[data-dia],[data-editnome],[data-tkdel]");
+  const b=e.target.closest("[data-go],[data-aula],[data-nota],[data-novanota],[data-fechar],[data-pres],[data-estrela],[data-prev],[data-delnota],[data-dia],[data-editnome],[data-tkdel],[data-dpres]");
   if(!b||b.disabled) return;
   const ds=b.dataset;
   if(ds.aula!==undefined){ flushTudo(); abrirAula(ds.aula); return; }
@@ -1308,6 +1314,7 @@ document.addEventListener("click",async e=>{
   if(ds.fechar!==undefined){ flushTudo(); fecharPane(); return; }
   if(ds.go!==undefined){ ir(ds.go); if(ds.disc) setTimeout(()=>document.getElementById("d-"+ds.disc)?.scrollIntoView({behavior:"smooth"}),30); return; }
   if(ds.dia!==undefined){ DIA_SEL=ds.dia; render(); return; }
+  if(ds.dpres!==undefined){ const id=ds.dpres, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",pres:d.pres===ds.v?"":ds.v},50); render(); return; }
   if(ds.pres!==undefined){ const id=PANE.id, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",pres:d.pres===ds.pres?"":ds.pres},50); renderPane(); return; }
   if(ds.estrela!==undefined){ const id=PANE.id, d=aulaD(id); salvarDoc("aula-"+id,{...d,tipo:"aula",estrela:!d.estrela},50); renderPane(); return; }
   if(ds.prev!==undefined){ PANE.prev=!PANE.prev; renderPane(); return; }
