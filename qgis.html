@@ -149,6 +149,7 @@ h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 .anx-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.anx-form[hidden]{display:none}
 .anx-form input{flex:1;min-width:160px}
 .anx-lista{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.fm{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}.fm-c{display:flex;flex-direction:column;flex:1 1 140px;min-width:0}.fm-q{flex:2 1 220px}.fm-c .lb{margin:0 0 2px}.fm-c select,.fm-c input{width:100%}
 .anx{display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:14px}
 .anx a,.anx .anx-a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent);background:none;border:0;padding:0;font:inherit;text-align:left;cursor:pointer}
 .anx>span:not(.anx-t){flex:1}
@@ -1101,7 +1102,7 @@ function salvarNotaDoForm(){
 /* ============ MATERIAIS (PDF, link, texto, fotos) ============ */
 // mat-<x>: dados do material (título, disciplina, resumo, questões, respostas). mtx-<x>: texto extraído (e fotos, sem login).
 const MAX_TXT = 300000;
-const mats = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="mat"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(b.criado||0)-(a.criado||0));
+const mats = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="mat"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(a.criado||0)-(b.criado||0)); // mais antigos no topo
 const mtx = mid => S.docs["mtx-"+mid.slice(4)] || {};
 let IA_OK = null;
 fetch("/api/status").then(r=>r.ok?r.json():{}).then(j=>{ IA_OK=!!j.ia; if(PANE&&PANE.tipo==="mat") renderPane(); }).catch(()=>{ IA_OK=false; });
@@ -1395,18 +1396,37 @@ async function apagarMaterial(mid){
 /* ---- telas ---- */
 function matItem(m){
   const st=statsMat(m);
-  return `<button class="ni" data-mat="${m.id}"><div class="row" style="justify-content:space-between"><strong>${esc(m.titulo)}</strong><span class="mono muted" style="font-size:12px">${{arquivo:"PDF/arquivo",fotos:"fotos",link:"link",texto:"texto",nota:"micro-nota"}[m.origem]||""}</span></div>
+  return `<button class="ni" data-mat="${m.id}"><div class="row" style="justify-content:space-between"><strong>${esc(m.titulo)}</strong><span class="mono muted" style="font-size:12px">${{arquivo:"PDF/arquivo",fotos:"fotos",link:"link",texto:"texto",nota:"nota salva"}[m.origem]||""}</span></div>
     <div class="row" style="margin-top:4px;gap:6px">${m.disc&&DK[m.disc]?`<span class="chip">${sw(m.disc)}<span class="ct">${esc(nomeDisc(m.disc))}</span></span>`:""}
-    ${m.resumo?'<span class="chip">resumo</span>':""}${st.total?`<span class="chip">${st.total} questões · ${st.acertos}/${st.feitas}</span>`:""}</div></button>`;
+    ${m.criado?`<span class="chip">${new Date(m.criado).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</span>`:""}${m.resumo?'<span class="chip">resumo</span>':""}${st.total?`<span class="chip">${st.total} questões · ${st.acertos}/${st.feitas}</span>`:""}</div></button>`;
 }
 let FILTRO_MAT="";
+const FM={q:"",origem:"",estado:"",ordem:"antigos"};
+function matsFiltrados(){
+  const q=FM.q.trim().toLowerCase();
+  let ms=mats().filter(m=>(!FILTRO_MAT||m.disc===FILTRO_MAT)&&(!FM.origem||m.origem===FM.origem)&&(!FM.estado
+    ||(FM.estado==="resumo"&&m.resumo)||(FM.estado==="semresumo"&&!m.resumo)
+    ||(FM.estado==="questoes"&&(m.questoes||[]).length)||(FM.estado==="pendentes"&&(()=>{const st=statsMat(m);return st.total&&st.feitas<st.total;})()))
+    &&(!q||((m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||"")).toLowerCase().includes(q)));
+  if(FM.ordem==="recentes") ms=ms.reverse();
+  return ms;
+}
+function listaMatHTML(){ const ms=matsFiltrados(); const tot=mats().length;
+  return ms.length?`<p class="muted" style="font-size:13px;margin:0 0 6px">${ms.length===tot?ms.length+" materiais":ms.length+" de "+tot+" materiais"}</p>`+ms.map(matItem).join("")
+    :(tot?'<p class="empty">Nenhum material com esses filtros.</p>':'<p class="empty">Nenhum material ainda. Envie o PDF dos slides, um link ou fotos do quadro.</p>'); }
 function vMateriais(){
-  const ms=mats().filter(m=>!FILTRO_MAT||m.disc===FILTRO_MAT);
   return `<div class="row" style="justify-content:space-between"><div><h2>Materiais ${info("materiais")}</h2><p class="sub">PDFs, slides, links e fotos das aulas. Cada material ganha resumo e questões.</p></div>
     <button class="btn pri" data-addmat="${FILTRO_MAT}">Adicionar material</button></div>
     ${IA_OK===false?`<div class="card" style="font-size:14px"><strong>Geração automática desligada.</strong> <span class="muted">Funciona copiando o pedido para o app do Claude e colando a resposta. Para gerar direto aqui, cadastre a chave <span class="mono">ANTHROPIC_API_KEY</span> na Vercel.</span></div>`:""}
-    <div class="row"><label class="lb" for="fmd" style="margin:0">Disciplina</label><select id="fmd" style="width:auto;flex:1;min-width:0;max-width:100%"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_MAT===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
-    <div class="notes">${ms.length?ms.map(matItem).join(""):'<p class="empty">Nenhum material ainda. Envie o PDF dos slides, um link ou fotos do quadro.</p>'}</div>`;
+    <div class="fm">
+      <div class="fm-c fm-q"><label class="lb" for="fmq">Buscar</label><input id="fmq" type="search" placeholder="Título, resumo ou texto" value="${esc(FM.q)}"></div>
+      <div class="fm-c"><label class="lb" for="fmd">Disciplina</label><select id="fmd"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_MAT===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+      <div class="fm-c"><label class="lb" for="fmo">Tipo</label><select id="fmo">${[["","Todos"],["nota","Nota salva"],["arquivo","PDF/arquivo"],["link","Link"],["fotos","Fotos"],["texto","Texto"]].map(([v,t])=>`<option value="${v}" ${FM.origem===v?"selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="fm-c"><label class="lb" for="fme">Situação</label><select id="fme">${[["","Todas"],["resumo","Com resumo"],["semresumo","Sem resumo"],["questoes","Com questões"],["pendentes","Questões a fazer"]].map(([v,t])=>`<option value="${v}" ${FM.estado===v?"selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="fm-c"><label class="lb" for="fmr">Ordem</label><select id="fmr">${[["antigos","Antigos primeiro"],["recentes","Recentes primeiro"]].map(([v,t])=>`<option value="${v}" ${FM.ordem===v?"selected":""}>${t}</option>`).join("")}</select></div>
+      ${FILTRO_MAT||FM.q||FM.origem||FM.estado||FM.ordem!=="antigos"?'<button class="btn sm" data-fmlimpa="1" style="align-self:flex-end">Limpar</button>':""}
+    </div>
+    <div class="notes" id="matlista">${listaMatHTML()}</div>`;
 }
 
 /* ---- modo estudo ---- */
@@ -1496,10 +1516,15 @@ document.addEventListener("change",e=>{
   if(t.id==="mt-d"&&PANE&&PANE.tipo==="mat"){ salvarDoc(PANE.id,{...S.docs[PANE.id],disc:t.value},50); render(); }
   else if(t.id==="mt-n"&&PANE){ PANE.n=+t.value; }
   else if(t.id==="fmd"){ FILTRO_MAT=t.value; render(); }
+  else if(t.id==="fmo"){ FM.origem=t.value; render(); }
+  else if(t.id==="fme"){ FM.estado=t.value; render(); }
+  else if(t.id==="fmr"){ FM.ordem=t.value; render(); }
   else if(t.id==="ef-d"){ EF.disc=t.value; EF.mat=""; render(); }
   else if(t.id==="ef-m"){ EF.mat=t.value; }
   else if(t.id==="ef-o"){ EF.modo=t.value; }
 });
+document.addEventListener("input",e=>{ if(e.target.id!=="fmq") return; FM.q=e.target.value; const l=document.getElementById("matlista"); if(l) l.innerHTML=listaMatHTML(); });
+document.addEventListener("click",e=>{ if(!e.target.closest("[data-fmlimpa]")) return; FILTRO_MAT=""; Object.assign(FM,{q:"",origem:"",estado:"",ordem:"antigos"}); render(); });
 document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.verTexto=e.target.open; },true);
 
 /* ============ AJUDA (ícones "i") ============ */
