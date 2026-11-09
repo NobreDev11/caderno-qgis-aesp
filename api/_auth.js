@@ -19,6 +19,22 @@ async function verificar(req) {
   return user;
 }
 
+// Aceita o dono (login admin) ou um link pessoal de convidado válido (cabeçalho X-Convite).
+async function verificarOuConvite(req) {
+  const c = String(req.headers["x-convite"] || "");
+  if (/^[A-Za-z0-9]{20,64}$/.test(c)) {
+    const r = await fetch(SUPA_URL + "/rest/v1/rpc/caderno_conv_info", {
+      method: "POST",
+      headers: { apikey: SUPA_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_token: c }),
+    });
+    const nome = r.ok ? await r.json() : null;
+    if (nome) return { convite: true };
+    throw Object.assign(new Error("Link pessoal inválido ou desativado."), { status: 403 });
+  }
+  return verificar(req);
+}
+
 function lerCorpo(req) {
   if (req.body && typeof req.body === "object") return Promise.resolve(req.body);
   if (typeof req.body === "string") return Promise.resolve(JSON.parse(req.body || "{}"));
@@ -37,4 +53,4 @@ function responder(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-module.exports = { verificar, lerCorpo, responder };
+module.exports = { verificar, verificarOuConvite, lerCorpo, responder };

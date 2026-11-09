@@ -52,7 +52,8 @@ nav button .lbl{flex:1}
 .sg{flex:1;min-width:1px;background:var(--line);border-radius:2px;overflow:hidden}
 .sg.d{margin-left:3px}
 .sg>i{display:block;height:100%;transition:width .4s}
-.sg.cur{box-shadow:0 0 0 1px var(--ink);position:relative;z-index:1}
+.sg.cur{box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 22%,transparent);background:color-mix(in srgb,var(--line) 70%,var(--surface))}
+.sg>i{opacity:.85}
 @media (min-width:821px){
   .app.recolhido{grid-template-columns:60px 1fr}
   .app.recolhido aside{padding:14px 8px;align-items:stretch}
@@ -143,7 +144,27 @@ input[type=file]{width:100%;font-size:14px}
 h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 .pop{position:fixed;z-index:50;width:min(340px,calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgb(0 0 0 / .2);padding:12px 14px;font-size:14px;line-height:1.5}
 .pop p{margin:8px 0 0}.pop pre{margin:4px 0 0;padding:8px;background:var(--bg);border-radius:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
-.pres-lista{display:flex;flex-direction:column;gap:4px}
+.pres-lista{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+details.sec{border-top:1px solid var(--line);padding:8px 0 2px}
+details.sec:first-child{border-top:0;padding-top:0}
+details.sec>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:2px 0}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px;flex:none}
+details.sec[open]>summary::before{transform:rotate(45deg)}
+.mnav{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.mnav-bar{display:flex;gap:6px}
+.mnav a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+.mnav-bar input{flex:1;min-width:0}
+.mnav-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.mnav-acoes[hidden],.mnav-salvar[hidden]{display:none}
+.mnav-url{flex:1 1 100%;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mnav-salvar{display:flex;flex-direction:column;gap:8px;padding:10px}
+.mnav-area{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);display:flex}
+.mnav-area.on{height:420px}
+.mnav-area iframe{flex:1;border:0;width:100%;height:100%;background:#fff}
+.mnav-vazio{margin:auto;padding:16px;text-align:center;color:var(--muted);font-size:13.5px;max-width:40ch}
+.mnav.cheio{position:fixed;inset:0;z-index:38;background:var(--surface);padding:12px max(12px,calc((100% - 1200px)/2));margin:0}
+.mnav.cheio .mnav-area{flex:1;height:auto}
 .pres-l{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .pres-l .mono{flex:1;min-width:120px;font-size:12.5px;color:var(--muted)}
 .pres-l .pres-p.on{background:color-mix(in srgb,var(--ok) 18%,var(--surface));border-color:var(--ok);color:var(--ok)}
@@ -557,7 +578,7 @@ function md(src){
 }
 function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),3200); }
 function sw(k){ return `<span class="sw" style="background:${DK[k].cor}"></span>`; }
-function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||a.isContentEditable||(a.tagName==="INPUT"&&a.type==="text")); }
+function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||a.tagName==="IFRAME"||a.isContentEditable||(a.tagName==="INPUT"&&a.type==="text")); }
 
 /* ============ NAVEGAÇÃO ============ */
 const ICONES={
@@ -592,13 +613,13 @@ function barraMarcos(aulas, cor){
   const {fs}=progresso(aulas);
   return `<div class="segs" role="img" aria-label="${aulas.filter((a,i)=>fs[i]>=1).length} de ${aulas.length} aulas concluídas">${aulas.map((a,i)=>{
     const novoDia=i>0&&aulas[i-1].data!==a.data, f=fs[i], cur=f>0&&f<1;
-    return `<span class="sg${novoDia?" d":""}${cur?" cur":""}" title="Aula ${a.n}/${a.tot} · ${esc(nomeDisc(a.k))} · ${fmtData(a.data)} ${a.ini}–${a.fim}${cur?" · em andamento ("+Math.round(f*50)+" de 50 min)":f>=1?" · concluída":""}"><i style="width:${(f*100).toFixed(1)}%;background:${cor||DK[a.k].cor}"></i></span>`;
+    return `<span class="sg${novoDia?" d":""}${cur?" cur":""}" title="Aula ${a.n}/${a.tot} · ${esc(nomeDisc(a.k))} · ${fmtData(a.data)} ${a.ini}–${a.fim}${cur?" · em andamento":f>=1?" · concluída":""}"><i style="width:${(f*100).toFixed(1)}%;background:${cor||DK[a.k].cor}"></i></span>`;
   }).join("")}</div>`;
 }
 function linhaAgora(){
   const t=Date.now(), cur=AULAS.find(a=>statusAula(a)==="cur"), prox=AULAS.find(a=>msDe(a.data,a.ini)>t);
-  if(cur){ const r=Math.max(1,Math.round((msDe(cur.data,cur.fim)-t)/60000)); return `Agora: ${esc(nomeDisc(cur.k))} · aula ${cur.n}/${cur.tot} · faltam ${r} min`; }
-  if(prox){ const m=Math.round((msDe(prox.data,prox.ini)-t)/60000); return `Próxima: ${esc(nomeDisc(prox.k))} · ${m<60?"em "+m+" min":fmtData(prox.data)+" "+prox.ini}`; }
+  if(cur) return `Agora: ${esc(nomeDisc(cur.k))} · aula ${cur.n}/${cur.tot}`;
+  if(prox) return `Próxima: ${esc(nomeDisc(prox.k))} · ${fmtData(prox.data)} ${prox.ini}`;
   return "Curso concluído";
 }
 function renderProg(){
@@ -710,14 +731,111 @@ function vDisciplinas(){
       <div class="grid2" style="margin-top:10px">
         <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
           <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea></div>
-        <div class="notes"><span class="lb">Presença (${anot.length} de ${aulas.length}) ${info("discaulas")}</span>
+        <div class="notes">
+          <details class="sec" data-sec="pres-${x.k}" ${secAberta("pres-"+x.k)?"open":""}><summary><span class="lb" style="margin:0">Presença (${anot.length} de ${aulas.length})</span>${info("discaulas")}</summary>
           <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
+          </details>
           ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
-          ${(()=>{const ms=mats().filter(m=>m.disc===x.k);return `<div class="row" style="justify-content:space-between;margin-top:6px"><span class="lb" style="margin:0">Materiais (${ms.length})</span><button class="btn sm" data-addmat="${x.k}">Adicionar</button></div>`+ms.map(matItem).join("")})()}
+          <details class="sec" data-sec="mat-${x.k}" ${secAberta("mat-"+x.k)?"open":""}><summary><span class="lb" style="margin:0" data-matcont="${x.k}">Materiais (${mats().filter(m=>m.disc===x.k).length})</span></summary>
+            <div data-matsec="${x.k}">${matSecHTML(x.k)}</div>
+          </details>
+          <details class="sec" data-sec="nav-${x.k}" ${secAberta("nav-"+x.k)?"open":""}><summary><span class="lb" style="margin:0">Pesquisa</span>${info("mnav")}</summary>
+            <div data-navslot="${x.k}"></div>
+          </details>
         </div>
       </div></div>`;
   }).join("")}`;
 }
+
+// Seções recolhíveis dos cartões (lembradas neste aparelho)
+let SECOES={}; try{ SECOES=JSON.parse(localStorage.getItem("caderno-qgis:secoes")||"{}")||{}; }catch(e){}
+const secAberta = id => SECOES[id]!==false;
+document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.sec) return; SECOES[d.dataset.sec]=d.open; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(x){} if(d.open&&d.dataset.sec.startsWith("nav-")) montarNavs(); },true);
+function matSecHTML(k){ const ms=mats().filter(m=>m.disc===k); return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div>`+(ms.length?ms.map(matItem).join(""):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
+function atualizarMatSec(k){ const el=document.querySelector(`[data-matsec="${k}"]`); if(el) el.innerHTML=matSecHTML(k); const c=document.querySelector(`[data-matcont="${k}"]`); if(c) c.textContent=`Materiais (${mats().filter(m=>m.disc===k).length})`; }
+
+/* ---- Mininavegador de pesquisa (por disciplina) ----
+   Pesquisa no Google (modo que permite abrir dentro de página) ou abre um link. O elemento fica guardado
+   e é recolocado a cada redesenho, para não perder o que está aberto. */
+const NAVS=new Map(), NAVST={};
+function navHTML(k){
+  return `<div class="mnav-bar"><input type="text" class="mnav-q" placeholder="Pesquisar no Google ou colar um link…" aria-label="Pesquisar ou endereço do site"><button type="button" class="btn sm pri" data-nv="ir">Ir</button></div>
+    <div class="mnav-acoes" hidden><span class="mnav-url mono"></span>
+      <button type="button" class="btn sm" data-nv="salvar">Salvar link</button>
+      <button type="button" class="btn sm" data-nv="cheio">⛶ Expandir</button>
+      <a class="btn sm" data-nv="abrir" target="_blank" rel="noopener">↗ Abrir no navegador</a>
+      ${PIP_OK?'<button type="button" class="btn sm" data-nv="pip" title="Janela por cima das outras (Chrome/Edge no computador)">⧉ Sobrepor</button>':""}
+      <button type="button" class="btn sm" data-nv="fechar" aria-label="Fechar página">✕</button></div>
+    <form class="mnav-salvar card" hidden><div><label class="lb">Título</label><input type="text" class="mnav-st"></div><div><label class="lb">Link</label><input type="text" class="mnav-su" inputmode="url"></div>
+      <p class="muted" style="margin:0;font-size:12.5px">Se você navegou dentro da página, cole aqui o endereço certo (o caderno não consegue ler o endereço de dentro da página).</p>
+      <div class="row"><button type="submit" class="btn sm pri">Salvar em Materiais</button><button type="button" class="btn sm" data-nv="cancsalvar">Cancelar</button></div></form>
+    <div class="mnav-area"><p class="mnav-vazio">Pesquise ou cole um link para abrir aqui, sem sair do caderno. O que for útil você salva nos Materiais desta disciplina.</p></div>`;
+}
+function criarNav(k){ const el=document.createElement("div"); el.className="mnav"; el.dataset.nav=k; el.innerHTML=navHTML(k); NAVS.set(k,el); return el; }
+function montarNavs(){ document.querySelectorAll("[data-navslot]").forEach(slot=>{ const d=slot.closest("details"); if(d&&!d.open) return; const k=slot.dataset.navslot; const el=NAVS.get(k)||criarNav(k); slot.replaceWith(el); }); }
+function navIr(el, v){
+  v=String(v||"").trim(); if(!v) return; const k=el.dataset.nav;
+  let url, tipo;
+  if(/^https?:\/\//i.test(v)){ url=v; tipo="site"; }
+  else if(/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(v)){ url="https://"+v; tipo="site"; }
+  else { url="https://www.google.com/search?igu=1&hl=pt-BR&q="+encodeURIComponent(v); tipo="busca"; }
+  NAVST[k]={url,tipo,q:v,titulo: tipo==="busca"?"Pesquisa: "+v:""};
+  carregarNav(el);
+}
+function carregarNav(el){
+  const k=el.dataset.nav, st=NAVST[k], area=el.querySelector(".mnav-area"), ac=el.querySelector(".mnav-acoes");
+  ac.hidden=false; el.querySelector(".mnav-url").textContent=st.tipo==="busca"?"Google: "+st.q:st.url.replace(/^https?:\/\/(www\.)?/,"");
+  el.querySelector('[data-nv="abrir"]').href= st.tipo==="busca" ? "https://www.google.com/search?hl=pt-BR&q="+encodeURIComponent(st.q) : st.url;
+  if(!navigator.onLine){ area.classList.remove("on"); area.innerHTML='<p class="mnav-vazio">Sem internet: a pesquisa volta quando a conexão voltar.</p>'; return; }
+  area.classList.add("on");
+  area.innerHTML=`<iframe src="${esc(st.url)}" title="${esc(st.titulo||"Página")}" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>`;
+  if(st.tipo==="site") verificarQuadro(el, st);
+}
+async function verificarQuadro(el, st){
+  const h={"Content-Type":"application/json"};
+  if(typeof CONVITE!=="undefined"&&CONVITE) h["X-Convite"]=CONVITE;
+  else if(S.sb&&S.uid){ try{ const ss=(await S.sb.auth.getSession()).data.session; if(ss) h.Authorization="Bearer "+ss.access_token; }catch(e){} }
+  else return;
+  try{
+    const r=await fetch("/api/quadro",{method:"POST",headers:h,body:JSON.stringify({url:st.url})}); const j=await r.json(); if(!r.ok) return;
+    if(j.titulo) st.titulo=j.titulo;
+    if(!j.ok && NAVST[el.dataset.nav]===st){ el.querySelector(".mnav-area").classList.remove("on"); el.querySelector(".mnav-area").innerHTML=`<div class="mnav-vazio"><p style="margin:0 0 8px"><b>Este site não deixa ser aberto dentro do caderno.</b></p><div class="row" style="justify-content:center"><a class="btn sm pri" href="${esc(st.url)}" target="_blank" rel="noopener">↗ Abrir no navegador</a><button type="button" class="btn sm" data-nv="salvar">Salvar link</button></div></div>`; }
+  }catch(e){}
+}
+function salvarLinkNav(el){
+  const k=el.dataset.nav, t=el.querySelector(".mnav-st").value.trim(), u=el.querySelector(".mnav-su").value.trim();
+  if(!/^https?:\/\/\S+$/i.test(u)){ toast("Cole um link começando com http."); return; }
+  const x=novoId();
+  salvarDoc("mtx-"+x,{tipo:"mtx",texto:"",imgs:[]},50);
+  salvarDoc("mat-"+x,{tipo:"mat",titulo:t||u.replace(/^https?:\/\/(www\.)?/,"").slice(0,60),disc:k,origem:"link",url:u,criado:Date.now(),arquivos:[],questoes:[],resp:{},chars:0},80);
+  el.querySelector(".mnav-salvar").hidden=true; atualizarMatSec(k); renderNav(); toast("Link salvo em Materiais.");
+}
+async function sobreporNav(el){
+  const st=NAVST[el.dataset.nav]; if(!st) return;
+  let w; try{ w=await documentPictureInPicture.requestWindow({width:560,height:760}); }catch(e){ toast("Não foi possível abrir a janela por cima. Use o Chrome ou o Edge no computador."); return; }
+  w.document.title=st.titulo||"Pesquisa";
+  const href=st.tipo==="busca"?"https://www.google.com/search?hl=pt-BR&q="+encodeURIComponent(st.q):st.url;
+  w.document.body.style.cssText="margin:0;display:flex;flex-direction:column;height:100vh;font:13px system-ui,sans-serif;background:#16211e;color:#e3ece8";
+  w.document.body.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid #2a3834"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(st.titulo||st.url)}</span><a href="${esc(href)}" target="_blank" rel="noopener" style="color:#4fb8a3">Abrir no navegador</a></div><iframe src="${esc(st.url)}" style="flex:1;border:0;width:100%;background:#fff" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>`;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest(".mnav [data-nv]"); if(!b) return;
+  const el=b.closest(".mnav"), k=el.dataset.nav, v=b.dataset.nv;
+  if(v==="ir") return navIr(el, el.querySelector(".mnav-q").value);
+  if(v==="abrir") return;
+  e.preventDefault();
+  if(v==="fechar"){ delete NAVST[k]; el.innerHTML=navHTML(k); el.classList.remove("cheio"); document.body.style.overflow=""; return; }
+  if(v==="cheio"){ const on=el.classList.toggle("cheio"); b.textContent=on?"⤡ Reduzir":"⛶ Expandir"; document.body.style.overflow=on?"hidden":""; return; }
+  if(v==="pip") return sobreporNav(el);
+  if(v==="salvar"){ const st=NAVST[k]||{}; const f=el.querySelector(".mnav-salvar"); f.hidden=false;
+    el.querySelector(".mnav-st").value=st.titulo||""; el.querySelector(".mnav-su").value= st.tipo==="busca"?"https://www.google.com/search?q="+encodeURIComponent(st.q):(st.url||""); el.querySelector(".mnav-st").focus(); return; }
+  if(v==="cancsalvar"){ el.querySelector(".mnav-salvar").hidden=true; return; }
+});
+document.addEventListener("submit",e=>{ const f=e.target.closest&&e.target.closest(".mnav-salvar"); if(!f) return; e.preventDefault(); salvarLinkNav(f.closest(".mnav")); });
+document.addEventListener("keydown",e=>{
+  if(e.target.classList&&e.target.classList.contains("mnav-q")&&e.key==="Enter"){ e.preventDefault(); navIr(e.target.closest(".mnav"), e.target.value); }
+  if(e.key==="Escape"){ const c=document.querySelector(".mnav.cheio"); if(c){ e.stopImmediatePropagation(); c.classList.remove("cheio"); document.body.style.overflow=""; const b=c.querySelector('[data-nv="cheio"]'); if(b) b.textContent="⛶ Expandir"; } }
+},true);
 
 function notaItem(n){
   const ex=(n.texto||"").replace(/[#*`>\-\[\]]/g,"").slice(0,180);
@@ -1174,6 +1292,7 @@ const AJUDA={
   sync:{t:"Onde suas notas estão salvas",o:"Ponto verde: sincronizado na nuvem, aparece em qualquer aparelho em que você entrar. Ponto laranja: salvo só neste navegador.",c:"Clique em Entrar e use o e-mail e a senha do portal ADMIN CBMCE. Tudo o que você já escreveu aqui sobe para a nuvem. Sem internet o app continua salvando e envia depois."},
   login:{t:"Entrar",o:"Liga o caderno à sua conta para sincronizar entre computador e celular e guardar PDFs e fotos.",c:"Use o mesmo e-mail e senha do portal ADMIN CBMCE. Só você vê as suas notas."},
   hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
+  mnav:{t:"Pesquisa",o:"Um navegador pequeno dentro do cartão da disciplina, para pesquisar no Google ou abrir um site sem sair do caderno.",c:"Digite o que procura (ou cole um link) e tecle Enter. Salvar link guarda nos Materiais desta disciplina; Expandir ocupa a tela toda (Esc volta); Abrir no navegador abre numa aba normal; Sobrepor abre uma janela que fica por cima das outras (Chrome/Edge no computador). Alguns sites não deixam ser abertos dentro de outra página: aí use Abrir no navegador."},
   linha:{t:"Linha do curso",o:"Cada risquinho é uma aula de 50 min, na cor da disciplina; os espaços maiores separam os dias. A aula em andamento vai enchendo conforme o relógio.",c:"Passe o mouse (ou toque) num risquinho para ver qual aula é. A conta é pelo horário de Fortaleza."},
   kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
   kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
@@ -1366,6 +1485,7 @@ function render(){
   const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_notas.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
+  if(VIEW==="disciplinas") montarNavs();
   sincronizarFlutuante();
 }
 
@@ -1443,7 +1563,7 @@ function ligarBackup(){
 }
 
 // atualiza "agora" a cada minuto sem atrapalhar a digitação
-setInterval(()=>{ if(!editando() && !PANE) render(); else renderNav(); },60000);
+setInterval(()=>{ if(!editando() && !PANE && VIEW!=="disciplinas") render(); else renderNav(); },60000);
 setInterval(renderProg,30000);
 document.getElementById("sinfo").innerHTML=info("sync");
 if(CONVITE){ const v=document.getElementById("voltarCursos"); if(v) v.hidden=true; }
