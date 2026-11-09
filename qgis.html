@@ -264,6 +264,41 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
   .fl-h{cursor:default}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Projetos */
+.pj-lista{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.pj-it{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;cursor:pointer;min-width:180px;font:inherit;color:inherit}
+.pj-it span{font-size:12.5px}.pj-it.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pj-prog{margin-top:12px}
+.pj-barra{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:4px}.pj-barra i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
+.pj-etapas{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.pj-et{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr) auto;gap:4px 6px;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.pj-et>input[type=checkbox]{grid-column:1;grid-row:1}.pj-et>input[type=text]{grid-column:2/4;grid-row:1}.pj-et>.pj-mv{grid-column:4;grid-row:1}
+.pj-et>select{grid-column:2;grid-row:2;font-size:13px;padding-top:3px;padding-bottom:3px}.pj-et>input[type=date]{grid-column:3;grid-row:2;font-size:13px;padding-top:3px;padding-bottom:3px}
+.pj-et input[type=text]{min-width:0}.pj-et.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
+.pj-mv{display:flex;gap:2px}.pj-mv button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:6px;min-width:26px;height:28px;cursor:pointer;font:inherit;font-size:12.5px}
+.pj-mv button:disabled{opacity:.3;cursor:default}.pj-mv button:hover:not(:disabled){color:var(--accent)}
+.pj-mapa{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:14px;align-items:start;margin-top:8px}
+@media (max-width:860px){.pj-mapa{grid-template-columns:1fr}}
+.pj-grafo{width:100%;height:auto;color:var(--ink)}.pj-grafo .pj-no{cursor:pointer;outline:none}.pj-grafo .pj-no:hover circle,.pj-grafo .pj-no:focus circle{stroke-width:4}
+.pj-discs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.pj-dc{display:flex;flex-direction:column;gap:6px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit}
+.pj-dc:hover{border-color:var(--accent)}.pj-dt{font-size:13px;line-height:1.4}
+.pj-refs{display:flex;flex-direction:column;gap:4px}
+.projs .pj-principal{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.projs .pj-sec{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.pj-et2{display:flex;gap:8px;align-items:baseline;font-size:14px;padding:3px 0;cursor:pointer}.pj-et2 span:first-of-type{flex:1}.pj-et2.ok span:first-of-type{text-decoration:line-through;color:var(--muted)}
+.pj-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pj-seg button{border:0;background:transparent;color:var(--muted);padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}.pj-seg button.on{background:var(--accent);color:var(--accent-ink)}
+.pj-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pj-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:99px;padding:3px 10px;font:inherit;font-size:12.5px;cursor:pointer}
+.pj-chip.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft);font-weight:600}
+.pj-puxa{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.pj-lig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.pj-lig .md{font-size:13.5px}.pj-l-t{margin-top:4px}
+.pj-vazio{padding:4px}
+[data-aba-atual="j"]>.nota-acoes{display:none}
 </style>
 </head>
 <body>
@@ -618,9 +653,10 @@ const ICONES={
   tarefas:'<path d="M8 5.5h9M8 10h9M8 14.5h9"/><path d="m2.5 5.5 1.2 1.2 2-2.2M2.5 10l1.2 1.2 2-2.2M2.5 14.5l1.2 1.2 2-2.2"/>',
   busca:'<circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 5 5"/>',
   backup:'<path d="M10 3v10M6 9l4 4 4-4"/><path d="M3.5 14.5v2.5h13v-2.5"/>',
+  projetos:'<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.5l2 2H16a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"/><path d="m7 11.5 2 2 4-4"/>',
 };
 const icone = k => `<svg class="ic" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[k]||""}</svg>`;
-const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
+const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["projetos","Projetos"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
 let VIEW = "hoje", DIA_SEL=null, PANE=null;
 function lerHash(){ const h=location.hash.slice(1); if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
 window.addEventListener("hashchange",()=>{ lerHash(); render(); });
@@ -628,7 +664,7 @@ function ir(v){ VIEW=v; try{ history.replaceState(null,"","#"+v);}catch(e){ loca
 
 function renderNav(){
   const nn=notas().length, tp=tarefas().filter(t=>!t.feito).length;
-  const cnt={caderno:nn||"", tarefas:tp||"", materiais:(typeof mats==="function"&&mats().length)||""};
+  const cnt={caderno:nn||"", tarefas:tp||"", materiais:(typeof mats==="function"&&mats().length)||"", projetos:(typeof projetos==="function"&&projetos().filter(p=>p.status!=="concluido").length)||""};
   document.getElementById("nav").innerHTML=VIEWS.map(([k,l])=>`<button data-go="${k}" title="${l}" ${VIEW===k?'aria-current="page"':""}>${icone(k)}<span class="lbl">${l}</span><span class="cnt">${cnt[k]??""}</span></button>`).join("");
   renderProg();
 }
@@ -1002,6 +1038,7 @@ function resultados(){
   DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Anotações: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
   mats().forEach(m=>{const t=(m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-mat="${m.id}"><strong>Material: ${esc(m.titulo)}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
+  projetos().forEach(p=>{ const t=[p.titulo,...PJ_CAMPOS.map(c=>p[c[0]]),p.texto,...(p.etapas||[]).map(e=>e.t),...DISC.map(d=>pjd(p.id,d.k).texto)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-pjabre="${p.id}"><strong>Projeto: ${esc(p.titulo||"Sem título")}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   tarefas().forEach(t=>{ if((t.texto||"").toLowerCase().includes(q)) r.push(`<button class="ni" data-go="tarefas"><strong>Tarefa</strong><div class="ex">${trecho(t.texto,q)}</div></button>`)});
   return r.length? r.join("") : '<p class="empty">Nada encontrado.</p>';
 }
@@ -1017,6 +1054,7 @@ function exportarMD(){
   });
   const soltas=notas().filter(n=>!n.disc||!DK[n.disc]);
   if(soltas.length){ o+=`## Notas gerais\n\n`; soltas.forEach(n=>{o+=`### ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;}); }
+  projetos().forEach(p=>{ o+=projetoMD(p).replace(/^### /gm,"#### ").replace(/^## /gm,"### ").replace(/^# /,"## Projeto: ")+"\n"; });
   const ts=tarefas(); if(ts.length){ o+=`## Tarefas\n`+ts.map(t=>`- [${t.feito?"x":" "}] ${t.texto}${t.prazo?" (até "+t.prazo.slice(8,10)+"/"+t.prazo.slice(5,7)+")":""}`).join("\n")+"\n"; }
   return window.FLUXO&&FLUXO.expandir ? FLUXO.expandir(o) : o;
 }
@@ -1531,6 +1569,15 @@ document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.ve
 
 /* ============ AJUDA (ícones "i") ============ */
 const AJUDA={
+  projetos:{t:"Projetos",o:"Página para desenvolver o projeto do curso: planejamento, etapas, parte de cada disciplina, ligações entre disciplinas, texto principal e referências.",c:"Cada disciplina escreve a parte dela na aba Projetos (ao lado de Anotações e Perguntas). “Usar modelo” cria o Diagnóstico Territorial com etapas já divididas pelas disciplinas."},
+  pjprincipal:{t:"Projeto principal",o:"É o projeto que aparece na aba Projetos de cada disciplina.",c:"Só um pode ser o principal. Na aba da disciplina dá para trocar de projeto quando houver mais de um."},
+  pjia:{t:"Pedido para o Claude",o:"Copia o projeto inteiro com um pedido de revisão: lacunas, ordem das etapas, ligações sugeridas e roteiro do relatório.",c:"Cole no app do Claude e traga as sugestões de volta para cá."},
+  pjplano:{t:"Planejamento",o:"Os campos que todo projeto precisa ter claros antes de começar.",c:"Escreva curto. Salva sozinho."},
+  pjetapas:{t:"Etapas",o:"Passos do projeto, cada um com a disciplina responsável e prazo.",c:"As etapas de uma disciplina aparecem na aba Projetos dela, onde também dá para marcar e criar etapas. ↑↓ muda a ordem."},
+  pjligas:{t:"Ligação entre disciplinas",o:"Individual: a disciplina contribui sozinha. Interligada: escolha com quais outras ela se liga.",c:"A ligação vale para os dois lados. Na aba Projetos aparecem as informações das disciplinas ligadas: parte no projeto, etapas, anotações e materiais. O desenho na página Projetos mostra todas as ligações."},
+  pjtexto:{t:"Desenvolvimento do projeto",o:"O texto principal do projeto, com o mesmo editor das anotações (listas, tabelas, fluxogramas, imagens).",c:"Use para resultados, análises e conclusões. Entra no arquivo exportado."},
+  pjrefs:{t:"Referências",o:"Links e materiais do caderno usados no projeto.",c:"Materiais ligados abrem com um clique; o resumo deles continua na aba Materiais."},
+  pjparte:{t:"Parte da disciplina",o:"O que esta disciplina leva para o projeto, de acordo com o assunto estudado.",c:"Disciplinas ligadas a esta mostram este texto na aba Projetos delas, e ele entra no projeto exportado."},
   sync:{t:"Onde suas notas estão salvas",o:"Ponto verde: sincronizado na nuvem, aparece em qualquer aparelho em que você entrar. Ponto laranja: salvo só neste navegador.",c:"Clique em Entrar e use o e-mail e a senha do portal ADMIN CBMCE. Tudo o que você já escreveu aqui sobe para a nuvem. Sem internet o app continua salvando e envia depois."},
   login:{t:"Entrar",o:"Liga o caderno à sua conta para sincronizar entre computador e celular e guardar PDFs e fotos.",c:"Use o mesmo e-mail e senha do portal ADMIN CBMCE. Só você vê as suas notas."},
   hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
@@ -1724,13 +1771,268 @@ document.addEventListener("input",e=>{ const t=e.target; if(!FL.aberto||!AK[FL.i
   if((t.dataset&&t.dataset.qaula&&AK[t.dataset.qaula]&&AK[t.dataset.qaula].k===k)||(t.id==="pnota"&&PANE&&AK[PANE.id]&&AK[PANE.id].k===k)||(t.dataset&&t.dataset.dnota===k)) setTimeout(sincronizarFlutuante,0); });
 
 /* ============ RENDER + EVENTOS ============ */
+/* ============ PROJETOS ============
+   prj-<x>: projeto (planejamento, etapas, referências, caderno do projeto).
+   pjd-<x>-<disc>: parte de cada disciplina no projeto ({texto, liga:[disc], modo}).
+   Ligação entre disciplinas é dos dois lados: ligar A a B também liga B a A. */
+const PJ_STATUS=[["ideia","Ideia"],["andamento","Em andamento"],["revisao","Em revisão"],["concluido","Concluído"]];
+const PJ_CAMPOS=[
+  ["objetivo","Objetivo","O que o projeto quer responder ou entregar. Ex.: identificar as áreas com maior concentração de CVLI no bairro X em 2025."],
+  ["problema","Problema e justificativa","Qual situação de segurança pública motiva o projeto e por que ela importa."],
+  ["area","Área de estudo e recorte","Município, bairros ou AIS; período analisado; escala do mapa."],
+  ["dados","Dados e fontes","Camadas e bases (IBGE, SSPDS, OpenStreetMap, ocorrências), formato e sistema de coordenadas (SRC)."],
+  ["metodo","Metodologia e ferramentas","Passo a passo no QGIS: geocodificação, junções, kernel, buffers, consultas espaciais…"],
+  ["produtos","Produtos e resultados esperados","Mapas, tabelas, relatório, apresentação."],
+];
+const CURTO={cart:"Cartografia",sig:"SIG",gmaps:"Google Maps",qgis:"QGIS",edic:"Edição de dados",bases:"Bases de dados",anal:"Análises espaciais",prod:"Produtos cartográficos",proj:"Projeto Prático"};
+const curto = k => CURTO[k]||nomeDisc(k);
+const projetos = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="prj"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(a.criado||0)-(b.criado||0));
+const projPrincipal = () => { const ps=projetos(); return ps.find(p=>p.principal)||ps[0]||null; };
+const pjdId = (pid,k) => "pjd-"+pid.slice(4)+"-"+k;
+const pjd = (pid,k) => S.docs[pjdId(pid,k)] || {};
+function salvarPjd(pid,k,mud,atraso){ salvarDoc(pjdId(pid,k),{...pjd(pid,k),tipo:"pjd",prj:pid,disc:k,...mud},atraso); }
+function salvarPrj(pid,mud,atraso){ salvarDoc(pid,{...S.docs[pid],tipo:"prj",...mud},atraso); }
+// disciplinas ligadas a k (dos dois lados)
+function ligados(pid,k){ const s=new Set(pjd(pid,k).liga||[]); DISC.forEach(d=>{ if(d.k!==k&&(pjd(pid,d.k).liga||[]).includes(k)) s.add(d.k); }); s.delete(k); return DISC.map(d=>d.k).filter(x=>s.has(x)); }
+function ligar(pid,a,b,on){
+  const la=new Set(pjd(pid,a).liga||[]), lb=new Set(pjd(pid,b).liga||[]);
+  if(on){ la.add(b); lb.add(a); } else { la.delete(b); lb.delete(a); }
+  salvarPjd(pid,a,{liga:[...la],...(on?{modo:"ligada"}:{})},80); salvarPjd(pid,b,{liga:[...lb],...(on?{modo:"ligada"}:{})},80);
+}
+function pares(pid){ const out=[]; DISC.forEach((d,i)=>DISC.slice(i+1).forEach(e=>{ if(ligados(pid,d.k).includes(e.k)) out.push([d.k,e.k]); })); return out; }
+function progProj(p){ const et=p.etapas||[]; const f=et.filter(e=>e.feito).length; return {tot:et.length, feitas:f, pct:et.length?Math.round(f/et.length*100):0}; }
+const fmtPrazo = d => d?d.slice(8,10)+"/"+d.slice(5,7)+"/"+d.slice(0,4):"";
+function novoProjeto(modelo){
+  const pid="prj-"+novoId(), primeiro=!projetos().length;
+  const base={tipo:"prj",titulo:modelo?"Diagnóstico Territorial":"Novo projeto",status:"ideia",prazo:modelo?"2026-11-18":"",principal:primeiro,criado:Date.now(),etapas:[],links:[],mats:[],texto:""};
+  if(modelo){
+    base.objetivo="Produzir um diagnóstico territorial da criminalidade numa área de estudo, usando o QGIS, para apoiar o planejamento operacional.";
+    const E=[["Definir a pergunta, a área de estudo e o recorte de tempo","proj"],["Escolher escala, projeção (SRC) e elementos do mapa","cart"],["Estruturar o SIG: vetor x raster, camadas e atributos","sig"],
+      ["Levantar bases cartográficas (limites, bairros, setores censitários)","bases"],["Obter e organizar os dados de ocorrências","bases"],["Geocodificar e conferir pontos no Google Maps / My Maps","gmaps"],
+      ["Montar o projeto no QGIS com as camadas de base","qgis"],["Tratar dados: tabela de atributos, junções, correções","edic"],["Análises espaciais: densidade (kernel), hotspots, buffers","anal"],
+      ["Elaborar mapas temáticos e o layout de impressão","prod"],["Interpretar resultados e propor ações","proj"],["Preparar a apresentação final","proj"]];
+    base.etapas=E.map(([t,disc])=>({id:novoId(),t,disc,feito:false,prazo:""}));
+  }
+  salvarDoc(pid,base,50); PRJ_SEL=pid; return pid;
+}
+
+/* ---- página Projetos ---- */
+let PRJ_SEL=null;
+function grafoLigacoes(p){
+  const W=300,H=250,cx=W/2,cy=H/2,R=95, pos={};
+  DISC.forEach((d,i)=>{ const a=-Math.PI/2+i*2*Math.PI/DISC.length; pos[d.k]=[cx+R*Math.cos(a),cy+R*Math.sin(a),a]; });
+  const linhas=pares(p.id).map(([a,b])=>`<line x1="${pos[a][0].toFixed(1)}" y1="${pos[a][1].toFixed(1)}" x2="${pos[b][0].toFixed(1)}" y2="${pos[b][1].toFixed(1)}" stroke="var(--accent)" stroke-width="2" stroke-opacity=".55"/>`).join("");
+  const nos=DISC.map(d=>{ const [x,y,a]=pos[d.k], tem=(pjd(p.id,d.k).texto||"").trim(), c=Math.cos(a), anc=Math.abs(c)<.3?"middle":c>0?"start":"end", lx=x+Math.cos(a)*14, ly=y+Math.sin(a)*14+4;
+    return `<g class="pj-no" data-pjir="${d.k}" tabindex="0" role="button" aria-label="${esc(nomeDisc(d.k))}"><title>${esc(nomeDisc(d.k))}${tem?" · parte escrita":" · sem parte escrita"}</title><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="8" fill="${tem?d.cor:"var(--surface)"}" stroke="${d.cor}" stroke-width="2.5"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-size="13.5" fill="currentColor">${esc(curto(d.k))}</text></g>`; }).join("");
+  return `<div><svg viewBox="-115 -4 ${W+230} ${H+8}" class="pj-grafo" role="img" aria-label="Mapa de ligações entre as disciplinas">${linhas}${nos}</svg><p class="muted" style="margin:2px 0 0;font-size:12.5px;text-align:center">● cheio = disciplina com parte escrita · linha = ligação</p></div>`;
+}
+function vProjetos(){
+  const ps=projetos();
+  const topo=`<div class="row" style="justify-content:space-between"><div><h2>Projetos ${info("projetos")}</h2><p class="sub">Planeje e desenvolva o projeto. Cada disciplina escreve a parte dela na aba <b>Projetos</b> das anotações, e pode se ligar a outras.</p></div>
+    <div class="row" style="gap:6px"><button class="btn pri" data-pj="novo">+ Novo projeto</button>${ps.length?"":'<button class="btn" data-pj="modelo">Usar modelo: Diagnóstico Territorial</button>'}</div></div>`;
+  if(!ps.length) return topo+`<div class="card"><p class="empty" style="padding:0">Nenhum projeto ainda.</p><p class="muted" style="margin:6px 0 0;font-size:14px">O modelo já vem com as etapas do Projeto Prático distribuídas pelas disciplinas do curso (cartografia, bases, QGIS, análises, mapas…). Depois é só ajustar.</p></div>`;
+  let p=ps.find(x=>x.id===PRJ_SEL); if(!p){ p=projPrincipal(); PRJ_SEL=p.id; }
+  const pr=progProj(p), comParte=DISC.filter(d=>(pjd(p.id,d.k).texto||"").trim()).length;
+  const lista= ps.length>1 ? `<div class="pj-lista">${ps.map(x=>{ const g=progProj(x); return `<button class="pj-it${x.id===p.id?" on":""}" data-pjsel="${x.id}"><strong>${x.principal?"★ ":""}${esc(x.titulo||"Sem título")}</strong><span class="muted">${(PJ_STATUS.find(s=>s[0]===x.status)||PJ_STATUS[0])[1]} · ${g.pct}%${x.prazo?" · até "+fmtPrazo(x.prazo).slice(0,5):""}</span></button>`; }).join("")}</div>` : "";
+  const etapas=(p.etapas||[]);
+  const discOpts=sel=>`<option value="">Geral</option>`+DISC.map(d=>`<option value="${d.k}" ${sel===d.k?"selected":""}>${esc(curto(d.k))}</option>`).join("");
+  return topo+lista+`
+  <div class="card pj-cab">
+    <div class="row" style="gap:8px;align-items:flex-end">
+      <div style="flex:3 1 260px"><label class="lb" for="pj-ti">Título do projeto</label><input type="text" id="pj-ti" data-pjcampo="titulo" value="${esc(p.titulo||"")}"></div>
+      <div style="flex:1 1 140px"><label class="lb" for="pj-st">Situação</label><select id="pj-st" data-pjsel2="status">${PJ_STATUS.map(([v,t])=>`<option value="${v}" ${p.status===v?"selected":""}>${t}</option>`).join("")}</select></div>
+      <div style="flex:1 1 140px"><label class="lb" for="pj-pz">Entrega</label><input type="date" id="pj-pz" data-pjsel2="prazo" value="${esc(p.prazo||"")}"></div>
+    </div>
+    <div class="row" style="justify-content:space-between;margin-top:10px;gap:8px">
+      <label class="row" style="gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" data-pjsel2="principal" ${p.principal?"checked":""}> Projeto principal ${info("pjprincipal")}</label>
+      <div class="row" style="gap:6px"><button class="btn sm" data-pj="md">Copiar em texto</button><button class="btn sm" data-pj="baixar">Baixar .md</button><button class="btn sm" data-pj="ia">Pedido para o Claude</button>${info("pjia")}<button class="btn sm" data-pj="apagar" style="color:var(--warn)">Apagar</button></div>
+    </div>
+    <div class="pj-prog"><div class="row" style="justify-content:space-between;font-size:13px"><span>Etapas: ${pr.feitas} de ${pr.tot} · ${pr.pct}%</span><span class="muted">Disciplinas com parte escrita: ${comParte} de ${DISC.length}</span></div><div class="pj-barra"><i style="width:${pr.pct}%"></i></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Planejamento ${info("pjplano")}</h3>
+      ${PJ_CAMPOS.map(([c,t,ph])=>`<label class="lb" for="pjc-${c}" style="margin-top:10px">${t}</label><textarea id="pjc-${c}" class="pj-auto" data-pjcampo="${c}" rows="2" placeholder="${esc(ph)}">${esc(p[c]||"")}</textarea>`).join("")}
+    </div>
+    <div class="card"><h3>Etapas ${info("pjetapas")}</h3>
+      <div class="pj-etapas">${etapas.length?etapas.map((e,i)=>`<div class="pj-et${e.feito?" ok":""}" data-eid="${e.id}">
+        <input type="checkbox" data-pjet="feito" ${e.feito?"checked":""} aria-label="Concluída">
+        <input type="text" data-pjet="t" value="${esc(e.t||"")}" aria-label="Etapa">
+        <select data-pjet="disc" aria-label="Disciplina" style="border-left:4px solid ${e.disc&&DK[e.disc]?DK[e.disc].cor:"var(--line)"}">${discOpts(e.disc)}</select>
+        <input type="date" data-pjet="prazo" value="${esc(e.prazo||"")}" aria-label="Prazo">
+        <span class="pj-mv"><button type="button" data-pjet="sobe" title="Subir" ${i?"":"disabled"}>↑</button><button type="button" data-pjet="desce" title="Descer" ${i<etapas.length-1?"":"disabled"}>↓</button><button type="button" data-pjet="tirar" title="Apagar etapa">✕</button></span></div>`).join(""):'<p class="empty">Nenhuma etapa. Divida o projeto em passos com responsável (disciplina) e prazo.</p>'}</div>
+      <form class="row pj-add" id="pj-fet" style="gap:6px;margin-top:8px"><input type="text" id="pj-et-t" placeholder="Nova etapa" style="flex:2 1 180px"><select id="pj-et-d" style="flex:1 1 120px">${discOpts("")}</select><button class="btn sm pri">Adicionar</button></form>
+    </div>
+  </div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h3>Disciplinas e ligações ${info("pjligas")}</h3><span class="muted" style="font-size:13px">Clique numa disciplina para abrir a aba Projetos dela</span></div>
+    <div class="pj-mapa">${grafoLigacoes(p)}
+      <div class="pj-discs">${DISC.map(d=>{ const x=pjd(p.id,d.k), lg=ligados(p.id,d.k), et=etapas.filter(e=>e.disc===d.k), ef=et.filter(e=>e.feito).length;
+        return `<button class="pj-dc" data-pjir="${d.k}" style="border-left:5px solid ${d.cor}"><strong>${esc(nomeDisc(d.k))}</strong>
+          <span class="pj-dt">${(x.texto||"").trim()?esc((x.texto||"").trim().split("\n").map(limparMd).filter(Boolean).join(" · ").slice(0,160))+((x.texto||"").trim().length>160?"…":""):'<i class="muted">Sem parte escrita ainda</i>'}</span>
+          <span class="row" style="gap:4px;flex-wrap:wrap">${et.length?`<span class="chip">${ef}/${et.length} etapa(s)</span>`:""}${lg.length?lg.map(k=>`<span class="chip">${sw(k)}${esc(curto(k))}</span>`).join(""):`<span class="chip">individual</span>`}</span></button>`; }).join("")}</div></div>
+  </div>
+  <div class="card"><h3>Desenvolvimento do projeto ${info("pjtexto")}</h3><p class="muted" style="margin:2px 0 8px;font-size:13.5px">Texto principal: resultados, análises, tabelas, fluxogramas, conclusões. Mesmo editor das anotações.</p>
+    <textarea data-rich="1" data-sem-abas="1" data-pjtexto="${p.id}" aria-label="Desenvolvimento do projeto" placeholder="Escreva aqui o desenvolvimento do projeto…">${esc(p.texto||"")}</textarea></div>
+  <div class="card"><h3>Referências ${info("pjrefs")}</h3>
+    <div class="grid2" style="gap:12px">
+      <div><label class="lb">Links</label>${(p.links||[]).length?`<div class="pj-refs">${p.links.map((l,i)=>`<div class="row" style="gap:6px"><a href="${esc(l.url)}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.titulo||l.url)}</a><button class="btn sm" data-pjlink="${i}" title="Tirar link">✕</button></div>`).join("")}</div>`:'<p class="empty" style="padding:4px 0">Nenhum link.</p>'}
+        <form class="row" id="pj-flk" style="gap:6px;margin-top:6px"><input type="url" id="pj-lk-u" placeholder="https://…" required style="flex:2 1 160px"><input type="text" id="pj-lk-n" placeholder="Nome (opcional)" style="flex:1 1 110px"><button class="btn sm pri">+ Link</button></form></div>
+      <div><label class="lb">Materiais do caderno</label>${(p.mats||[]).filter(id=>S.docs[id]&&!S.docs[id].apagado).length?`<div class="pj-refs">${p.mats.filter(id=>S.docs[id]&&!S.docs[id].apagado).map(id=>`<div class="row" style="gap:6px"><button class="btn sm" data-mat="${id}" style="flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.docs[id].titulo||"Material")}</button><button class="btn sm" data-pjmat="${id}" title="Tirar do projeto">✕</button></div>`).join("")}</div>`:'<p class="empty" style="padding:4px 0">Nenhum material ligado.</p>'}
+        <div class="row" style="gap:6px;margin-top:6px"><select id="pj-mt" style="flex:1;min-width:0"><option value="">Escolher material…</option>${mats().filter(m=>!(p.mats||[]).includes(m.id)).map(m=>`<option value="${m.id}">${esc((m.disc&&DK[m.disc]?curto(m.disc)+" · ":"")+(m.titulo||"Material"))}</option>`).join("")}</select><button class="btn sm pri" data-pj="addmat">+ Material</button></div></div>
+    </div>
+  </div>`;
+}
+function projetoMD(p){
+  let o=`# ${p.titulo||"Projeto"}\n${(PJ_STATUS.find(s=>s[0]===p.status)||PJ_STATUS[0])[1]}${p.prazo?" · entrega "+fmtPrazo(p.prazo):""}\n\n`;
+  PJ_CAMPOS.forEach(([c,t])=>{ if((p[c]||"").trim()) o+=`## ${t}\n${p[c].trim()}\n\n`; });
+  if((p.etapas||[]).length) o+=`## Etapas\n`+p.etapas.map(e=>`- [${e.feito?"x":" "}] ${e.t}${e.disc&&DK[e.disc]?" ("+curto(e.disc)+")":""}${e.prazo?" · até "+fmtPrazo(e.prazo):""}`).join("\n")+"\n\n";
+  const partes=DISC.filter(d=>(pjd(p.id,d.k).texto||"").trim()||ligados(p.id,d.k).length);
+  if(partes.length){ o+=`## Contribuição de cada disciplina\n\n`; partes.forEach(d=>{ const lg=ligados(p.id,d.k); o+=`### ${nomeDisc(d.k)}\n${lg.length?"Ligada a: "+lg.map(curto).join(", ")+"\n\n":""}${(pjd(p.id,d.k).texto||"").trim()}\n\n`; }); }
+  if((p.texto||"").trim()) o+=`## Desenvolvimento\n${p.texto.trim()}\n\n`;
+  const refs=[...(p.links||[]).map(l=>`- [${l.titulo||l.url}](${l.url})`), ...(p.mats||[]).filter(id=>S.docs[id]&&!S.docs[id].apagado).map(id=>`- Material do caderno: ${S.docs[id].titulo}`)];
+  if(refs.length) o+=`## Referências\n${refs.join("\n")}\n`;
+  return window.FLUXO&&FLUXO.expandir ? FLUXO.expandir(o) : o;
+}
+function pedidoIAProjeto(p){
+  return `Sou aluno do curso "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE). Abaixo está o meu projeto, com a parte de cada disciplina e as ligações entre elas.
+
+Por favor:
+1. Aponte lacunas no planejamento (objetivo, dados, método, produtos) e sugira como resolver.
+2. Verifique se as etapas estão numa ordem lógica e se falta alguma.
+3. Sugira ligações entre disciplinas que ainda não fiz, explicando como uma ajuda a outra.
+4. Proponha um roteiro de relatório final (seções e o que escrever em cada uma).
+Responda em português do Brasil, de forma direta.
+
+---
+
+${projetoMD(p)}`;
+}
+
+/* ---- aba Projetos dentro das anotações de cada disciplina ---- */
+const PJ_ABA={}; // projeto escolhido por disciplina
+function projDaAba(k){ const ps=projetos(); return ps.find(p=>p.id===PJ_ABA[k]) || projPrincipal(); }
+function projAbaHTML(k){
+  const ps=projetos();
+  if(!ps.length) return `<div class="pj-vazio"><p style="margin:0 0 8px"><b>Nenhum projeto ainda.</b> Crie o projeto principal: cada disciplina escreve aqui a parte dela e pode se ligar a outras.</p>
+    <div class="row" style="gap:6px"><button type="button" class="btn sm pri" data-pjx="modelo">Criar com modelo: Diagnóstico Territorial</button><button type="button" class="btn sm" data-pjx="branco">Projeto em branco</button></div></div>`;
+  const p=projDaAba(k), d=pjd(p.id,k), lg=ligados(p.id,k), modo=lg.length||d.modo==="ligada"?"ligada":"individual", pr=progProj(p);
+  const minhas=(p.etapas||[]).filter(e=>e.disc===k);
+  const st=(PJ_STATUS.find(s=>s[0]===p.status)||PJ_STATUS[0])[1];
+  const nota=n=>{ const t=FORMATO.separar(n||"").notas.replace(/^\s*!\[[^\]]*\]\(fx:[^)]+\)\s*$/gm,"").trim(); return t; };
+  return `
+  <div class="pj-principal">
+    <div class="row" style="justify-content:space-between;gap:6px">
+      <span class="lb" style="margin:0">${p.principal?"Projeto principal":"Projeto"}</span>
+      ${ps.length>1?`<select data-pjx="trocar" aria-label="Projeto" style="width:auto;max-width:60%">${ps.map(x=>`<option value="${x.id}" ${x.id===p.id?"selected":""}>${x.principal?"★ ":""}${esc(x.titulo||"Sem título")}</option>`).join("")}</select>`:""}
+    </div>
+    <div class="row" style="justify-content:space-between;gap:8px;margin-top:2px"><strong style="font-size:15.5px">${esc(p.titulo||"Sem título")}</strong><span class="chip">${st}${p.prazo?" · até "+fmtPrazo(p.prazo).slice(0,5):""}</span></div>
+    ${(p.objetivo||"").trim()?`<p class="muted" style="margin:4px 0 0;font-size:13.5px">${esc(p.objetivo.trim().slice(0,240))}${p.objetivo.trim().length>240?"…":""}</p>`:""}
+    <div class="pj-barra" style="margin-top:8px" title="${pr.feitas} de ${pr.tot} etapas"><i style="width:${pr.pct}%"></i></div>
+    <div class="row" style="justify-content:space-between;margin-top:6px"><span class="muted" style="font-size:12.5px">${pr.feitas} de ${pr.tot} etapas · ${pr.pct}%</span><button type="button" class="btn sm" data-pjx="abrir">Abrir em Projetos</button></div>
+  </div>
+  <label class="lb" style="margin-top:12px">Parte de ${esc(curto(k))} no projeto ${info("pjparte")}</label>
+  <textarea class="pj-auto pj-parte" data-pjparte="${k}" data-prj="${p.id}" rows="3" placeholder="Como o que foi estudado nesta disciplina entra no projeto: técnicas, dados, análises, produtos…">${esc(d.texto||"")}</textarea>
+  <div class="pj-sec"><span class="lb" style="margin:0">Etapas desta disciplina</span>
+    ${minhas.length?minhas.map(e=>`<label class="pj-et2${e.feito?" ok":""}"><input type="checkbox" data-pjxet="${e.id}" ${e.feito?"checked":""}> <span>${esc(e.t)}</span>${e.prazo?`<span class="mono muted" style="font-size:12px">${fmtPrazo(e.prazo).slice(0,5)}</span>`:""}</label>`).join(""):'<p class="muted" style="margin:4px 0;font-size:13px">Nenhuma etapa desta disciplina.</p>'}
+    <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pj-novaet" data-k="${k}" placeholder="Nova etapa desta disciplina" style="flex:1;min-width:0"><button type="button" class="btn sm" data-pjx="etapa">+ Etapa</button></div>
+  </div>
+  <div class="pj-sec"><div class="row" style="justify-content:space-between;gap:6px"><span class="lb" style="margin:0">Ligação com outras disciplinas ${info("pjligas")}</span>
+    <div class="pj-seg" role="radiogroup" aria-label="Ligação"><button type="button" role="radio" aria-checked="${modo==="individual"}" class="${modo==="individual"?"on":""}" data-pjx="individual">Individual</button><button type="button" role="radio" aria-checked="${modo==="ligada"}" class="${modo==="ligada"?"on":""}" data-pjx="ligada">Interligada</button></div></div>
+    ${modo==="individual"?`<p class="muted" style="margin:6px 0 0;font-size:13px">Esta disciplina contribui sozinha. Escolha “Interligada” para puxar informações de outras.</p>`:`
+    <div class="pj-chips">${DISC.filter(x=>x.k!==k).map(x=>`<button type="button" class="pj-chip${lg.includes(x.k)?" on":""}" data-pjliga="${x.k}" aria-pressed="${lg.includes(x.k)}">${sw(x.k)}${esc(curto(x.k))}</button>`).join("")}</div>
+    ${lg.length?`<div class="pj-puxa">${lg.map(k2=>{ const d2=pjd(p.id,k2), et2=(p.etapas||[]).filter(e=>e.disc===k2), n2=nota(discD(k2).nota), ms=mats().filter(m=>m.disc===k2);
+      return `<div class="pj-lig" style="border-left:4px solid ${DK[k2].cor}">
+        <div class="row" style="justify-content:space-between;gap:6px"><strong>${esc(nomeDisc(k2))}</strong><button type="button" class="btn sm" data-go="disciplinas" data-disc="${k2}">Abrir</button></div>
+        <div class="pj-l-t"><span class="lb" style="margin:4px 0 2px">Parte no projeto</span>${(d2.texto||"").trim()?`<div class="md">${md(d2.texto)}</div>`:'<p class="muted" style="margin:0;font-size:13px">Ainda sem parte escrita.</p>'}</div>
+        ${et2.length?`<div class="pj-l-t"><span class="lb" style="margin:4px 0 2px">Etapas</span>${et2.map(e=>`<div style="font-size:13.5px">${e.feito?"☑":"☐"} ${esc(e.t)}</div>`).join("")}</div>`:""}
+        ${n2?`<details class="pj-l-t"><summary class="lb" style="margin:4px 0 2px;cursor:pointer">Anotações da disciplina</summary><div class="md">${md(n2.length>1500?n2.slice(0,1500)+"\n\n…":n2)}</div></details>`:""}
+        ${ms.length?`<div class="pj-l-t"><span class="lb" style="margin:4px 0 2px">Materiais</span><div class="row" style="gap:4px;flex-wrap:wrap">${ms.map(m=>`<button type="button" class="btn sm" data-mat="${m.id}">${esc(m.titulo||"Material")}${m.resumo?" · resumo":""}</button>`).join("")}</div></div>`:""}
+      </div>`; }).join("")}</div>`:'<p class="muted" style="margin:6px 0 0;font-size:13px">Marque as disciplinas que se ligam a esta. As informações delas aparecem aqui.</p>'}`}
+  </div>`;
+}
+function autoAltura(t){ t.style.height="auto"; t.style.height=Math.min(t.scrollHeight+2,600)+"px"; }
+function desenharAbaProj(pj,k){ if(!pj) return; pj._k=k; pj.innerHTML=projAbaHTML(k); pj.querySelectorAll(".pj-auto").forEach(autoAltura); }
+// redesenha as abas Projetos abertas (menos a que está sendo digitada)
+function redesenharAbasProj(){ document.querySelectorAll(".projs").forEach(pj=>{ if(pj.hidden||pj.contains(document.activeElement)&&document.activeElement.tagName==="TEXTAREA") return; desenharAbaProj(pj,pj._k); }); atualizarRotulosProj(); }
+function rotuloProj(k){ const p=projPrincipal(); if(!p) return ""; const n=ligados(p.id,k).length; return n?"↔ "+n:""; }
+function atualizarRotulosProj(){ document.querySelectorAll(".fmt-abas").forEach(ab=>{ const ta=ab._ta, s=ab.querySelector(".fa-j"); if(ta&&ta._pjk&&s) s.textContent=rotuloProj(ta._pjk); }); }
+window.FORMATO_PROJ={
+  disc(ta){ if(ta.dataset.dnota) return ta.dataset.dnota; const id=ta.id==="pnota"&&PANE&&PANE.tipo==="aula"?PANE.id:ta.dataset.qaula; const a=id&&AULAS.find(x=>x.id===id); return a?a.k:null; },
+  desenhar(pj,k){ desenharAbaProj(pj,k); },
+  rotulo: rotuloProj,
+};
+function pjDaAba(el){ const pj=el.closest(".projs"); return pj?{pj,k:pj._k,p:projDaAba(pj._k)}:null; }
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-pjx],[data-pjliga]"); if(!b||b.tagName==="SELECT") return; const c=pjDaAba(b); if(!c) return; const {k,p}=c;
+  if(b.dataset.pjliga){ ligar(p.id,k,b.dataset.pjliga,!ligados(p.id,k).includes(b.dataset.pjliga)); redesenharAbasProj(); return; }
+  const op=b.dataset.pjx;
+  if(op==="modelo"||op==="branco"){ novoProjeto(op==="modelo"); toast("Projeto criado. Ajuste os detalhes na página Projetos."); renderNav(); redesenharAbasProj(); return; }
+  if(op==="abrir"){ PRJ_SEL=p.id; ir("projetos"); return; }
+  if(op==="individual"){ ligados(p.id,k).forEach(k2=>{ const l2=new Set(pjd(p.id,k2).liga||[]); l2.delete(k); salvarPjd(p.id,k2,{liga:[...l2]},80); }); salvarPjd(p.id,k,{liga:[],modo:"individual"},80); redesenharAbasProj(); return; }
+  if(op==="ligada"){ salvarPjd(p.id,k,{modo:"ligada"},80); redesenharAbasProj(); return; }
+  if(op==="etapa"){ const inp=c.pj.querySelector(".pj-novaet"), t=inp.value.trim(); if(!t){ inp.focus(); return; } salvarPrj(p.id,{etapas:[...(p.etapas||[]),{id:novoId(),t,disc:k,feito:false,prazo:""}]},80); redesenharAbasProj(); c.pj.querySelector(".pj-novaet")?.focus(); return; }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("pj-novaet")){ e.preventDefault(); e.target.closest(".projs").querySelector('[data-pjx="etapa"]').click(); } });
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.dataset.pjx==="trocar"){ const c=pjDaAba(t); PJ_ABA[c.k]=t.value; desenharAbaProj(c.pj,c.k); return; }
+  if(t.dataset.pjxet){ const c=pjDaAba(t); const et=(c.p.etapas||[]).map(x=>x.id===t.dataset.pjxet?{...x,feito:t.checked}:x); salvarPrj(c.p.id,{etapas:et},80); redesenharAbasProj(); return; }
+});
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.dataset.pjparte){ autoAltura(t); salvarPjd(t.dataset.prj,t.dataset.pjparte,{texto:t.value}); return; }
+  if(VIEW!=="projetos") return;
+  if(t.dataset.pjcampo){ if(t.tagName==="TEXTAREA") autoAltura(t); salvarPrj(PRJ_SEL,{[t.dataset.pjcampo]:t.value}); if(t.dataset.pjcampo==="titulo"){ const it=document.querySelector(`.pj-it[data-pjsel="${PRJ_SEL}"] strong`); if(it) it.textContent=(S.docs[PRJ_SEL].principal?"★ ":"")+(t.value||"Sem título"); } return; }
+  if(t.dataset.pjtexto){ salvarPrj(t.dataset.pjtexto,{texto:t.value}); return; }
+  if(t.dataset.pjet==="t"){ const id=t.closest(".pj-et").dataset.eid; salvarPrj(PRJ_SEL,{etapas:(S.docs[PRJ_SEL].etapas||[]).map(x=>x.id===id?{...x,t:t.value}:x)}); return; }
+});
+document.addEventListener("change",e=>{
+  if(VIEW!=="projetos") return; const t=e.target;
+  if(t.dataset.pjsel2){ const c=t.dataset.pjsel2;
+    if(c==="principal"){ projetos().forEach(x=>{ if(x.id!==PRJ_SEL&&x.principal&&t.checked) salvarPrj(x.id,{principal:false},80); }); salvarPrj(PRJ_SEL,{principal:t.checked},80); }
+    else salvarPrj(PRJ_SEL,{[c]:t.value},80);
+    render(); return; }
+  if(t.dataset.pjet&&t.dataset.pjet!=="t"){ const id=t.closest(".pj-et").dataset.eid, v=t.type==="checkbox"?t.checked:t.value;
+    salvarPrj(PRJ_SEL,{etapas:(S.docs[PRJ_SEL].etapas||[]).map(x=>x.id===id?{...x,[t.dataset.pjet]:v}:x)},80); render(); return; }
+});
+document.addEventListener("submit",e=>{
+  if(e.target.id==="pj-fet"){ e.preventDefault(); const t=document.getElementById("pj-et-t").value.trim(); if(!t) return; const disc=document.getElementById("pj-et-d").value;
+    salvarPrj(PRJ_SEL,{etapas:[...(S.docs[PRJ_SEL].etapas||[]),{id:novoId(),t,disc,feito:false,prazo:""}]},80); render(); document.getElementById("pj-et-d").value=disc; document.getElementById("pj-et-t").focus(); return; }
+  if(e.target.id==="pj-flk"){ e.preventDefault(); const u=document.getElementById("pj-lk-u").value.trim(); if(!/^https?:\/\/\S+$/.test(u)){ toast("Link precisa começar com http:// ou https://"); return; }
+    salvarPrj(PRJ_SEL,{links:[...(S.docs[PRJ_SEL].links||[]),{url:u,titulo:document.getElementById("pj-lk-n").value.trim()}]},80); render(); return; }
+});
+document.addEventListener("click",e=>{
+  if(VIEW!=="projetos") return;
+  const b=e.target.closest("[data-pj],[data-pjsel],[data-pjir],[data-pjet],[data-pjlink],[data-pjmat]"); if(!b||b.disabled||b.closest(".projs")) return;
+  const ds=b.dataset, p=S.docs[PRJ_SEL];
+  if(ds.pjsel){ PRJ_SEL=ds.pjsel; render(); return; }
+  if(ds.pjir){ ir("disciplinas"); setTimeout(()=>{ const card=document.getElementById("d-"+ds.pjir); if(!card) return; const ab=card.querySelector('.fmt-abas [data-faba="j"]'); if(ab) ab.click(); card.scrollIntoView({behavior:"smooth"}); },60); return; }
+  if(ds.pjlink!==undefined){ salvarPrj(PRJ_SEL,{links:(p.links||[]).filter((x,i)=>i!==+ds.pjlink)},80); render(); return; }
+  if(ds.pjmat){ salvarPrj(PRJ_SEL,{mats:(p.mats||[]).filter(x=>x!==ds.pjmat)},80); render(); return; }
+  if(ds.pjet==="feito") return;
+  if(ds.pjet==="sobe"||ds.pjet==="desce"||ds.pjet==="tirar"){ const id=b.closest(".pj-et").dataset.eid, et=[...(p.etapas||[])], i=et.findIndex(x=>x.id===id); if(i<0) return;
+    if(ds.pjet==="tirar"){ if(!b.dataset.conf&&(et[i].t||"").trim()){ b.dataset.conf="1"; b.textContent="Apagar?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="✕"; } },3000); return; } et.splice(i,1); }
+    else { const j=ds.pjet==="sobe"?i-1:i+1; if(j<0||j>=et.length) return; [et[i],et[j]]=[et[j],et[i]]; }
+    salvarPrj(PRJ_SEL,{etapas:et},80); render(); return; }
+  const op=ds.pj; if(!op) return;
+  if(op==="novo"||op==="modelo"){ novoProjeto(op==="modelo"); render(); setTimeout(()=>{ const i=document.getElementById("pj-ti"); if(i&&op==="novo"){ i.focus(); i.select(); } },30); return; }
+  if(op==="md") return copiar(projetoMD(p),"Projeto copiado. Cole no Word ou Docs.");
+  if(op==="baixar") return baixarArquivo("projeto_"+(p.titulo||"projeto").normalize("NFD").replace(/[^\w]+/g,"-").replace(/^-|-$/g,"").toLowerCase()+"_"+dataArq()+".md", projetoMD(p), "text/markdown");
+  if(op==="ia") return copiar(pedidoIAProjeto(p),"Pedido copiado. Cole no app do Claude.");
+  if(op==="addmat"){ const v=document.getElementById("pj-mt").value; if(!v) return; salvarPrj(PRJ_SEL,{mats:[...(p.mats||[]),v]},80); render(); return; }
+  if(op==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
+    DISC.forEach(d=>{ if(S.docs[pjdId(PRJ_SEL,d.k)]) apagarDoc(pjdId(PRJ_SEL,d.k)); }); apagarDoc(PRJ_SEL); PRJ_SEL=null; toast("Projeto apagado"); render(); return; }
+});
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-pjabre]"); if(!b) return; PRJ_SEL=b.dataset.pjabre; ir("projetos"); });
+document.addEventListener("keydown",e=>{ const g=e.target.closest&&e.target.closest("g.pj-no"); if(g&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); g.dispatchEvent(new MouseEvent("click",{bubbles:true})); } });
+
 function render(){
   lerHash();
   renderNav();
-  const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
+  const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,projetos:vProjetos,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_notas.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
   if(VIEW==="disciplinas") montarNavs();
+  if(VIEW==="projetos") document.querySelectorAll(".pj-auto").forEach(autoAltura);
   sincronizarFlutuante();
 }
 
