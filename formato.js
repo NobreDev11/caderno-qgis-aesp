@@ -695,5 +695,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const orig=window.ligarFlutuante;
     window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); } };
   }
-  window.FORMATO={aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd};
+  window.FORMATO={aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();
