@@ -160,6 +160,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   async function enviarImagens(ta,files){
     const imgs=[...files].filter(f=>/^image\//.test(f.type));
     if(!imgs.length){ aviso("Escolha um arquivo de imagem (JPG, PNG, WebP…)."); return; }
+    if(!navigator.onLine){ aviso("Sem internet: imagens só podem ser inseridas quando a conexão voltar. O texto continua salvando normalmente."); return; }
     if(!temConta()){ aviso("Entre na sua conta (botão Entrar) para inserir imagens: elas ficam guardadas na sua pasta privada."); return; }
     const achar=achador(ta), a=ta.selectionStart, b=ta.selectionEnd, partes=[];
     aviso(imgs.length>1?`Enviando ${imgs.length} imagens…`:"Enviando imagem…");

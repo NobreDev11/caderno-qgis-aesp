@@ -317,14 +317,15 @@ async function flush(id){
   const body=pend[id]; if(!body) return; delete pend[id];
   writing[id]=true; setSync();
   try{ await S.push(id, body); S.erro=false; }
-  catch(e){ if(!pend[id]) pend[id]=body; S.erro=true; timers[id]=setTimeout(()=>flush(id),5000+Math.random()*3000); }
+  catch(e){ if(!pend[id]) pend[id]=body; S.erro=true; if(navigator.onLine) timers[id]=setTimeout(()=>flush(id),5000+Math.random()*3000); }
   writing[id]=false; setSync();
 }
 function apagarDoc(id){ const old=S.docs[id]; if(!old) return; salvarDoc(id,{tipo:old.tipo,apagado:true},50); }
 function flushTudo(){ Object.keys(pend).forEach(id=>{clearTimeout(timers[id]); flush(id);}); }
 window.addEventListener("pagehide",flushTudo);
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushTudo(); else if(S.pull) S.pull(); });
-window.addEventListener("online",()=>{ flushTudo(); if(S.pull) S.pull(); });
+window.addEventListener("online",()=>{ setSync(); if(S.esperaOnline){ S.esperaOnline=false; tentarSessao(); return; } flushTudo(); if(S.pull) S.pull(); });
+window.addEventListener("offline",()=>setSync());
 
 // Junta o que veio da nuvem com o local: o mais recente vence. inicial=true também envia o que só está aqui.
 function mesclar(remoto, inicial){
@@ -346,7 +347,8 @@ function mesclar(remoto, inicial){
 function setSync(){
   const dot=document.getElementById("sdot"), tx=document.getElementById("stxt"), bt=document.getElementById("sbtn");
   const np=Object.keys(pend).length+Object.values(writing).filter(Boolean).length;
-  if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? (S.erro?"Sem internet: salvo aqui, envio depois":"Salvando…") : "Sincronizado"+(S.email?" · "+S.email:""); }
+  if(!navigator.onLine && (S.uid||S.esperaOnline)){ dot.className="dot loc"; tx.textContent="Sem internet · salvo neste aparelho, envia ao voltar"+(np?" ("+np+")":""); }
+  else if(S.modo==="nuvem"){ dot.className="dot on"; tx.textContent= np? (S.erro?"Sem internet: salvo aqui, envio depois":"Salvando…") : "Sincronizado"+(S.email?" · "+S.email:""); }
   else if(S.modo==="conectando"){ dot.className="dot loc"; tx.textContent="Conectando…"; }
   else { dot.className="dot loc"; tx.textContent="Salvo só neste navegador"; }
   if(bt){ bt.hidden=!S.sb; bt.textContent= S.uid?"Sair":"Entrar"; }
@@ -367,11 +369,12 @@ async function iniciarSupa(session){
     try{
       // 1ª vez: tudo. Depois: só o que mudou desde a última leitura (com folga de 10 s).
       let q=tab().select("id,body,updated_at").order("updated_at",{ascending:true}).limit(5000);
+      inicial = inicial || !S.inicialOk;
       if(!inicial && S.desde) q=q.gte("updated_at", new Date(Date.parse(S.desde)-10000).toISOString());
       const {data,error}=await q;
       if(error) throw error;
       const remoto={}; (data||[]).forEach(r=>{ remoto[r.id]=r.body; if(!S.desde||r.updated_at>S.desde) S.desde=r.updated_at; });
-      mesclar(remoto, !!inicial);
+      mesclar(remoto, !!inicial); S.inicialOk=true;
       S.modo="nuvem"; S.erro=false; if(S.faltaSQL){ S.faltaSQL=false; render(); }
     }catch(e){
       if(inicial){ S.modo="nuvem"; S.erro=true; }
@@ -387,15 +390,21 @@ const semTabela = e => !!e && (e.code==="PGRST205"||e.code==="42P01"||/could not
 async function checarSQL(){
   try{ const {error}=await S.sb.from("caderno_dio").select("id").limit(1); const antes=S.faltaSQL; S.faltaSQL=semTabela(error); if(antes!==S.faltaSQL&&!editando()) render(); }catch(e){}
 }
-function pararSupa(){ S.desde=null; S.uid=null; S.email=""; S.push=null; S.pull=null; S.modo="local"; Object.keys(pend).forEach(k=>delete pend[k]); setSync(); }
+function pararSupa(){ S.inicialOk=false; S.esperaOnline=false; S.desde=null; S.uid=null; S.email=""; S.push=null; S.pull=null; S.modo="local"; Object.keys(pend).forEach(k=>delete pend[k]); setSync(); }
 async function conectarSupa(){
   if(!window.supabase){ S.modo="local"; setSync(); return; }
   S.sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
   S.sb.auth.onAuthStateChange((ev,session)=>{ if(ev==="SIGNED_OUT") pararSupa(); });
   checarSQL();
+  await tentarSessao();
+}
+async function tentarSessao(){
   let session=null;
   try{ session=(await S.sb.auth.getSession()).data.session; }catch(e){}
-  if(session) await iniciarSupa(session); else { S.modo="local"; setSync(); }
+  if(session){ await iniciarSupa(session); return; }
+  let guardada=null; try{ guardada=JSON.parse(localStorage.getItem("caderno-qgis-auth")||"null"); }catch(e){}
+  if(guardada && guardada.user && !navigator.onLine){ S.esperaOnline=true; S.email=guardada.user.email||""; S.modo="local"; setSync(); return; }
+  S.modo="local"; setSync();
 }
 function abrirLogin(){
   PANE={tipo:"login"};
@@ -904,6 +913,7 @@ async function abrirArquivo(path){
   catch(e){ if(w) w.close(); toast("Não foi possível abrir o arquivo."); }
 }
 async function api(rota, corpo){
+  if(!navigator.onLine) throw new Error("Sem internet: gerar com IA e importar links precisam de conexão. O resto do caderno funciona offline.");
   const r=await fetch(rota,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+await token()},body:JSON.stringify(corpo)});
   const j=await r.json().catch(()=>({erro:"O servidor não respondeu direito (HTTP "+r.status+")."}));
   if(!r.ok) throw new Error(j.erro||("HTTP "+r.status));
@@ -949,7 +959,7 @@ async function salvarMaterial(){
         status("Lendo o PDF…");
         const r=await textoDoPdf(new Uint8Array(await f.arrayBuffer()),(i,n)=>status("Lendo o PDF… página "+i+" de "+n));
         texto=r.texto; meta.paginas=r.paginas;
-        if(logado()){ status("Guardando o PDF na nuvem…"); meta.arquivos.push(await subir(mid,f.name,f,"application/pdf")); }
+        if(logado()&&navigator.onLine){ status("Guardando o PDF na nuvem…"); meta.arquivos.push(await subir(mid,f.name,f,"application/pdf")); } else if(logado()) toast("Sem internet: salvei o texto do PDF. O arquivo em si não foi guardado na nuvem.");
       } else { texto=await f.text(); }
     } else if(P.aba==="fotos"){
       const fs=[...document.getElementById("am-i").files].slice(0,8); if(!fs.length) throw new Error("Escolha as fotos.");
@@ -957,7 +967,7 @@ async function salvarMaterial(){
       for(let i=0;i<fs.length;i++){
         status("Preparando foto "+(i+1)+" de "+fs.length+"…");
         const b=await comprimirImagem(fs[i]);
-        if(logado()) meta.arquivos.push(await subir(mid,"foto"+(i+1)+".jpg",b,"image/jpeg")); else imgs.push(await paraDataURL(b));
+        if(logado()&&navigator.onLine) meta.arquivos.push(await subir(mid,"foto"+(i+1)+".jpg",b,"image/jpeg")); else imgs.push(await paraDataURL(b));
       }
     } else if(P.aba==="link"){
       const u=document.getElementById("am-u").value.trim(); if(!/^https?:\/\//i.test(u)) throw new Error("Cole um link começando com http.");
@@ -1466,5 +1476,9 @@ window.FLUXO_ALVO=()=>{
 </script>
 <script src="/fluxo.js"></script>
 <script src="/formato.js"></script>
+<script>
+/* Funciona sem internet: guarda o app no aparelho (sw.js). */
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")) addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+</script>
 </body>
 </html>

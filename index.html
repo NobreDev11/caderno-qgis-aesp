@@ -182,8 +182,14 @@ document.addEventListener("submit",e=>{ if(e.target.id==="flogin"){ e.preventDef
   if(!window.supabase){ telaLogin("Não foi possível carregar o login. Confira a internet e recarregue a página."); return; }
   sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
   try{ sessao=(await sb.auth.getSession()).data.session; }catch(e){}
-  if(sessao) telaCursos(); else telaLogin();
+  if(!sessao && !navigator.onLine){ try{ const g=JSON.parse(localStorage.getItem("caderno-qgis-auth")||"null"); if(g&&g.user) sessao=g; }catch(e){} }
+  if(sessao) telaCursos(); else telaLogin(navigator.onLine?undefined:"Sem internet. Entre quando a conexão voltar; os cadernos funcionam offline.");
 })();
+addEventListener("online",async()=>{ try{ const s=(await sb.auth.getSession()).data.session; if(s){ sessao=s; telaCursos(); } }catch(e){} });
+</script>
+<script>
+/* Funciona sem internet: guarda o app no aparelho (sw.js). */
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")) addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
 </script>
 </body>
 </html>
