@@ -177,7 +177,7 @@ details.sec[open]>summary::before{transform:rotate(45deg)}
 .mnav-aviso{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--warn) 12%,transparent);font-size:13px}
 .mnav-area iframe{flex:1;border:0;width:100%;height:100%;background:#fff}
 .mnav-vazio{margin:auto;padding:16px;text-align:center;color:var(--muted);font-size:13.5px;max-width:40ch}
-.mnav.cheio{position:fixed;inset:0;z-index:38;background:var(--surface);padding:12px max(12px,calc((100% - 1200px)/2));margin:0}
+.mnav.cheio{position:fixed;inset:0;z-index:41;background:var(--surface);padding:12px max(12px,calc((100% - 1200px)/2));margin:0}
 .mnav.cheio .mnav-area{flex:1;height:auto}
 .pres-l{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .pres-l .mono{flex:1;min-width:120px;font-size:12.5px;color:var(--muted)}
@@ -554,7 +554,7 @@ const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">
 function md(src){
   const linhas=String(src||"").split("\n"); let out="", lista=false, nfx=0;
   const fechar=()=>{ if(lista){ out+=`</${lista}>`; lista=false; } }, abrir=t=>{ if(lista!==t){ fechar(); out+=`<${t}>`; lista=t; } };
-  const inl=t=>esc(t).replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}" loading="lazy" referrerpolicy="no-referrer">`).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>").replace(/==([^=]+)==/g,"<mark>$1</mark>")
+  const inl=t=>esc(t).replace(/&lt;([^\s<>&](?:[^<>\n]{0,90}?[^\s<>])?)&gt;/g,(x,q)=>`<button type="button" class="pesq" data-q="${q}" title="Pesquisar">${q}</button>`).replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}" loading="lazy" referrerpolicy="no-referrer">`).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>").replace(/==([^=]+)==/g,"<mark>$1</mark>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
   for(let i=0;i<linhas.length;i++){ const l=linhas[i];
@@ -872,7 +872,8 @@ document.addEventListener("click",e=>{
   if(v==="ir") return navIr(el, el.querySelector(".mnav-q").value);
   if(v==="abrir") return;
   e.preventDefault();
-  if(v==="fechar"){ delete NAVST[k]; el.innerHTML=navHTML(k); el.classList.remove("cheio"); document.body.style.overflow=""; return; }
+  if(v==="fechar"){ delete NAVST[k]; if(el.classList.contains("solto")) soltarNav(el); el.innerHTML=navHTML(k); el.classList.remove("cheio"); document.body.style.overflow=document.querySelector(".fmt-cheia")?"hidden":""; return; }
+  if(v==="cheio"&&el.classList.contains("solto")) return soltarNav(el);
   if(v==="cheio"){ const on=el.classList.toggle("cheio"); b.textContent=on?"⤡ Reduzir":"⛶ Expandir"; document.body.style.overflow=on?"hidden":""; return; }
   if(v==="pip") return sobreporNav(el);
   if(v==="ler"){ if(NAVST[k]&&NAVST[k].tipo==="busca"){ toast("O modo leitura é para páginas; na pesquisa, clique em um resultado ou cole o link."); return; } return lerNav(el, false); }
@@ -883,7 +884,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("submit",e=>{ const f=e.target.closest&&e.target.closest(".mnav-salvar"); if(!f) return; e.preventDefault(); salvarLinkNav(f.closest(".mnav")); });
 document.addEventListener("keydown",e=>{
   if(e.target.classList&&e.target.classList.contains("mnav-q")&&e.key==="Enter"){ e.preventDefault(); navIr(e.target.closest(".mnav"), e.target.value); }
-  if(e.key==="Escape"){ const c=document.querySelector(".mnav.cheio"); if(c){ e.stopImmediatePropagation(); c.classList.remove("cheio"); document.body.style.overflow=""; const b=c.querySelector('[data-nv="cheio"]'); if(b) b.textContent="⛶ Expandir"; } }
+  if(e.key==="Escape"){ const c=document.querySelector(".mnav.cheio"); if(c&&c.classList.contains("solto")){ e.stopImmediatePropagation(); soltarNav(c); return; } if(c){ e.stopImmediatePropagation(); c.classList.remove("cheio"); document.body.style.overflow=""; const b=c.querySelector('[data-nv="cheio"]'); if(b) b.textContent="⛶ Expandir"; } }
 },true);
 
 function abrirCard(k,on){ const c=document.getElementById("d-"+k); if(!c) return; const b=c.querySelector(".dbody"), t=c.querySelector("[data-dtog]"); b.hidden=!on; t.setAttribute("aria-expanded",String(on)); t.title=(on?"Recolher":"Expandir")+" disciplina"; SECOES["card-"+k]=on; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(e){} if(on) montarNavs(); }
@@ -921,6 +922,29 @@ document.addEventListener("click",e=>{
   if(!editando()&&VIEW!=="disciplinas") render(); else { renderNav(); if(VIEW==="disciplinas"){ const c=document.getElementById("d-"+a.k); if(c) c.querySelectorAll(`[data-dpres="${id}"]`).forEach(x=>x.classList.toggle("on",x.dataset.v===v)); } }
   setTimeout(checarMarcos,400);
 });
+
+// Termos <assim> nas anotações: ao clicar, pesquisa no mininavegador da disciplina daquela anotação.
+function discDoContexto(el){
+  const ed=el.closest&&el.closest(".wys"), ta=ed&&ed._ta;
+  if(ta){ if(ta.dataset.dnota&&DK[ta.dataset.dnota]) return ta.dataset.dnota; if(ta.dataset.qaula&&AK[ta.dataset.qaula]) return AK[ta.dataset.qaula].k;
+    if(ta.id==="pnota"&&PANE&&AK[PANE.id]) return AK[PANE.id].k; if(ta.id==="fl-txt"&&AK[FL.id]) return AK[FL.id].k;
+    if(ta.id==="ntxt"&&PANE){ const n=S.docs[PANE.id]; const d=document.getElementById("ndisc"); const k=(d&&d.value)||(n&&n.disc); if(DK[k]) return k; } }
+  const c=el.closest&&el.closest(".dcard"); if(c) return c.id.slice(2);
+  if(el.closest&&el.closest(".pane")&&PANE){ if(PANE.tipo==="aula"&&AK[PANE.id]) return AK[PANE.id].k; const n=S.docs[PANE.id]; if(n&&DK[n.disc]) return n.disc; }
+  return focoAula().k;
+}
+function abrirPesquisa(q,k){
+  let el=NAVS.get(k);
+  if(!(el&&el.isConnected)){ const card=document.getElementById("d-"+k);
+    if(card){ abrirCard(k,true); const d=card.querySelector(`details[data-sec="nav-${k}"]`); if(d) d.open=true; montarNavs(); el=NAVS.get(k); } }
+  if(!el) el=criarNav(k);
+  if(!el.isConnected||PANE||document.querySelector(".fmt-cheia")){ if(el.isConnected) el._volta=el.parentNode; el.classList.add("cheio","solto"); document.body.appendChild(el); document.body.style.overflow="hidden"; }
+  else el.scrollIntoView({behavior:"smooth",block:"center"});
+  el.querySelector(".mnav-q").value=q; navIr(el,q);
+  const b=el.querySelector('[data-nv="cheio"]'); if(b) b.textContent=el.classList.contains("solto")?"✕ Fechar pesquisa":el.classList.contains("cheio")?"⤡ Reduzir":"⛶ Expandir";
+}
+function soltarNav(el){ el.classList.remove("cheio","solto"); document.body.style.overflow=document.querySelector(".fmt-cheia")?"hidden":""; const v=el._volta; el._volta=null; if(v&&v.isConnected) v.appendChild(el); else el.remove(); const b=el.querySelector('[data-nv="cheio"]'); if(b) b.textContent="⛶ Expandir"; }
+document.addEventListener("caderno:pesquisar",e=>{ e.preventDefault(); abrirPesquisa(e.detail.q, discDoContexto(e.detail.el)); });
 
 function notaItem(n){
   const ex=(n.texto||"").replace(/[#*`>\-\[\]]/g,"").slice(0,180);
@@ -1377,14 +1401,14 @@ const AJUDA={
   sync:{t:"Onde suas notas estão salvas",o:"Ponto verde: sincronizado na nuvem, aparece em qualquer aparelho em que você entrar. Ponto laranja: salvo só neste navegador.",c:"Clique em Entrar e use o e-mail e a senha do portal ADMIN CBMCE. Tudo o que você já escreveu aqui sobe para a nuvem. Sem internet o app continua salvando e envia depois."},
   login:{t:"Entrar",o:"Liga o caderno à sua conta para sincronizar entre computador e celular e guardar PDFs e fotos.",c:"Use o mesmo e-mail e senha do portal ADMIN CBMCE. Só você vê as suas notas."},
   hoje:{t:"Hoje",o:"Resumo do dia: aula em andamento ou a próxima, progresso do curso e tarefas pendentes.",c:"Durante a aula, digite no campo “Anotação rápida”: salva sozinho e fica guardado naquela aula. “Abrir aula” mostra presença, estrela e a anotação completa."},
-  mnav:{t:"Pesquisa",o:"Um navegador pequeno dentro do cartão da disciplina, para pesquisar no Google ou abrir um site sem sair do caderno.",c:"Digite o que procura (ou cole um link) e tecle Enter. Salvar link guarda nos Materiais desta disciplina; Expandir ocupa a tela toda (Esc volta); Abrir no navegador abre numa aba normal; Sobrepor abre uma janela que fica por cima das outras (Chrome/Edge no computador). Sites que não deixam ser abertos dentro de outra página aparecem em Modo leitura (só o texto); para ver com imagens, use Abrir no navegador. Vídeos do YouTube e arquivos do Google Drive/Docs abrem normalmente."},
+  mnav:{t:"Pesquisa",o:"Dica: nas anotações, escreva um termo entre < e > (ex.: <mapa de calor>) e ele vira um atalho: clicando, a pesquisa abre aqui. Um navegador pequeno dentro do cartão da disciplina, para pesquisar no Google ou abrir um site sem sair do caderno.",c:"Digite o que procura (ou cole um link) e tecle Enter. Salvar link guarda nos Materiais desta disciplina; Expandir ocupa a tela toda (Esc volta); Abrir no navegador abre numa aba normal; Sobrepor abre uma janela que fica por cima das outras (Chrome/Edge no computador). Sites que não deixam ser abertos dentro de outra página aparecem em Modo leitura (só o texto); para ver com imagens, use Abrir no navegador. Vídeos do YouTube e arquivos do Google Drive/Docs abrem normalmente."},
   marco:{t:"Aviso ao fim da aula",o:"Quando uma aula termina, aparece uma janelinha no canto da tela perguntando se você esteve presente. Na última aula da disciplina, ela também oferece marcar a disciplina como concluída.",c:"Escolha Presente ou Falta. Depois fecha e pergunta de novo só se você abrir o caderno outro dia (cada aula é perguntada uma vez)."},
   linha:{t:"Linha do curso",o:"Cada risquinho é uma aula de 50 min, na cor da disciplina; os espaços maiores separam os dias. A aula em andamento vai enchendo conforme o relógio.",c:"Passe o mouse (ou toque) num risquinho para ver qual aula é. A conta é pelo horário de Fortaleza."},
   kpiha:{t:"h/a cumpridas",o:"Horas-aula (50 min) que já passaram, das 80 do curso. Conta pelo relógio de Fortaleza.",c:"Só acompanha o calendário; marcar presença é na própria aula."},
   kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
   kpinotas:{t:"Notas no caderno",o:"Quantidade de notas livres criadas na aba Caderno."},
   kpitar:{t:"Tarefas pendentes",o:"Tarefas ainda não marcadas como feitas.",c:"Crie na aba Tarefas, com disciplina e prazo."},
-  rapida:{t:"Anotação rápida",o:"Campo para escrever durante a aula. É a anotação da disciplina (uma só para todas as aulas do mesmo tema): o que você escrever aqui aparece também no painel da aula, no bloco flutuante e em Disciplinas.",c:"Escreva livremente. Aceita # título, - lista e **negrito**. Salva sozinho a cada pausa na digitação.",ex:"# SRC\n- SIRGAS 2000 / UTM 24S\n- **Projeto > Propriedades > SRC**"},
+  rapida:{t:"Anotação rápida",o:"Campo para escrever durante a aula. É a anotação da disciplina (uma só para todas as aulas do mesmo tema): o que você escrever aqui aparece também no painel da aula, no bloco flutuante e em Disciplinas.",c:"Escreva livremente; a formatação aparece pronta. Palavras entre < e > (ex.: <buffer qgis>) viram termos clicáveis que abrem a pesquisa da disciplina. Salva sozinho.",ex:"# SRC\n- SIRGAS 2000 / UTM 24S\n- **Projeto > Propriedades > SRC**"},
   cronograma:{t:"Cronograma",o:"As 80 aulas do QTS da AESP, dia a dia, com intervalos e almoço. 14 e 15/11 são reserva para reposição.",c:"Escolha o dia nos botões ou “Todos”. Clique numa aula para anotar, marcar presença ou estrela. Marcas na linha: ★ importante, “nota” tem anotação, presente/falta."},
   aula:{t:"Aula",o:"Presença e destaque desta aula, e a anotação da disciplina (compartilhada por todas as aulas do mesmo tema).",c:"Presente/Falta: controle de frequência (clique de novo para desmarcar). ★ Importante: destaca para revisar. Visualizar: mostra o texto formatado. As setas passam para a aula anterior/seguinte."},
   flutuante:{t:"Bloco flutuante",o:"As anotações da aula numa janela pequena que fica por cima das outras telas do caderno e continua aberta quando você troca de aba.",c:"Arraste pela barra de cima para mover e pelo canto de baixo para mudar o tamanho. Troque a aula na lista. – minimiza. ⧉ (Chrome e Edge no computador) solta o bloco numa janela que fica por cima de qualquer outra, como o QGIS ou os slides. O texto é o mesmo da anotação da aula e salva sozinho."},

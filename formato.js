@@ -53,6 +53,9 @@
 .pg-x:hover{color:var(--bad,#b3261e)}
 .pg-vazio{margin:4px 0;color:var(--muted);font-size:13.5px}
 .fmt-cheia .pergs{flex:1;max-height:none}
+.pesq{display:inline;border:0;margin:0;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);border-radius:4px;padding:0 4px;font:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;white-space:normal;user-select:all}
+.pesq::after{content:"↗";font-size:.72em;margin-left:2px;vertical-align:.25em;text-decoration:none;display:inline-block}
+.pesq:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .wys{position:relative;display:block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:120px;max-height:min(60vh,560px);overflow-y:auto;overflow-x:hidden;resize:vertical;line-height:1.6;outline:none;cursor:text;overflow-wrap:anywhere;max-width:none;color:var(--ink,inherit)}
 .wys:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .wys.vazio::before{content:attr(data-ph);position:absolute;left:12px;top:8px;right:12px;color:var(--muted);pointer-events:none}
@@ -147,16 +150,19 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
      pronta: negrito, itálico, marca-texto, títulos, listas, tarefas, citação, código, links, imagens e
      fluxogramas desenhados no ponto onde foram inseridos. */
   const RE_LFX=/^\s*!\[[^\]\n]*\]\(fx:([A-Za-z0-9_-]+)\)\s*$/;
+  // <termo> vira um termo pesquisável (abre no mininavegador de pesquisa)
+  const RE_PESQ=/<([^\s<>](?:[^<>\n]{0,78}[^\s<>])?)>/g;
   const escH=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   function inlineHtml(t){
     const codigos=[]; let s=String(t).replace(/`([^`]+)`/g,(x,c)=>{ codigos.push(c); return ""+(codigos.length-1)+""; });
+    const termos=[]; s=s.replace(RE_PESQ,(x,q)=>{ termos.push(q); return "\uE003"+(termos.length-1)+"\uE004"; });
     s=escH(s)
       .replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}">`)
       .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>")
       .replace(/(^|[^*])\*([^*\s][^*]*)\*/g,"$1<i>$2</i>")
       .replace(/==([^=]+)==/g,"<mark>$1</mark>")
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2">$1</a>');
-    return s.replace(/(\d+)/g,(x,i)=>"<code>"+escH(codigos[+i])+"</code>");
+    return s.replace(/(\d+)/g,(x,i)=>"<code>"+escH(codigos[+i])+"</code>").replace(/\uE003(\d+)\uE004/g,(x,i)=>`<span class="pesq" contenteditable="false" data-q="${escH(termos[+i])}" title="Pesquisar “${escH(termos[+i])}”">${escH(termos[+i])}</span>`);
   }
   function fxHtml(id, linha){
     const d=typeof S==="object"&&S&&S.docs?S.docs["fx-"+id]:null, ok=d&&!d.apagado;
@@ -196,6 +202,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(t==="CODE"){ o+=n.textContent?"`"+n.textContent+"`":""; continue; }
       if(t==="A"){ const h=n.getAttribute("href")||""; const x=inl(n); o+=/^https?:/.test(h)?`[${x||h}](${h})`:x; continue; }
       if(t==="IMG"){ const alt=(n.getAttribute("alt")||"imagem").replace(/[\[\]]/g,""); if(n.dataset.sb) o+=`![${alt}](sb:${n.dataset.sb})`; else if(/^https?:/.test(n.getAttribute("src")||"")) o+=`![${alt}](${n.getAttribute("src")})`; continue; }
+      if(t==="SPAN"&&n.classList.contains("pesq")){ o+="<"+(n.dataset.q||n.textContent).trim()+">"; continue; }
       if(t==="SPAN"||t==="FONT"){ let x=inl(n); const st=n.style||{}; if(/bold|[6-9]00/.test(st.fontWeight||"")) x=envolve(x,"**"); if(st.fontStyle==="italic") x=envolve(x,"*"); o+=x; continue; }
       o+=inl(n);
     }
@@ -338,6 +345,22 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     else if(k==="div"){ cmd("insertHorizontalRule"); }
     sincronizar(ed);
   }
+  // <palavra> digitado vira termo pesquisável na hora
+  function termoDigitado(ed){
+    const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3) return;
+    const antes=n.nodeValue.slice(0,o), m=antes.match(/<([^\s<>](?:[^<>\n]{0,78}[^\s<>])?)>$/); if(!m) return;
+    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a")) return;
+    const r=document.createRange(); r.setStart(n,o-m[0].length); r.setEnd(n,o); r.deleteContents();
+    const sp=document.createElement("span"); sp.className="pesq"; sp.contentEditable="false"; sp.dataset.q=m[1]; sp.title="Pesquisar “"+m[1]+"”"; sp.textContent=m[1];
+    const z=document.createTextNode("\u200b"); r.insertNode(z); r.insertNode(sp);
+    const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c);
+  }
+  // Clique num termo pesquisável: a página decide onde pesquisar; sem isso, abre o Google numa aba nova.
+  document.addEventListener("click",e=>{
+    const t=e.target.closest&&e.target.closest(".pesq[data-q]"); if(!t) return; e.preventDefault(); e.stopPropagation();
+    const ev=new CustomEvent("caderno:pesquisar",{detail:{q:t.dataset.q, el:t}, cancelable:true});
+    if(document.dispatchEvent(ev)) window.open("https://www.google.com/search?q="+encodeURIComponent(t.dataset.q),"_blank","noopener");
+  },true);
   // Atalhos de digitação: "- ", "1. ", "# ", "> ", "[] " numa linha vazia viram formatação.
   function cursorEm(el){ const r=document.createRange(); r.setStart(el,0); r.collapse(true); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }
   function atalhoDigitado(ed){
@@ -355,6 +378,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   document.addEventListener("input",e=>{
     const ed=e.target; if(!ed.classList||!ed.classList.contains("wys")) return;
     if(e.inputType==="insertText"&&e.data===" ") atalhoDigitado(ed);
+    if(e.inputType==="insertText"&&e.data===">") termoDigitado(ed);
     if(e.inputType==="insertParagraph"){ const li=dentroDe(ed,"LI"); if(li&&li.parentNode.classList.contains("tk")&&!li.textContent.trim()) li.dataset.tk="0"; }
     sincronizar(ed);
   });
