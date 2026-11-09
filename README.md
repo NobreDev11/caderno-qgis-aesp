@@ -36,7 +36,8 @@ Página estática única (`qgis.html`).
 
 ### Funções
 - **Hoje:** aula atual ou próxima (horário de Fortaleza) com anotação rápida.
-- **Cronograma:** 80 h/a do QTS (versão de 06/11/2026), presença, estrela e anotação por aula.
+- **Cronograma:** 80 h/a do QTS (versão de 06/11/2026), presença e estrela por aula.
+- **Uma anotação por tema (09/11):** a anotação é da disciplina (`disc-<k>.nota`), não de cada aula de 50 min: anotação rápida, painel da aula, bloco flutuante e "Anotações da disciplina" editam o mesmo texto. Notas antigas por aula são juntadas na anotação da disciplina (com o título "### Aula n/N · data hora") depois da 1ª leitura da nuvem (ou após 4 s sem conta) e apagadas da aula; não duplica se rodar de novo.
 - **Disciplinas:** 9 disciplinas, instrutores, progresso, resumo e nome editável.
 - **Materiais:** PDF, .txt/.md, fotos (até 8), link (site, PDF, Google Drive/Docs/Slides; YouTube só como link) ou texto colado. O texto do PDF é extraído no navegador (pdf.js 5.7.284 em `vendor/`). Arquivos vão para o Storage privado `caderno` (`<user_id>/...`).
 - **Resumo e questões:** automático (`/api/ia`, API do Claude) quando a variável `ANTHROPIC_API_KEY` existe na Vercel; sempre há o modo **copiar pedido → colar no app do Claude → colar resposta**. Pedidos em `prompts.js`.

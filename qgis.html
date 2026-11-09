@@ -340,7 +340,7 @@ async function iniciarSupa(session){
       const {data,error}=await q;
       if(error) throw error;
       const remoto={}; (data||[]).forEach(r=>{ remoto[r.id]=r.body; if(!S.desde||r.updated_at>S.desde) S.desde=r.updated_at; });
-      mesclar(remoto, !!inicial); S.inicialOk=true;
+      mesclar(remoto, !!inicial); S.inicialOk=true; migrarNotasAulas();
       S.modo="nuvem"; S.erro=false; if(S.faltaSQL){ S.faltaSQL=false; render(); }
     }catch(e){
       if(inicial){ S.modo="nuvem"; S.erro=true; }
@@ -446,7 +446,7 @@ async function conectarConvite(){
       const {data,error}=await rpc("caderno_conv_ler",{p_desde:desde});
       if(error) throw error;
       const remoto={}; (data||[]).forEach(r=>{ remoto[r.id]=r.body; if(!S.desde||r.updated_at>S.desde) S.desde=r.updated_at; });
-      mesclar(remoto, !!inicial); S.inicialOk=true;
+      mesclar(remoto, !!inicial); S.inicialOk=true; migrarNotasAulas();
       S.modo="nuvem"; S.erro=false;
     }catch(e){ if(inicial){ S.modo="nuvem"; S.erro=true; } }
     puxando=false; setSync();
@@ -458,6 +458,24 @@ async function conectarConvite(){
 /* ============ ACESSO AOS DADOS ============ */
 const aulaD = id => S.docs["aula-"+id] || {};
 const discD = k => S.docs["disc-"+k] || {};
+// Uma anotação por tema (disciplina): todas as aulas da mesma disciplina usam a anotação da disciplina (disc-<k>.nota).
+const notaDaAula = id => (discD(AK[id].k).nota||"");
+const salvarNotaAula = (id, v) => { const k=AK[id].k; salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nota:v}); };
+// Notas antigas, feitas por fração de aula, entram na anotação da disciplina (uma vez) com o título da aula.
+function migrarNotasAulas(){
+  const porDisc={};
+  for(const a of AULAS){ const d=S.docs["aula-"+a.id]; if(d&&!d.apagado&&(d.nota||"").trim()) (porDisc[a.k]=porDisc[a.k]||[]).push(a); }
+  for(const [k,aulas] of Object.entries(porDisc)){
+    let nota=(discD(k).nota||"");
+    for(const a of aulas){
+      const t=(S.docs["aula-"+a.id].nota||"").trim(), cab=`### Aula ${a.n}/${a.tot} · ${fmtData(a.data)} ${a.ini}`;
+      if(!nota.includes(t)) nota=(nota.trim()?nota.replace(/\s+$/,"")+"\n\n":"")+cab+"\n"+t;
+      salvarDoc("aula-"+a.id,{...S.docs["aula-"+a.id],tipo:"aula",nota:""},300);
+    }
+    salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nota},300);
+  }
+  if(Object.keys(porDisc).length && !editando()) render();
+}
 const nomeDisc = k => (discD(k).nome||"").trim() || DK[k].nome;
 const notas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="nota"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(b.upd||0)-(a.upd||0));
 const tarefas = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="tarefa"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(a.feito-b.feito)||((a.prazo||"9")<(b.prazo||"9")?-1:1)||((a.criado||0)-(b.criado||0)));
@@ -520,12 +538,12 @@ function renderNav(){
   const cnt={caderno:nn||"", tarefas:tp||"", materiais:(typeof mats==="function"&&mats().length)||""};
   document.getElementById("nav").innerHTML=VIEWS.map(([k,l])=>`<button data-go="${k}" ${VIEW===k?'aria-current="page"':""}>${l}<span class="cnt">${cnt[k]??""}</span></button>`).join("");
   const passadas=AULAS.filter(a=>statusAula(a)==="past").length;
-  const comNota=AULAS.filter(a=>(aulaD(a.id).nota||"").trim()).length;
+  const comNota=DISC.filter(x=>(discD(x.k).nota||"").trim()).length;
   const pres=AULAS.filter(a=>aulaD(a.id).pres==="p").length;
   document.getElementById("prog").innerHTML=`
     <div class="row" style="justify-content:space-between"><span>Curso</span><span class="mono">${passadas}/80 h/a</span></div>
     <div class="bar"><i style="width:${passadas/80*100}%"></i></div>
-    <div class="row" style="justify-content:space-between"><span>Aulas anotadas</span><span class="mono">${comNota}</span></div>
+    <div class="row" style="justify-content:space-between"><span>Disciplinas anotadas</span><span class="mono">${comNota}</span></div>
     <div class="row" style="justify-content:space-between"><span>Presenças marcadas</span><span class="mono">${pres}</span></div>`;
 }
 
@@ -534,7 +552,6 @@ function slotHTML(a){
   const st=statusAula(a), d=aulaD(a.id);
   const flags=[];
   if(d.estrela) flags.push('<span title="Importante">★</span>');
-  if((d.nota||"").trim()) flags.push('<span class="chip">nota</span>');
   if(d.pres==="p") flags.push('<span class="fl-p">presente</span>'); else if(d.pres==="f") flags.push('<span class="fl-f">falta</span>');
   return `<button class="slot ${st}" data-aula="${a.id}"><span class="mono">${a.ini}–${a.fim}</span><span class="nm">${sw(a.k)}<span>${esc(nomeDisc(a.k))}</span><span class="mono muted" style="flex:none">${a.n}/${a.tot}</span></span><span class="flags">${flags.join("")}</span></button>`;
 }
@@ -570,7 +587,7 @@ function vHoje(){
       <div class="d">${esc(nomeDisc(foco.k))}</div>
       <div class="muted">${DK[foco.k].inst.map(esc).join(" · ")}</div>
       <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida desta aula</label>${info("rapida")}</div>
-      <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. Salva sozinho.">${esc(d.nota||"")}</textarea></div>
+      <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. É uma anotação só para toda a disciplina; salva sozinho.">${esc(notaDaAula(foco.id))}</textarea></div>
       <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button><button class="btn sm" data-flabrir="${foco.id}">Bloco flutuante</button> ${info("flutuante")}<button class="btn sm" data-tmabrir>⏱ Temporizador</button></div>
     </div>` : `<div class="card"><p class="muted" style="margin:0">Nenhuma aula pela frente.</p></div>`;
 
@@ -610,7 +627,7 @@ function vDisciplinas(){
   ${DISC.map(x=>{
     const aulas=AULAS.filter(a=>a.k===x.k); const pas=aulas.filter(a=>statusAula(a)==="past").length;
     const dd=discD(x.k); const nts=notas().filter(n=>n.disc===x.k);
-    const anot=aulas.filter(a=>(aulaD(a.id).nota||"").trim());
+    const anot=aulas.filter(a=>aulaD(a.id).pres==="p");
     const dias=[...new Set(aulas.map(a=>a.data))];
     return `<div class="card" id="d-${x.k}" style="border-left:6px solid ${x.cor}">
       <div class="dhead">
@@ -621,10 +638,10 @@ function vDisciplinas(){
       </div>
       <div class="row" style="margin:10px 0 4px;gap:8px"><div class="bar" style="flex:1"><i style="width:${pas/x.ha*100}%;background:${x.cor}"></i></div><span class="mono" style="font-size:12.5px">${pas}/${x.ha}</span></div>
       <div class="grid2" style="margin-top:10px">
-        <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Resumo da disciplina</label>${info("discres")}</div>
+        <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
           <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea></div>
-        <div class="notes"><span class="lb">Aulas (${anot.length} com anotação) ${info("discaulas")}</span>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">${aulas.map(a=>{const ad=aulaD(a.id);const has=(ad.nota||"").trim();return `<button class="btn sm ${has?"on":""}" data-aula="${a.id}" title="${fmtData(a.data)} ${a.ini}">${a.n}${ad.estrela?" ★":""}</button>`}).join("")}</div>
+        <div class="notes"><span class="lb">Aulas (${anot.length} com presença) ${info("discaulas")}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${aulas.map(a=>{const ad=aulaD(a.id);const has=ad.pres==="p";return `<button class="btn sm ${has?"on":""}" data-aula="${a.id}" title="${fmtData(a.data)} ${a.ini}">${a.n}${ad.estrela?" ★":""}</button>`}).join("")}</div>
           ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
           ${(()=>{const ms=mats().filter(m=>m.disc===x.k);return `<div class="row" style="justify-content:space-between;margin-top:6px"><span class="lb" style="margin:0">Materiais (${ms.length})</span><button class="btn sm" data-addmat="${x.k}">Adicionar</button></div>`+ms.map(matItem).join("")})()}
         </div>
@@ -672,7 +689,7 @@ function resultados(){
   const q=BUSCA.trim().toLowerCase(); if(q.length<2) return '<p class="empty">Digite pelo menos 2 letras.</p>';
   const r=[];
   AULAS.forEach(a=>{const t=aulaD(a.id).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-aula="${a.id}"><strong>${esc(nomeDisc(a.k))} · aula ${a.n}/${a.tot}</strong> <span class="mono muted" style="font-size:12px">${fmtData(a.data)} ${a.ini}</span><div class="ex">${trecho(t,q)}</div></button>`)});
-  DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Resumo: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
+  DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Anotações: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
   mats().forEach(m=>{const t=(m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-mat="${m.id}"><strong>Material: ${esc(m.titulo)}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   tarefas().forEach(t=>{ if((t.texto||"").toLowerCase().includes(q)) r.push(`<button class="ni" data-go="tarefas"><strong>Tarefa</strong><div class="ex">${trecho(t.texto,q)}</div></button>`)});
@@ -683,7 +700,7 @@ function exportarMD(){
   let o=`# Uso do QGIS como Estratégia de Segurança Pública\nAESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11/2026\n\n`;
   DISC.forEach(d=>{
     o+=`## ${nomeDisc(d.k)}\n${d.inst.join(" · ")} · ${d.ha} h/a\n\n`;
-    const dn=discD(d.k).nota; if(dn&&dn.trim()) o+=`### Resumo\n${dn.trim()}\n\n`;
+    const dn=discD(d.k).nota; if(dn&&dn.trim()) o+=`${dn.trim()}\n\n`;
     AULAS.filter(a=>a.k===d.k).forEach(a=>{const ad=aulaD(a.id); if((ad.nota||"").trim()||ad.estrela) o+=`### Aula ${a.n}/${a.tot} · ${fmtData(a.data)} ${a.ini}${ad.estrela?" ★":""}\n${(ad.nota||"").trim()}\n\n`;});
     notas().filter(n=>n.disc===d.k).forEach(n=>{o+=`### Nota: ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;});
     mats().filter(m=>m.disc===d.k&&m.resumo).forEach(m=>{o+=`### Material: ${m.titulo}\n${m.resumo.trim()}\n\n`;});
@@ -745,7 +762,7 @@ function renderPane(){
           <button class="btn sm" data-fxnovo title="Inserir um fluxograma na anotação">Fluxograma</button>
           <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button>
         </div>
-        ${PANE.prev? `<div class="md">${md(d.nota)}</div>` : `<div class="row" style="gap:6px"><label class="lb" for="pnota" style="margin:0">Anotações</label>${info("markdown")}</div><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(d.nota||"")}</textarea>`}
+        ${PANE.prev? `<div class="md">${md(notaDaAula(a.id))}</div>` : `<div class="row" style="gap:6px"><label class="lb" for="pnota" style="margin:0">Anotações de ${esc(nomeDisc(a.k))} (uma para todas as aulas do tema)</label>${info("markdown")}</div><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(notaDaAula(a.id))}</textarea>`}
         <div class="row" style="justify-content:space-between">
           <button class="btn sm" ${i>0?`data-aula="${AULAS[i-1].id}"`:"disabled"}>← Aula anterior</button>
           <button class="btn sm" ${i<79?`data-aula="${AULAS[i+1].id}"`:"disabled"}>Próxima aula →</button>
@@ -1091,13 +1108,13 @@ const AJUDA={
   kpidisc:{t:"Disciplinas concluídas",o:"Disciplinas cuja última aula já terminou."},
   kpinotas:{t:"Notas no caderno",o:"Quantidade de notas livres criadas na aba Caderno."},
   kpitar:{t:"Tarefas pendentes",o:"Tarefas ainda não marcadas como feitas.",c:"Crie na aba Tarefas, com disciplina e prazo."},
-  rapida:{t:"Anotação rápida",o:"Campo para escrever durante a aula. Fica salvo na aula atual (ou na próxima, antes de começar).",c:"Escreva livremente. Aceita # título, - lista e **negrito**. Salva sozinho a cada pausa na digitação.",ex:"# SRC\n- SIRGAS 2000 / UTM 24S\n- **Projeto > Propriedades > SRC**"},
+  rapida:{t:"Anotação rápida",o:"Campo para escrever durante a aula. É a anotação da disciplina (uma só para todas as aulas do mesmo tema): o que você escrever aqui aparece também no painel da aula, no bloco flutuante e em Disciplinas.",c:"Escreva livremente. Aceita # título, - lista e **negrito**. Salva sozinho a cada pausa na digitação.",ex:"# SRC\n- SIRGAS 2000 / UTM 24S\n- **Projeto > Propriedades > SRC**"},
   cronograma:{t:"Cronograma",o:"As 80 aulas do QTS da AESP, dia a dia, com intervalos e almoço. 14 e 15/11 são reserva para reposição.",c:"Escolha o dia nos botões ou “Todos”. Clique numa aula para anotar, marcar presença ou estrela. Marcas na linha: ★ importante, “nota” tem anotação, presente/falta."},
-  aula:{t:"Aula",o:"Anotações de uma aula específica.",c:"Presente/Falta: controle de frequência (clique de novo para desmarcar). ★ Importante: destaca para revisar. Visualizar: mostra o texto formatado. As setas passam para a aula anterior/seguinte."},
+  aula:{t:"Aula",o:"Presença e destaque desta aula, e a anotação da disciplina (compartilhada por todas as aulas do mesmo tema).",c:"Presente/Falta: controle de frequência (clique de novo para desmarcar). ★ Importante: destaca para revisar. Visualizar: mostra o texto formatado. As setas passam para a aula anterior/seguinte."},
   flutuante:{t:"Bloco flutuante",o:"As anotações da aula numa janela pequena que fica por cima das outras telas do caderno e continua aberta quando você troca de aba.",c:"Arraste pela barra de cima para mover e pelo canto de baixo para mudar o tamanho. Troque a aula na lista. – minimiza. ⧉ (Chrome e Edge no computador) solta o bloco numa janela que fica por cima de qualquer outra, como o QGIS ou os slides. O texto é o mesmo da anotação da aula e salva sozinho."},
   markdown:{t:"Formatação do texto",o:"Atalhos simples para organizar as anotações.",c:"# Título · ## Subtítulo · - item de lista · **negrito** · *itálico* · `código` · links começando com http viram clicáveis.",ex:"## Buffer\n- Vetor > Geoprocessamento > Buffer\n- distância em **metros** (SRC projetado)"},
   disciplinas:{t:"Disciplinas",o:"As 9 disciplinas do curso com instrutores, carga horária, dias e progresso.",c:"“Editar nome” completa o nome (no QTS veio cortado). “Resumo da disciplina” é seu resumo geral. Os números são as aulas: clique para abrir. Também dá para criar notas e materiais da disciplina."},
-  discres:{t:"Resumo da disciplina",o:"Seu resumo geral da disciplina, separado das anotações de cada aula.",c:"Use para juntar conceitos-chave, atalhos e links de material. Salva sozinho."},
+  discres:{t:"Anotações da disciplina",o:"A anotação única do tema: é o mesmo texto da anotação rápida, do painel de cada aula e do bloco flutuante dessa disciplina.",c:"Use para juntar conceitos-chave, atalhos e links de material. Salva sozinho."},
   discaulas:{t:"Aulas da disciplina",o:"Cada número é uma aula (sessão) da disciplina.",c:"Botão destacado = aula com anotação. ★ = marcada como importante. Clique para abrir."},
   materiais:{t:"Materiais",o:"Biblioteca do curso: PDFs, slides, fotos do quadro, links e textos, separados por disciplina.",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo e questões, ou para corrigir o texto extraído."},
   addmat:{t:"Novo material",o:"Formas de trazer conteúdo para o caderno.",c:"Arquivo: PDF ou texto (o app lê o texto do PDF). Fotos: até 8 de slides ou do quadro. Link: site, PDF, Google Drive/Docs/Slides (precisa estar como “Qualquer pessoa com o link”); YouTube fica só como link. Colar texto: conteúdo copiado de qualquer lugar."},
@@ -1191,8 +1208,8 @@ function htmlFlutuante(){
     ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
     ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: o QGIS ou os slides)" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
-   ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações da aula" placeholder="Anote aqui durante a aula. Salva sozinho.">${esc(d.nota||"")}</textarea>
-   <div class="fl-p"><span>${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na aula"}</span><span class="mono">${fmtData(a.data)} ${a.ini}–${a.fim}</span></div>`}`;
+   ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações da disciplina" placeholder="Anote aqui durante a aula. Uma anotação para a disciplina toda; salva sozinho.">${esc(notaDaAula(a.id))}</textarea>
+   <div class="fl-p"><span>${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}</span><span class="mono">${fmtData(a.data)} ${a.ini}–${a.fim}</span></div>`}`;
 }
 function posicionar(el){
   if(innerWidth<=820) return;
@@ -1218,7 +1235,7 @@ function renderFlutuante(){
 function sincronizarFlutuante(){
   if(!FL.aberto||FL.min) return;
   const doc=PIP?PIP.document:document, ta=doc.getElementById("fl-txt");
-  if(ta && doc.activeElement!==ta){ const v=aulaD(FL.id).nota||""; if(ta.value!==v) ta.value=v; }
+  if(ta && doc.activeElement!==ta){ const v=notaDaAula(FL.id); if(ta.value!==v) ta.value=v; }
 }
 async function destacarFlutuante(){
   let w;
@@ -1246,9 +1263,9 @@ function ligarFlutuante(doc){
   });
   doc.addEventListener("input",e=>{
     if(e.target.id!=="fl-txt") return;
-    const id=FL.id; salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:e.target.value});
-    const q=document.querySelector(`[data-qaula="${id}"]`); if(q&&document.activeElement!==q) q.value=e.target.value;
-    if(PANE&&PANE.tipo==="aula"&&PANE.id===id){ const p=document.getElementById("pnota"); if(p&&document.activeElement!==p) p.value=e.target.value; }
+    const id=FL.id, k=AK[id].k; salvarNotaAula(id, e.target.value);
+    const q=document.querySelector("[data-qaula]"); if(q&&AK[q.dataset.qaula]&&AK[q.dataset.qaula].k===k&&document.activeElement!==q) q.value=e.target.value;
+    if(PANE&&PANE.tipo==="aula"&&AK[PANE.id].k===k){ const p=document.getElementById("pnota"); if(p&&document.activeElement!==p) p.value=e.target.value; }
   });
   doc.addEventListener("change",e=>{
     if(e.target.id!=="fl-item") return;
@@ -1268,7 +1285,8 @@ document.addEventListener("pointerdown",e=>{
 });
 window.addEventListener("resize",()=>{ if(FL.aberto&&!PIP){ const el=document.getElementById("flut"); if(el) posicionar(el); } });
 // Atualiza o bloco quando a anotação muda em outro campo desta página.
-document.addEventListener("input",e=>{ const t=e.target; if(FL.aberto&&((t.dataset&&t.dataset.qaula===FL.id)||(t.id==="pnota"&&PANE&&PANE.id===FL.id))) setTimeout(sincronizarFlutuante,0); });
+document.addEventListener("input",e=>{ const t=e.target; if(!FL.aberto||!AK[FL.id]) return; const k=AK[FL.id].k;
+  if((t.dataset&&t.dataset.qaula&&AK[t.dataset.qaula]&&AK[t.dataset.qaula].k===k)||(t.id==="pnota"&&PANE&&AK[PANE.id]&&AK[PANE.id].k===k)||(t.dataset&&t.dataset.dnota===k)) setTimeout(sincronizarFlutuante,0); });
 
 /* ============ RENDER + EVENTOS ============ */
 function render(){
@@ -1318,8 +1336,8 @@ document.addEventListener("keydown",e=>{
 });
 document.addEventListener("input",e=>{
   const t=e.target;
-  if(t.id==="pnota"){ const id=PANE.id; salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:t.value}); return; }
-  if(t.dataset.qaula){ const id=t.dataset.qaula; salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:t.value}); return; }
+  if(t.id==="pnota"){ salvarNotaAula(PANE.id, t.value); return; }
+  if(t.dataset.qaula){ salvarNotaAula(t.dataset.qaula, t.value); return; }
   if(t.dataset.dnota){ const k=t.dataset.dnota; salvarDoc("disc-"+k,{...discD(k),tipo:"disc",nota:t.value}); return; }
   if(t.id==="ntit"||t.id==="ntxt"){ salvarNotaDoForm(); return; }
   if(t.id==="q"){ BUSCA=t.value; document.getElementById("res").innerHTML=resultados(); return; }
@@ -1358,6 +1376,7 @@ document.getElementById("sinfo").innerHTML=info("sync");
 if(CONVITE){ const v=document.getElementById("voltarCursos"); if(v) v.hidden=true; }
 render(); setSync(); renderFlutuante();
 conectar();
+setTimeout(()=>{ if(!S.push) migrarNotasAulas(); },4000);
 </script>
 <script>
 // Temporizador: o tempo de foco soma na disciplina da aula atual (ou da próxima).
@@ -1369,8 +1388,8 @@ window.TIMER_CFG={ls:"caderno-qgis-aesp:timer", meta:null, alvo:()=>{ const a=fo
 window.FLUXO_ALVO=()=>{
   if(!PANE) return null;
   if(PANE.tipo==="aula"){ const id=PANE.id; return {ta:()=>document.getElementById("pnota"),
-    get:()=>{ const ta=document.getElementById("pnota"); return ta?ta.value:(aulaD(id).nota||""); },
-    set:v=>{ salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",nota:v},50); renderPane(); sincronizarFlutuante(); }}; }
+    get:()=>{ const ta=document.getElementById("pnota"); return ta?ta.value:notaDaAula(id); },
+    set:v=>{ salvarNotaAula(id,v); renderPane(); sincronizarFlutuante(); }}; }
   if(PANE.tipo==="nota"){ const id=PANE.id; return {ta:()=>document.getElementById("ntxt"),
     get:()=>{ const ta=document.getElementById("ntxt"); return ta?ta.value:((S.docs[id]||{}).texto||""); },
     set:v=>{ const ta=document.getElementById("ntxt"); if(ta){ ta.value=v; salvarNotaDoForm(); } else salvarDoc(id,{...(S.docs[id]||{tipo:"nota",criado:Date.now()}),tipo:"nota",texto:v},50); renderPane(); }}; }
