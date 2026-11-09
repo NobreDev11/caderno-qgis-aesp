@@ -23,6 +23,7 @@
     ["div","―","Linha divisória"],
     ["img",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3.5" width="16" height="13" rx="2"/><circle cx="7" cy="8" r="1.6"/><path d="M2.5 15l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5"/></svg><span class="fmt-tx">Imagem</span>',"Inserir imagem neste ponto do texto (também dá para colar com Ctrl+V ou arrastar a imagem para a caixa)"],
     ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
+    ["tab",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="1.5"/><path d="M2 7.5h16M2 12h16M8 3v14M13 3v14"/></svg><span class="fmt-tx">Tabela</span>',"Inserir tabela neste ponto (com o cursor numa tabela: adicionar/remover linhas e colunas). Tab passa para a próxima célula."],
   ];
   const CSS=`
 .fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:wrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
@@ -31,7 +32,7 @@
 .fmt button:hover{background:var(--accent-soft)}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
-.fmt [data-fmt=flx],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
+.fmt [data-fmt=flx],.fmt [data-fmt=tab],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
 .fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
 .fmt-abas{display:flex;gap:2px;margin:0 0 -1px;position:relative;z-index:1}
 .fmt-abas button{border:1px solid var(--line);border-bottom:0;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:5px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
@@ -70,6 +71,19 @@
 .wys ul.tk>li[data-tk="1"]::before{content:"☑";color:var(--accent)}
 .wys ul.tk>li[data-tk="1"]{color:var(--muted);text-decoration:line-through}
 .wys li[data-ind]{margin-left:1.2em}
+.wys table,.md table{border-collapse:collapse;margin:.5em 0;display:block;max-width:100%;overflow-x:auto;font-size:.95em}
+.wys th,.wys td,.md th,.md td{border:1px solid var(--line);padding:5px 9px;min-width:60px;vertical-align:top;text-align:left}
+.wys th,.md th{background:var(--accent-soft);font-weight:700}
+.wys td:focus-within,.wys th:focus-within{outline:2px solid var(--accent);outline-offset:-2px}
+.tb-pop{position:fixed;z-index:9999;background:var(--surface,#fff);color:var(--ink,inherit);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.25);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:200px;font-size:13.5px}
+.tb-pop .tb-l{display:flex;gap:8px;align-items:center}
+.tb-pop label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted)}
+.tb-pop input{width:64px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:inherit;font:inherit}
+.tb-pop button{border:1px solid var(--line);background:transparent;color:inherit;border-radius:7px;padding:5px 10px;font:inherit;cursor:pointer;text-align:left}
+.tb-pop button:hover{background:var(--accent-soft)}
+.tb-pop .tb-pri{background:var(--accent);color:#fff;border-color:var(--accent);text-align:center}
+.tb-pop .tb-rm{color:#c0392b}
+.tb-pop .tb-t{font-weight:700;font-size:12.5px}
 .wys ol,.md ol.sn{list-style:none;counter-reset:sn;padding-left:1.9em}
 .wys ol>li,.md ol.sn>li{counter-increment:sn;position:relative}
 .wys ol>li::before,.md ol.sn>li::before{content:counters(sn,".") ".";position:absolute;right:100%;margin-right:.4em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
@@ -211,6 +225,15 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     while(st.length) o+=`</li></${st.pop().tag}>`;
     return o;
   }
+  // Tabelas Markdown (| a | b | + | --- | --- |)
+  const RE_SEPTB=/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+  function ehTabela(ls,i){ return /^\s*\|/.test(ls[i]||"")&&RE_SEPTB.test(ls[i+1]||"")&&(ls[i+1]||"").includes("-"); }
+  function celulas(l){ let t=l.trim(); if(t.startsWith("|")) t=t.slice(1); if(t.endsWith("|")&&!t.endsWith("\\|")) t=t.slice(0,-1); return t.split(/(?<!\\)\|/).map(c=>c.trim().replace(/\\\|/g,"|")); }
+  // devolve [html, última linha usada]
+  function tabelaHtml(ls,i,cel){ const cab=celulas(ls[i]); const n=cab.length; let j=i+2; const linhas=[];
+    while(j<ls.length&&/^\s*\|/.test(ls[j])){ const c=celulas(ls[j]); while(c.length<n) c.push(""); linhas.push(c.slice(0,n)); j++; }
+    const h=`<table><thead><tr>${cab.map(c=>`<th>${cel(c)}</th>`).join("")}</tr></thead><tbody>${linhas.map(r=>`<tr>${r.map(c=>`<td>${cel(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    return [h,j-1]; }
   function mdParaHtml(v){
     const ls=String(v||"").split("\n"); let o="", lista=null, ultFx=false; const AUX='<div data-aux="1"><br></div>';
     const fecha=()=>{ if(lista){ o+=`</${lista.tag}>`; lista=null; } };
@@ -220,6 +243,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       let m=l.match(RE_LFX); if(m){ fecha(); if(eraFx||!o) o+=AUX; o+=fxHtml(m[1], l.trim()); ultFx=true; continue; }
       if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fecha(); o+="<hr>"; continue; }
       m=l.match(/^(#{1,3})\s+(.*)$/); if(m){ fecha(); o+=`<h${m[1].length}>${inlineHtml(m[2])||"<br>"}</h${m[1].length}>`; continue; }
+      if(ehTabela(ls,i)){ fecha(); const [h,f]=tabelaHtml(ls,i,c=>inlineHtml(c)||"<br>"); o+=h; i=f; if(i===ls.length-1) o+='<div><br></div>'; continue; }
       if(ehItem(l)){ fecha(); const b=[l]; while(i+1<ls.length&&ehItem(ls[i+1])){ i++; b.push(ls[i]); } o+=listaHtml(b,true); continue; }
       if(/^>/.test(l)){ fecha(); const q=[l]; while(i+1<ls.length&&/^>/.test(ls[i+1])){ i++; q.push(ls[i]); } o+="<blockquote>"+q.map(x=>`<div>${inlineHtml(x.replace(/^>\s?/,""))||"<br>"}</div>`).join("")+"</blockquote>"; continue; }
       fecha(); o+=`<div>${inlineHtml(l)||"<br>"}</div>`;
@@ -270,6 +294,11 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(t==="BLOCKQUOTE"){ linhasDe(n).forEach(x=>out.push("> "+x)); continue; }
       if(t==="PRE"){ out.push("```", ...n.textContent.replace(/\n$/,"").split("\n"), "```"); continue; }
       if(t==="HR"){ out.push("---"); continue; }
+      if(t==="TABLE"){ const trs=[...n.querySelectorAll("tr")]; if(!trs.length) continue;
+        const cel=c=>inl(c).replace(/\n+/g," ").replace(/[\u200b]/g,"").trim().replace(/\|/g,"\\|")||" ";
+        const rows=trs.map(tr=>[...tr.children].map(cel)); const nc=Math.max(...rows.map(r=>r.length));
+        rows.forEach(r=>{ while(r.length<nc) r.push(" "); });
+        out.push("| "+rows[0].join(" | ")+" |", "|"+" --- |".repeat(nc), ...rows.slice(1).map(r=>"| "+r.join(" | ")+" |")); continue; }
       if([...n.children].some(c=>BLOCO.test(c.tagName)||c.classList.contains("fx-bloco"))){ out.push(...linhasDe(n)); continue; }
       const x=inl(n).replace(/\n$/,""); out.push(...x.split("\n"));
     }
@@ -399,12 +428,49 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!algum){ cmd("outdent"); sincronizar(ed); return true; }
     voltaSel(sel); sincronizar(ed); return true;
   }
+  let BT_ULT=null;
+  function celAtual(ed){ return dentroDe(ed,"TD")||dentroDe(ed,"TH"); }
+  function focarCel(c){ if(!c) return; const r=document.createRange(); r.selectNodeContents(c); r.collapse(false); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }
+  function novaTabela(ed,nl,nc){
+    const th=Array.from({length:nc},(_,i)=>`<th>Coluna ${i+1}</th>`).join(""), td=`<tr>${"<td><br></td>".repeat(nc)}</tr>`;
+    cmd("insertHTML",`<table><thead><tr>${th}</tr></thead><tbody>${td.repeat(Math.max(1,nl-1))}</tbody></table><div><br></div>`);
+    sincronizar(ed);
+  }
+  function opTabela(ed,op){
+    const c=celAtual(ed); if(!c) return; const tr=c.parentNode, tb=c.closest("table"), col=[...tr.children].indexOf(c);
+    if(op==="linha"){ const n=document.createElement("tr"); n.innerHTML="<td><br></td>".repeat(tr.children.length); if(tr.parentNode.tagName==="THEAD"){ let b=tb.tBodies[0]; if(!b){ b=document.createElement("tbody"); tb.appendChild(b); } b.prepend(n); } else tr.after(n); focarCel(n.children[Math.max(0,col)]); }
+    else if(op==="coluna"){ [...tb.rows].forEach(r=>{ const ref=r.children[col]; const x=document.createElement(r.parentNode.tagName==="THEAD"?"th":"td"); x.innerHTML=r.parentNode.tagName==="THEAD"?"Coluna "+(r.children.length+1):"<br>"; ref?ref.after(x):r.appendChild(x); }); focarCel(tr.children[col+1]); }
+    else if(op==="-linha"){ if(tr.parentNode.tagName==="THEAD") return; const viz=tr.nextElementSibling||tr.previousElementSibling||tb.rows[0]; tr.remove(); focarCel(viz&&viz.children[Math.min(col,viz.children.length-1)]); }
+    else if(op==="-coluna"){ if(tr.children.length<2) return; [...tb.rows].forEach(r=>{ if(r.children[col]) r.children[col].remove(); }); focarCel(tr.children[Math.min(col,tr.children.length-1)]); }
+    else if(op==="tirar"){ const d=document.createElement("div"); d.innerHTML="<br>"; tb.replaceWith(d); cursorEm(d); }
+    sincronizar(ed);
+  }
+  function popTabela(ed,bt){
+    const doc=ed.ownerDocument; doc.querySelectorAll(".tb-pop").forEach(x=>x.remove());
+    const em=!!celAtual(ed), p=doc.createElement("div"); p.className="tb-pop";
+    p.innerHTML= em ? `<div class="tb-t">Tabela</div><button data-tb="linha">+ Linha abaixo</button><button data-tb="coluna">+ Coluna à direita</button><button data-tb="-linha">− Remover linha</button><button data-tb="-coluna">− Remover coluna</button><button data-tb="tirar" class="tb-rm">Remover tabela</button>`
+      : `<div class="tb-t">Nova tabela</div><div class="tb-l"><label>Linhas<input type="number" min="2" max="40" value="3" class="tb-nl"></label><label>Colunas<input type="number" min="1" max="12" value="3" class="tb-nc"></label></div><button class="tb-pri" data-tb="criar">Inserir tabela</button><span style="font-size:11.5px;color:var(--muted)">A 1ª linha é o cabeçalho.</span>`;
+    doc.body.appendChild(p);
+    const r=(bt||ed).getBoundingClientRect(), w=p.offsetWidth, W=doc.documentElement.clientWidth;
+    p.style.left=Math.max(6,Math.min(r.left,W-w-6))+"px"; p.style.top=(r.bottom+4)+"px";
+    const fechar=()=>{ p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",esc,true); };
+    const fora=e=>{ if(!p.contains(e.target)&&e.target!==bt&&!(bt&&bt.contains(e.target))) fechar(); };
+    const esc=e=>{ if(e.key==="Escape"){ e.stopPropagation(); fechar(); restaurar(ed); } };
+    doc.addEventListener("mousedown",fora,true); doc.addEventListener("keydown",esc,true);
+    p.addEventListener("mousedown",e=>{ if(e.target.tagName==="BUTTON") e.preventDefault(); });
+    p.addEventListener("click",e=>{ const b=e.target.closest("[data-tb]"); if(!b) return; const op=b.dataset.tb;
+      const nl=Math.min(40,Math.max(2,+p.querySelector(".tb-nl")?.value||3)), nc=Math.min(12,Math.max(1,+p.querySelector(".tb-nc")?.value||3));
+      fechar(); restaurar(ed); if(op==="criar") novaTabela(ed,nl,nc); else opTabela(ed,op); });
+    p.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.tagName==="INPUT"){ e.preventDefault(); p.querySelector(".tb-pri").click(); } });
+    const inp=p.querySelector("input"); if(inp) inp.select(); else p.querySelector("button").focus();
+  }
   function aplicarEd(ed,k){
     const ta=ed._ta;
     if(k==="cheia") return telaCheia(ta);
     if(k==="flx") return fluxograma(ta);
     restaurar(ed);
     if(k==="img") return escolherImagem(ta);
+    if(k==="tab") return popTabela(ed,BT_ULT);
     if(k==="sub"){ if(!dentroDe(ed,"LI")){ cmd("insertUnorderedList"); sincronizar(ed); return; } return recuar(ed); }
     if(k==="sob") return desrecuar(ed);
     if(/^(lis|num|tar|cit)$/.test(k)){ const bl=blocoAtual(ed); if(bl&&/^H[1-6]$/.test(bl.tagName)) cmd("formatBlock","div"); }
@@ -459,6 +525,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   });
   document.addEventListener("keydown",e=>{
     const ed=e.target; if(!ed.classList||!ed.classList.contains("wys")) return;
+    if(e.key==="Tab"&&celAtual(ed)){ e.preventDefault(); const c=celAtual(ed), cs=[...c.closest("table").querySelectorAll("th,td")], i=cs.indexOf(c);
+      if(e.shiftKey){ focarCel(cs[i-1]||c); return; } if(i===cs.length-1){ opTabela(ed,"linha"); focarCel(c.closest("table").rows[c.closest("table").rows.length-1].children[0]); return; } focarCel(cs[i+1]); return; }
     if(e.key==="Tab"&&dentroDe(ed,"LI")){ e.preventDefault(); if(e.shiftKey) desrecuar(ed); else recuar(ed); return; }
     // Enter num item vazio de sublista: volta um nível (como no Word)
     if(e.key==="Enter"&&!e.shiftKey){ const li=dentroDe(ed,"LI"); if(li&&!li.textContent.replace(/[\u200b\s]/g,"")&&!li.querySelector("img")&&li.parentNode.parentNode.tagName==="LI"){ e.preventDefault(); desrecuar(ed); return; } }
@@ -650,7 +718,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
   function aplicar(ta,k){
-    ({sub:()=>recuoTa(ta,true), sob:()=>recuoTa(ta,false), neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
+    ({tab:()=>{ const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":""; trocar(ta,a,ta.selectionEnd,antes+"| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n"); },
+      sub:()=>recuoTa(ta,true), sob:()=>recuoTa(ta,false), neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
       cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta), img:()=>escolherImagem(ta), flx:()=>fluxograma(ta), cheia:()=>telaCheia(ta)})[k]();
   }
@@ -719,7 +788,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       const bt=e.target.closest(".fmt button[data-fmt]"); if(!bt) return;
       let ta=bt.closest(".fmt").nextElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return;
       const k=bt.dataset.fmt;
-      if(ta._ed) aplicarEd(ta._ed,k); else aplicar(ta,k);
+      BT_ULT=bt; if(ta._ed) aplicarEd(ta._ed,k); else aplicar(ta,k);
     });
     doc.addEventListener("keydown",e=>{
       const ta=e.target; if(!ta.matches||!ta.matches(ALVOS+",textarea.fx-seg")) return;
@@ -753,5 +822,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const orig=window.ligarFlutuante;
     window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); } };
   }
-  window.FORMATO={listaHtml, ehItem, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
+  window.FORMATO={listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();

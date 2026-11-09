@@ -583,6 +583,7 @@ function md(src){
       else out+=`<pre><code>${esc(c)}</code></pre>`;
       i=j; continue; }
     if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fechar(); out+="<hr>"; continue; }
+    if(window.FORMATO&&FORMATO.ehTabela(linhas,i)){ fechar(); const [h,f]=FORMATO.tabelaHtml(linhas,i,inl); out+=h; i=f; continue; }
     if(window.FORMATO&&FORMATO.ehItem(l)){ fechar(); const b=[l]; while(i+1<linhas.length&&FORMATO.ehItem(linhas[i+1])){ i++; b.push(linhas[i]); } out+=FORMATO.listaHtml(b,false,inl); continue; }
     const tk=l.match(/^\s*[-*]\s+\[([ xX])\]\s*(.*)$/);
     if(tk){ abrir("ul"); const ok=tk[1]!==" "; out+=`<li class="tk${ok?" ok":""}">${ok?"☑":"☐"} ${inl(tk[2])}</li>`; continue; }
