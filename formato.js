@@ -20,6 +20,7 @@
     ["div","―","Linha divisória"],
     ["img",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3.5" width="16" height="13" rx="2"/><circle cx="7" cy="8" r="1.6"/><path d="M2.5 15l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5"/></svg><span class="fmt-tx">Imagem</span>',"Inserir imagem neste ponto do texto (também dá para colar com Ctrl+V ou arrastar a imagem para a caixa)"],
     ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
+    ["cheia",'<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5"/></svg><span class="fmt-tx">Tela cheia</span>',"Escrever em tela cheia (Esc para sair)"],
   ];
   const CSS=`
 .fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
@@ -28,7 +29,19 @@
 .fmt button:hover{background:var(--accent-soft)}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
-.fmt [data-fmt=flx],.fmt [data-fmt=img]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
+.fmt [data-fmt=flx],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
+.fmt [data-fmt=cheia]{margin-left:auto}
+.fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
+.fmt-cheia{position:fixed;inset:0;z-index:38;background:var(--bg);display:flex;flex-direction:column}
+.fmt-cheia header{display:flex;align-items:center;gap:10px;padding:10px max(16px,calc((100% - 900px)/2));border-bottom:1px solid var(--line);background:var(--surface);flex:none}
+.fmt-cheia header .fc-t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fmt-cheia header .fc-n{font:12.5px var(--mono,monospace);color:var(--muted);white-space:nowrap}
+.fmt-cheia header button{border:1px solid var(--line);background:var(--surface);color:var(--ink,inherit);border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:14px}
+.fmt-cheia header button:hover{border-color:var(--accent)}
+.fmt-cheia .fc-b{flex:1;min-height:0;display:flex;flex-direction:column;width:100%;max-width:900px;margin:0 auto;padding:12px 16px 16px;box-sizing:border-box}
+.fmt-cheia .fc-b textarea{flex:1;min-height:0!important;height:auto!important;resize:none;font-size:16.5px;line-height:1.7;padding:14px 16px}
+.fmt-cheia .fc-prev{flex:1;min-height:0;overflow:auto;padding:4px 2px;max-width:none}
+@media (max-width:820px){.fmt-cheia header .fc-n{display:none}}
 .fmt .fmt-tx{font-size:12.5px;font-weight:600}
 @media (max-width:820px){.fmt .fmt-tx{display:none}.fmt{flex-wrap:wrap}}
 .fmt .fmt-mk{background:#fde68a;color:#3b2f00;padding:0 3px;border-radius:3px}
@@ -51,7 +64,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function barra(doc){
     const pip=doc!==document;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&k==="flx")).map(([k,h,t],i)=>(i===3||i===7||k==="img"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"))).map(([k,h,t],i)=>(i===3||i===7||k==="img"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){
@@ -204,7 +217,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function aplicar(ta,k){
     ({neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
-      cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta), img:()=>escolherImagem(ta), flx:()=>fluxograma(ta)})[k]();
+      cod:()=>codigo(ta), lnk:()=>link(ta), div:()=>divisoria(ta), img:()=>escolherImagem(ta), flx:()=>fluxograma(ta), cheia:()=>telaCheia(ta)})[k]();
   }
   // Enter continua a lista; Enter numa linha de lista vazia encerra a lista.
   function enter(ta,e){
@@ -216,6 +229,53 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const pre=m[3]?m[1]+(+m[3]+1)+m[4]+" ":m[2].startsWith("- [")?m[1]+"- [ ] ":m[1]+m[2];
     trocar(ta,c,c,"\n"+pre);
   }
+  // ---- Tela cheia: leva a barra e a caixa de texto para uma tela só delas; ao sair, devolvem ao lugar. ----
+  let CHEIA=null;
+  function tituloDe(ta){
+    const lb=ta.id&&ta.ownerDocument.querySelector(`label[for="${ta.id}"]`);
+    const pane=ta.closest(".pane"), h=pane&&pane.querySelector("header h3");
+    const nome=ta.id==="ntxt"?(ta.ownerDocument.getElementById("ntit")||{}).value:"";
+    const txt=el=>{ if(!el) return ""; const c=el.cloneNode(true); c.querySelectorAll("button").forEach(x=>x.remove()); return c.textContent; };
+    return (nome||txt(h)||txt(lb)||"Anotação").replace(/\s+/g," ").trim();
+  }
+  function contar(){ if(!CHEIA) return; const v=CHEIA.ta.value; const p=(v.match(/\S+/g)||[]).length; CHEIA.n.textContent=p+" palavra"+(p===1?"":"s"); }
+  function telaCheia(ta){
+    if(CHEIA){ sairCheia(); return; }
+    const doc=ta.ownerDocument, bar=ta.previousElementSibling&&ta.previousElementSibling.classList.contains("fmt")?ta.previousElementSibling:null;
+    const marca=doc.createComment("tela-cheia"); (bar||ta).before(marca);
+    const ov=doc.createElement("div"); ov.className="fmt-cheia"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-label","Anotação em tela cheia");
+    ov.innerHTML=`<header><span class="fc-t"></span><span class="fc-n"></span><button type="button" data-fc="ver">Visualizar</button><button type="button" data-fc="sair">Sair da tela cheia</button></header><div class="fc-b"></div>`;
+    ov.querySelector(".fc-t").textContent=tituloDe(ta);
+    const corpo=ov.querySelector(".fc-b"); if(bar) corpo.appendChild(bar); corpo.appendChild(ta);
+    const prev=doc.createElement("div"); prev.className="md fc-prev"; prev.hidden=true; corpo.appendChild(prev);
+    doc.body.appendChild(ov); doc.body.style.overflow="hidden";
+    CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false};
+    const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Sair";
+    contar(); ta.focus();
+    const de=doc.documentElement;
+    if(de.requestFullscreen && !doc.fullscreenElement && matchMedia("(min-width:821px)").matches){ de.requestFullscreen().then(()=>{ if(CHEIA) CHEIA.fs=true; }).catch(()=>{}); }
+  }
+  function sairCheia(){
+    if(!CHEIA) return; const {ta,bar,marca,ov,fs}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
+    const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Tela cheia";
+    ta.hidden=false; if(bar) bar.hidden=false;
+    if(marca.isConnected){ if(bar) marca.before(bar); marca.before(ta); marca.remove(); ov.remove(); ta.focus(); }
+    else { ov.remove(); if(typeof render==="function") try{ render(); }catch(e){} if(typeof renderPane==="function"&&typeof PANE!=="undefined"&&PANE) try{ renderPane(); }catch(e){} }
+    doc.body.style.overflow="";
+    if(fs && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(()=>{});
+  }
+  function verCheia(){
+    if(!CHEIA) return; const {ta,bar,prev,ov}=CHEIA, b=ov.querySelector('[data-fc="ver"]');
+    const mostrar=prev.hidden;
+    if(mostrar){ prev.innerHTML= typeof md==="function"? md(ta.value) : ""; if(!prev.innerHTML) prev.textContent=ta.value; mostrarImagens(ov.ownerDocument); }
+    prev.hidden=!mostrar; ta.hidden=mostrar; if(bar) bar.hidden=mostrar; b.textContent=mostrar?"Editar":"Visualizar";
+    if(!mostrar) ta.focus();
+  }
+  document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".fmt-cheia [data-fc]"); if(!b) return; if(b.dataset.fc==="sair") sairCheia(); else verCheia(); });
+  document.addEventListener("input",e=>{ if(CHEIA&&e.target===CHEIA.ta) contar(); });
+  document.addEventListener("keydown",e=>{ if(CHEIA&&e.key==="Escape"&&!document.querySelector(".fx-ed,.pop")){ e.preventDefault(); e.stopImmediatePropagation(); sairCheia(); } },true);
+  document.addEventListener("fullscreenchange",()=>{ if(CHEIA&&CHEIA.fs&&!document.fullscreenElement){ CHEIA.fs=false; sairCheia(); } });
+
   function ligar(doc){
     if(doc.__fmt) return; doc.__fmt=true;
     // mousedown sem tirar o foco da caixa de texto
@@ -256,5 +316,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const orig=window.ligarFlutuante;
     window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); } };
   }
-  window.FORMATO={aplicar, equipar, ligar, enviarImagens, mostrarImagens};
+  window.FORMATO={aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia};
 })();
