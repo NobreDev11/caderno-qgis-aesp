@@ -70,6 +70,10 @@
 :root[data-theme="dark"] .fcm{color:#c39bd3}
 .fcm::before{content:"";display:inline-block;width:.8em;height:.58em;border:1.5px solid currentColor;border-radius:2px;margin-right:4px;vertical-align:.02em;box-shadow:2px -2px 0 -0.5px var(--surface,#fff),2px -2px 0 1px currentColor}
 .fcm:hover{background:color-mix(in srgb,#8e44ad 22%,transparent)}
+.img-lb{position:fixed;inset:0;z-index:95;background:rgb(0 0 0 / .84);display:grid;place-items:center;cursor:zoom-out}
+.img-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5);background:#fff}
+.img-lb button{position:fixed;top:14px;right:16px;border:0;border-radius:50%;width:36px;height:36px;background:rgb(255 255 255 / .92);color:#222;font-size:16px;cursor:pointer}
+.md img.md-img,.pr-im img{cursor:zoom-in}
 .pesq:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .wys{position:relative;display:block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:120px;max-height:min(60vh,560px);overflow-y:auto;overflow-x:hidden;resize:vertical;line-height:1.6;outline:none;cursor:text;overflow-wrap:anywhere;max-width:none;color:var(--ink,inherit)}
 .wys:focus{outline:2px solid var(--accent);outline-offset:-1px}
@@ -1034,6 +1038,14 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       urlAssinada(img.dataset.sb).then(u=>{ img.src=u; }).catch(()=>falhou("não encontrada"));
     });
   }
+  function ampliar(img){
+    const doc=img.ownerDocument; doc.querySelector(".img-lb")?.remove();
+    const d=doc.createElement("div"); d.className="img-lb"; d.setAttribute("role","dialog"); d.setAttribute("aria-label","Imagem ampliada");
+    d.innerHTML=`<img src="${escH(img.currentSrc||img.src)}" alt="${escH(img.alt||"")}"><button type="button" aria-label="Fechar">✕</button>`;
+    doc.body.appendChild(d);
+    const k=e=>{ if(e.key==="Escape"){ e.stopPropagation(); e.preventDefault(); fechar(); } }, fechar=()=>{ d.remove(); doc.removeEventListener("keydown",k,true); };
+    d.addEventListener("click",fechar); doc.addEventListener("keydown",k,true);
+  }
   function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
   function aplicar(ta,k){
     ({rev:()=>{}, fla:()=>{ if(window.FORMATO_FLASH) window.FORMATO_FLASH(ta, ta.value.slice(ta.selectionStart,ta.selectionEnd)); }, dest:()=>{ if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); },
@@ -1131,7 +1143,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])].filter(f=>/^image\//.test(f.type));
       if(fs.length){ e.preventDefault(); ta.focus(); enviarImagens(ta,fs); }
     });
-    doc.addEventListener("click",e=>{ const im=e.target.closest&&e.target.closest("img.md-img[src]"); if(im&&!im.closest(".wys")) window.open(im.src,"_blank","noopener"); });
+    // imagem ampliada dentro do próprio caderno (não abre outra aba do navegador); no editor, duplo clique
+    doc.addEventListener("click",e=>{ const im=e.target.closest&&e.target.closest("img.md-img[src]"); if(im&&!im.closest(".wys")){ e.preventDefault(); ampliar(im); } });
+    doc.addEventListener("dblclick",e=>{ const im=e.target.closest&&e.target.closest(".wys img.md-img[src]"); if(im){ e.preventDefault(); ampliar(im); } });
     equipar(doc); mostrarImagens(doc);
     new MutationObserver(()=>{ equipar(doc); mostrarImagens(doc); }).observe(doc.body,{childList:true,subtree:true});
   }
@@ -1157,5 +1171,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     carregar("/fluxo.js").then(()=>carregar("/formato.js")).then(()=>{ if(!w.FORMATO){ // sem script na janela: volta à caixa simples
       const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); ligarRev(doc); } });
   }
-  window.FORMATO={lerPergs, listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
+  window.FORMATO={ampliar, lerPergs, listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();

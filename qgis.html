@@ -1249,7 +1249,12 @@ async function subir(mid, nome, blob, mime){
   return {path, nome, mime, tam:blob.size};
 }
 async function baixar(path){ const {data,error}=await S.sb.storage.from("caderno").download(path); if(error) throw new Error("Não consegui baixar o arquivo: "+error.message); return data; }
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-fotolocal]"); if(!b||!PANE||PANE.tipo!=="mat") return; const u=(mtx(PANE.id).imgs||[])[+b.dataset.fotolocal]; if(u) ampliarSrc(u); });
+function ampliarSrc(src){ const im=new Image(); im.src=src; im.alt=""; if(window.FORMATO&&FORMATO.ampliar) FORMATO.ampliar(im); }
 async function abrirArquivo(path){
+  if(/\.(jpe?g|png|webp|gif|bmp)$/i.test(path)){ // fotos abrem ampliadas aqui mesmo, não em outra aba
+    try{ const {data,error}=await S.sb.storage.from("caderno").createSignedUrl(path,3600); if(error) throw error; ampliarSrc(data.signedUrl); }
+    catch(e){ toast("Não foi possível abrir a imagem."); } return; }
   const w=window.open("about:blank","_blank");
   try{ const {data,error}=await S.sb.storage.from("caderno").createSignedUrl(path,3600); if(error) throw error; if(w) w.location=data.signedUrl; else location.href=data.signedUrl; }
   catch(e){ if(w) w.close(); toast("Não foi possível abrir o arquivo."); }
@@ -1381,7 +1386,7 @@ function anexosHTML(m){
   const itens=[
     ...ls.map((l,i)=>`<div class="anx"><span class="anx-t">🔗</span><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.titulo||l.url.replace(/^https?:\/\/(www\.)?/,"").slice(0,60))}</a><button type="button" class="pg-x" data-anx="tlink" data-i="${i}" aria-label="Remover link">✕</button></div>`),
     ...ar.map((a,i)=>`<div class="anx"><span class="anx-t">${a.mime==="application/pdf"?"📄":a.mime.startsWith("image/")?"🖼":"📎"}</span><button type="button" class="anx-a" data-mabrir="${esc(a.path)}">${esc(a.nome||"arquivo")}</button><button type="button" class="pg-x" data-anx="tarq" data-i="${i}" aria-label="Remover arquivo">✕</button></div>`),
-    ...fl.map((u,i)=>`<div class="anx"><span class="anx-t">🖼</span><span>Foto ${i+1} (neste aparelho)</span><button type="button" class="pg-x" data-anx="tfoto" data-i="${i}" aria-label="Remover foto">✕</button></div>`)
+    ...fl.map((u,i)=>`<div class="anx"><span class="anx-t">🖼</span><button type="button" class="anx-a" data-fotolocal="${i}">Foto ${i+1} (neste aparelho)</button><button type="button" class="pg-x" data-anx="tfoto" data-i="${i}" aria-label="Remover foto">✕</button></div>`)
   ];
   return `<div class="card"><div class="row" style="justify-content:space-between"><h3>Anexos para estudo ${info("anexos")}</h3>
       <div class="row"><button type="button" class="btn sm" data-anx="link">+ Link</button><button type="button" class="btn sm" data-anx="arquivo">+ PDF/arquivo</button><button type="button" class="btn sm" data-anx="fotos">+ Fotos</button></div></div>
@@ -2533,7 +2538,7 @@ function ligarAbaPrat(doc){
     if(op==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
       apagarDoc(id); PRT_ABERTA[k]=null; redesenharPrats(k); return; }
   });
-  doc.addEventListener("click",e=>{ const im=e.target.closest&&e.target.closest(".pr-im img"); if(im) verImagem(im); });
+  doc.addEventListener("click",e=>{ const im=e.target.closest&&e.target.closest(".pr-im img:not([src])"); if(im) toast("Imagem ainda carregando…"); });
   // arrastar imagens para um bloco ou passo
   doc.addEventListener("dragover",e=>{ if(e.target.closest&&e.target.closest(".prats .pr-bl")&&[...(e.dataTransfer&&e.dataTransfer.items||[])].some(i=>i.kind==="file")) e.preventDefault(); });
   doc.addEventListener("drop",e=>{ const alvo=e.target.closest&&(e.target.closest(".prats .pr-ps")||e.target.closest(".prats .pr-bl")); if(!alvo) return; const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])].filter(f=>/^image\//.test(f.type)); if(!fs.length) return; e.preventDefault();
