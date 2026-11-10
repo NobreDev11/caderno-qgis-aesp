@@ -251,7 +251,7 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
 .flut .fl-p{align-items:center}
 .flut .fl-p .btn{font-size:12.5px;padding:4px 10px}
 .flut .fmt-abas,.flut .fmt{flex:none}
-.flut .wys,.flut .pergs{flex:1 1 0;min-height:60px!important;height:auto!important;overflow:auto;max-height:none;resize:none;margin:0 6px}
+.flut .wys,.flut .pergs,.flut .projs{flex:1 1 0;min-height:60px!important;height:auto!important;overflow:auto;max-height:none;resize:none;margin:0 6px}
 .flut .fl-p{flex-wrap:nowrap}.flut .fl-p>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.flut .fl-p .btn{flex:none}
 .fl-on .marco{bottom:auto;top:16px}
 .flut{position:fixed;z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .22);display:flex;flex-direction:column;overflow:hidden;resize:both;min-width:280px;min-height:180px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}
@@ -331,6 +331,11 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .fc-dlg-fundo{position:fixed;inset:0;z-index:60;background:rgb(0 0 0 / .35);display:flex;align-items:center;justify-content:center;padding:16px}
 .fc-dlg{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgb(0 0 0 / .3);padding:16px;width:min(520px,100%);display:flex;flex-direction:column}
 .fc-dlg textarea{width:100%;resize:vertical}
+.fc-dlg-fundo.ancorado{background:transparent;display:block;padding:0}
+.fc-dlg-fundo.ancorado .fc-dlg{position:fixed;box-shadow:0 12px 36px rgb(0 0 0 / .28);padding:12px}
+.fc-dlg-fundo.ancorado .fc-dlg h3{font-size:15px}
+.fc-dlg-fundo.ancorado textarea{min-height:46px}
+.fc-ver .fc-tx{font-size:16px}
 </style>
 </head>
 <body>
@@ -632,7 +637,7 @@ const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">
 function md(src){
   const linhas=String(src||"").split("\n"); let out="", lista=false, nfx=0;
   const fechar=()=>{ if(lista){ out+=`</${lista}>`; lista=false; } }, abrir=t=>{ if(lista!==t){ fechar(); out+=`<${t}>`; lista=t; } };
-  const inl=t=>esc(t).replace(/&lt;([^\s<>&](?:[^<>\n]{0,90}?[^\s<>])?)&gt;/g,(x,q)=>`<button type="button" class="pesq" data-q="${q}" title="Pesquisar">${q}</button>`).replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}" loading="lazy" referrerpolicy="no-referrer">`).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>").replace(/==([^=]+)==/g,"<mark>$1</mark>")
+  const inl=t=>esc(t).replace(/&lt;([^\s<>&](?:[^<>\n]{0,90}?[^\s<>])?)&gt;/g,(x,q)=>`<button type="button" class="pesq" data-q="${q}" title="Pesquisar">${q}</button>`).replace(/\{\{([^{}\n]{1,200}?)\}\}/g,(x,q)=>`<button type="button" class="fcm" data-fc="${q.trim()}" title="Flashcard">${q.trim()}</button>`).replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}" loading="lazy" referrerpolicy="no-referrer">`).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>").replace(/==([^=]+)==/g,"<mark>$1</mark>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
   for(let i=0;i<linhas.length;i++){ const l=linhas[i];
@@ -1574,7 +1579,7 @@ function vFlash(){
   const porDisc=DISC.map(d=>{ const xs=todos.filter(c=>c.disc===d.k); return {d,tot:xs.length,dev:xs.filter(c=>fcDevido(c,t)).length}; }).filter(x=>x.tot);
   const geral=todos.filter(c=>!c.disc||!DK[c.disc]);
   const criar=`<div class="card"><div class="row" style="justify-content:space-between"><h3>Criar flashcard ${info("fccria")}</h3><button class="btn sm pri" data-fcnovo>+ Novo flashcard</button></div>
-    <p class="muted" style="margin:6px 0 0;font-size:13.5px">Também viram flashcards: os pares da aba <b>Perguntas</b> de cada disciplina (sozinhos), um trecho selecionado nas anotações (botão <b>Flashcard</b> da barra) e os gerados de um material (botão <b>Flashcards</b> dentro do material).</p></div>`;
+    <p class="muted" style="margin:6px 0 0;font-size:13.5px">Também viram flashcards: os pares da aba <b>Perguntas</b> de cada disciplina (sozinhos), <b>{{pergunta}}</b> escrito nas anotações (ao fechar as chaves abre a janelinha da resposta), um trecho selecionado (botão <b>Flashcard</b> da barra) e os gerados de um material (botão <b>Flashcards</b> dentro do material).</p></div>`;
   let sessao="";
   if(FLASH&&FLASH.fila.length){
     if(FLASH.i>=FLASH.fila.length){
@@ -1610,37 +1615,77 @@ function vFlash(){
         ${c.fonte==="fc"?`<button class="btn sm" data-fceditar="${c.id}">Editar</button><button class="btn sm" data-fcapagar="${c.id}" title="Apagar">✕</button>`:`<button class="btn sm" data-go="disciplinas" data-disc="${c.disc}" title="Este cartão vem da aba Perguntas da disciplina">Perguntas</button>`}</div>`).join("")}</div></details>`:"";
   return (sessao||"")+filtros+criar+resumo+lista+(todos.length?"":`<p class="empty">Ainda não há flashcards. Crie o primeiro, escreva pares na aba Perguntas de uma disciplina ou gere a partir de um material.</p>`);
 }
-/* janela para criar/editar um cartão (usada pela página Estudar, pela barra de formatação e pelo material) */
+/* janela para criar/editar um cartão (usada pela página Estudar, pela barra de formatação, pelo material e pelo marcador {{…}})
+   o: {id?, disc, frente, verso, origem, mat, doc (janela onde abrir), ancora (elemento perto do qual abrir), aoFechar, mudou} */
+function fecharFlashDlg(doc){ (doc||document).getElementById("fc-dlg")?.remove(); }
+function posDlg(d,o){
+  const f=d.firstElementChild; if(!o.ancora){ return; }
+  d.classList.add("ancorado"); const r=o.ancora.getBoundingClientRect(), W=d.ownerDocument.documentElement.clientWidth, H=d.ownerDocument.documentElement.clientHeight;
+  const w=Math.min(380,W-16); f.style.width=w+"px"; const h=f.offsetHeight;
+  let x=Math.max(8,Math.min(r.left,W-w-8)), y=r.bottom+6; if(y+h>H-8) y=Math.max(8,r.top-h-6);
+  f.style.left=x+"px"; f.style.top=y+"px";
+}
 function abrirFlashDlg(o){
-  document.getElementById("fc-dlg")?.remove();
-  const ed=o.id&&S.docs[o.id], d=document.createElement("div"); d.id="fc-dlg"; d.className="fc-dlg-fundo";
+  const doc=o.doc||document; fecharFlashDlg(doc); fecharFlashDlg(document);
+  const ed=o.id&&S.docs[o.id], d=doc.createElement("div"); d.id="fc-dlg"; d.className="fc-dlg-fundo";
   d.innerHTML=`<form class="fc-dlg" role="dialog" aria-label="${ed?"Editar flashcard":"Novo flashcard"}">
     <div class="row" style="justify-content:space-between"><h3>${ed?"Editar flashcard":"Novo flashcard"}</h3><button type="button" class="btn sm" data-fcfechar aria-label="Fechar">✕</button></div>
     <label class="lb" for="fc-d">Disciplina</label><select id="fc-d"><option value="">Geral</option>${DISC.map(x=>`<option value="${x.k}" ${(ed?ed.disc:o.disc)===x.k?"selected":""}>${esc(nomeDisc(x.k))}</option>`).join("")}</select>
     <label class="lb" for="fc-f" style="margin-top:8px">Frente <span class="muted" style="font-weight:400">(pergunta, termo ou situação)</span></label><textarea id="fc-f" rows="2" required>${esc(ed?ed.frente:o.frente||"")}</textarea>
     <label class="lb" for="fc-v" style="margin-top:8px">Verso <span class="muted" style="font-weight:400">(resposta curta)</span></label><textarea id="fc-v" rows="3" required>${esc(ed?ed.verso:o.verso||"")}</textarea>
-    <div class="row" style="justify-content:space-between;margin-top:10px"><span class="muted" style="font-size:12.5px">Ctrl+Enter salva</span>
-      <div class="row" style="gap:6px">${ed?"":`<label class="row" style="gap:4px;font-size:13px"><input type="checkbox" id="fc-mais" ${o.mais?"checked":""}> criar outro</label>`}<button class="btn pri">${ed?"Salvar":"Adicionar"}</button></div></div>
+    <div class="row" style="justify-content:space-between;margin-top:10px"><span class="muted" style="font-size:12.5px">Ctrl+Enter salva · Esc fecha</span>
+      <div class="row" style="gap:6px">${ed||o.ancora?"":`<label class="row" style="gap:4px;font-size:13px"><input type="checkbox" id="fc-mais" ${o.mais?"checked":""}> criar outro</label>`}${o.ancora&&!ed?`<button type="button" class="btn sm" data-fcfechar>Agora não</button>`:""}<button class="btn pri">${ed?"Salvar":"Adicionar"}</button></div></div>
   </form>`;
-  document.body.appendChild(d);
+  doc.body.appendChild(d); posDlg(d,o);
   const f=d.querySelector("form"), fe=d.querySelector("#fc-f"), ve=d.querySelector("#fc-v");
-  const fechar=()=>{ d.remove(); if(o.volta&&o.volta.isConnected) try{ o.volta.focus(); }catch(e){} };
+  const aviso=t=>{ if(doc===document) toast(t); else if(doc.defaultView&&doc.defaultView.toast) doc.defaultView.toast(t); };
+  const fechar=()=>{ d.remove(); if(o.aoFechar) o.aoFechar(); else if(o.volta&&o.volta.isConnected) try{ o.volta.focus(); }catch(e){} };
+  d.addEventListener("mousedown",e=>{ if(e.target===d) fechar(); });
+  d.querySelectorAll("[data-fcfechar]").forEach(b=>b.onclick=fechar);
+  d.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.stopPropagation(); e.preventDefault(); fechar(); } if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); f.requestSubmit(); } });
+  f.onsubmit=e=>{ e.preventDefault(); const fr=fe.value.trim(), vs=ve.value.trim(), disc=d.querySelector("#fc-d").value; if(!fr||!vs){ (fr?ve:fe).focus(); return; }
+    if(ed){ salvarDoc(o.id,{...S.docs[o.id],frente:fr,verso:vs,disc},50); aviso("Flashcard salvo."); }
+    else { novoFlash(disc,fr,vs,o.origem||"manual",o.mat); aviso("Flashcard criado."+(VIEW==="estudar"?"":" Revise em Estudar → Flashcards.")); }
+    if(o.mudou&&fr!==(o.frente||"")) o.mudou(fr);
+    renderNav(); if(VIEW==="estudar"&&!editando()) render();
+    if(!ed&&d.querySelector("#fc-mais")?.checked){ fe.value=""; ve.value=""; fe.focus(); } else fechar(); };
+  (o.frente&&!o.verso?ve:fe).focus();
+}
+/* janelinha de um cartão já existente (clique num marcador {{…}}): frente, mostrar resposta, editar */
+function verFlashDlg(c,o){
+  const doc=o.doc||document; fecharFlashDlg(doc); fecharFlashDlg(document);
+  const d=doc.createElement("div"); d.id="fc-dlg"; d.className="fc-dlg-fundo";
+  const cor=c.disc&&DK[c.disc]?DK[c.disc].cor:"var(--accent)";
+  d.innerHTML=`<div class="fc-dlg fc-ver" role="dialog" aria-label="Flashcard" tabindex="-1" style="border-top:4px solid ${cor}">
+    <div class="row" style="justify-content:space-between"><span class="mono muted" style="font-size:12px">Flashcard · ${c.disc&&DK[c.disc]?esc(curto(c.disc)):"Geral"}${c.est.v?" · caixa "+(c.est.cx||0):" · novo"}</span><button type="button" class="btn sm" data-fcfechar aria-label="Fechar">✕</button></div>
+    <div class="fc-tx" style="margin:8px 0">${md(c.frente)}</div>
+    <div class="fc-resp" hidden><div class="lb" style="margin:0 0 4px">Verso</div><div class="fc-tx" style="font-weight:500;font-size:15.5px">${md(c.verso)}</div></div>
+    <div class="row" style="justify-content:flex-end;gap:6px;margin-top:10px">${c.fonte==="fc"?`<button type="button" class="btn sm" data-fcv="editar">Editar</button>`:`<span class="muted" style="font-size:12px;margin-right:auto">Vem da aba Perguntas</span>`}<button type="button" class="btn sm pri" data-fcv="ver">Mostrar resposta</button></div>
+  </div>`;
+  doc.body.appendChild(d); posDlg(d,o);
+  const fechar=()=>{ d.remove(); if(o.aoFechar) o.aoFechar(); };
   d.addEventListener("mousedown",e=>{ if(e.target===d) fechar(); });
   d.querySelector("[data-fcfechar]").onclick=fechar;
-  d.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.stopPropagation(); fechar(); } if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); f.requestSubmit(); } });
-  f.onsubmit=e=>{ e.preventDefault(); const fr=fe.value.trim(), vs=ve.value.trim(), disc=d.querySelector("#fc-d").value; if(!fr||!vs){ (fr?ve:fe).focus(); return; }
-    if(ed){ salvarDoc(o.id,{...S.docs[o.id],frente:fr,verso:vs,disc},50); toast("Flashcard salvo."); fechar(); }
-    else { novoFlash(disc,fr,vs,o.origem||"manual",o.mat); toast("Flashcard criado."+(VIEW==="estudar"?"":" Revise em Estudar → Flashcards."));
-      if(d.querySelector("#fc-mais")?.checked){ fe.value=""; ve.value=""; fe.focus(); } else fechar(); }
-    renderNav(); if(VIEW==="estudar"&&!editando()) render(); };
-  (o.frente&&!o.verso?ve:fe).focus();
+  d.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.stopPropagation(); e.preventDefault(); fechar(); } if(e.key===" "&&!e.target.closest("button")){ e.preventDefault(); d.querySelector('[data-fcv="ver"]')?.click(); } });
+  d.addEventListener("click",e=>{ const b=e.target.closest("[data-fcv]"); if(!b) return;
+    if(b.dataset.fcv==="ver"){ d.querySelector(".fc-resp").hidden=false; b.remove(); }
+    else if(b.dataset.fcv==="editar"){ d.remove(); abrirFlashDlg({id:c.id,doc,ancora:o.ancora,aoFechar:o.aoFechar,frente:c.frente,mudou:o.mudou}); } });
+  d.querySelector(".fc-ver").focus();
 }
 // botão "Flashcard" da barra de formatação: o trecho selecionado vira a frente (ou frente: verso, se tiver ":" ou "—")
 window.FORMATO_FLASH=(ta,sel)=>{
   let k=window.FORMATO_PROJ?FORMATO_PROJ.disc(ta):""; sel=String(sel||"").replace(/\s+/g," ").trim();
   let fr=sel, vs=""; const m=sel.match(/^(.{2,90}?)\s*(?::|—|–| - |=)\s+(.{2,})$/); if(m){ fr=m[1]; vs=m[2]; }
-  abrirFlashDlg({disc:k||"",frente:fr,verso:vs,origem:"sel"});
+  abrirFlashDlg({disc:k||"",frente:fr,verso:vs,origem:"sel",doc:ta?ta.ownerDocument:document});
 };
+// marcador {{pergunta}}: ao fechar as chaves abre a janelinha para escrever o verso; clicar no marcador mostra o cartão
+window.FORMATO_FLASH_MARCA=o=>{
+  const k=(o.ta&&window.FORMATO_PROJ&&FORMATO_PROJ.disc(o.ta))||"", txt=String(o.texto||"").trim(), low=txt.toLowerCase();
+  const cs=flashcards().filter(c=>c.frente.trim().toLowerCase()===low), c=cs.find(x=>x.disc===k)||cs[0];
+  const base={doc:o.el?o.el.ownerDocument:document, ancora:o.el, aoFechar:o.voltar, mudou:o.mudou};
+  if(c) verFlashDlg(c,base); else abrirFlashDlg({...base,disc:k,frente:txt,origem:"sel"});
+};
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("button.fcm[data-fc]"); if(!b) return; e.preventDefault(); window.FORMATO_FLASH_MARCA({texto:b.dataset.fc,el:b}); });
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-fcnovo],[data-fccomecar],[data-fcsair],[data-fcvirar],[data-fcnota],[data-fceditar],[data-fcapagar],[data-fcdisc],[data-estaba],[data-fcmat]"); if(!b||b.disabled) return; const d=b.dataset;
   if(d.estaba){ EST_ABA=d.estaba; try{ localStorage.setItem("caderno-qgis-aesp:estudar-aba",EST_ABA); }catch(x){} render(); return; }
@@ -1757,7 +1802,7 @@ document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.ve
 
 /* ============ AJUDA (ícones "i") ============ */
 const AJUDA={
-  fccria:{t:"Onde nascem os flashcards",o:"1) + Novo flashcard aqui; 2) cada par da aba Perguntas de uma disciplina vira um cartão sozinho; 3) selecione um trecho nas anotações e clique em Flashcard na barra (\"termo: explicação\" já separa frente e verso); 4) dentro de um material, Gerar flashcards (IA) ou Copiar pedido / Colar resposta.",c:"Cartões da aba Perguntas são editados lá; os outros, aqui em Ver e editar cartões."},
+  fccria:{t:"Onde nascem os flashcards",o:"1) + Novo flashcard aqui; 2) cada par da aba Perguntas de uma disciplina vira um cartão sozinho; 3) nas anotações, escreva {{pergunta}} — ao fechar as chaves abre uma janelinha para a resposta — ou selecione um trecho e clique em Flashcard na barra (\"termo: explicação\" já separa frente e verso); 4) dentro de um material, Gerar flashcards (IA) ou Copiar pedido / Colar resposta.",c:"Cartões da aba Perguntas são editados lá; os outros, aqui em Ver e editar cartões."},
   fcrev:{t:"Revisão espaçada",o:"Leia a frente, pense na resposta, vire (Espaço) e diga como foi: Errei, Difícil, Bom ou Fácil (teclas 1 a 4).",c:"Errei volta em 10 minutos e repete no fim da rodada; Bom e Fácil empurram o cartão para 1, 2, 4, 8 ou 16 dias. “Para revisar agora” mostra só o que venceu. O número no menu Estudar é quantos estão vencidos."},
   matfc:{t:"Flashcards do material",o:"Cria cartões de memorização a partir do texto e das fotos deste material.",c:"Com a chave da IA configurada, Gerar flashcards faz direto. Sem ela: Copiar pedido, colar no app do Claude e trazer a resposta em Colar resposta. Repetidos (mesma frente) são ignorados."},
   projetos:{t:"Projetos",o:"Página para desenvolver o projeto do curso: planejamento, etapas, parte de cada disciplina, ligações entre disciplinas, texto principal e referências.",c:"Cada disciplina escreve a parte dela na aba Projetos (ao lado de Anotações e Perguntas). “Usar modelo” cria o Diagnóstico Territorial com etapas já divididas pelas disciplinas."},
@@ -2149,7 +2194,7 @@ function projAbaHTML(k){
 function autoAltura(t){ t.style.height="auto"; t.style.height=Math.min(t.scrollHeight+2,600)+"px"; }
 function desenharAbaProj(pj,k){ if(!pj) return; pj._k=k; pj.innerHTML=projAbaHTML(k); pj.querySelectorAll(".pj-auto").forEach(autoAltura); }
 // redesenha as abas Projetos abertas (menos a que está sendo digitada)
-function redesenharAbasProj(){ document.querySelectorAll(".projs").forEach(pj=>{ if(pj.hidden||pj.contains(document.activeElement)&&document.activeElement.tagName==="TEXTAREA") return; desenharAbaProj(pj,pj._k); }); atualizarRotulosProj(); }
+function redesenharAbasProj(){ [document,(typeof PIP!=="undefined"&&PIP&&!PIP.closed)?PIP.document:null].filter(Boolean).forEach(dc=>dc.querySelectorAll(".projs").forEach(pj=>{ const ae=dc.activeElement; if(pj.hidden||pj.contains(ae)&&ae.tagName==="TEXTAREA") return; desenharAbaProj(pj,pj._k); })); atualizarRotulosProj(); }
 function rotuloProj(k){ const p=projPrincipal(); if(!p) return ""; const n=ligados(p.id,k).length; return n?"↔ "+n:""; }
 function atualizarRotulosProj(){ document.querySelectorAll(".fmt-abas").forEach(ab=>{ const ta=ab._ta, s=ab.querySelector(".fa-j"); if(ta&&ta._pjk&&s) s.textContent=rotuloProj(ta._pjk); }); }
 // botão "Destacar" da barra de formatação: abre a anotação no bloco flutuante (por cima da tela)
@@ -2159,12 +2204,14 @@ window.FORMATO_DESTACAR=ta=>{ let id=null;
   else { const k=ta.dataset.dnota; if(k){ const t=Date.now(), as=AULAS.filter(a=>a.k===k); const a=as.find(a=>statusAula(a)==="cur")||as.find(a=>msDe(a.data,a.ini)>t)||as[as.length-1]; id=a&&a.id; } }
   flushTudo(); abrirFlutuante(id); };
 window.FORMATO_PROJ={
-  disc(ta){ if(ta.dataset.dnota) return ta.dataset.dnota; const id=ta.id==="pnota"&&PANE&&PANE.tipo==="aula"?PANE.id:ta.dataset.qaula; const a=id&&AULAS.find(x=>x.id===id); return a?a.k:null; },
+  disc(ta){ if(ta.dataset.dnota) return ta.dataset.dnota; if(ta.id==="fl-txt") return AK[FL.id]?AK[FL.id].k:null; const id=ta.id==="pnota"&&PANE&&PANE.tipo==="aula"?PANE.id:ta.dataset.qaula; const a=id&&AULAS.find(x=>x.id===id); return a?a.k:null; },
   desenhar(pj,k){ desenharAbaProj(pj,k); },
   rotulo: rotuloProj,
 };
 function pjDaAba(el){ const pj=el.closest(".projs"); return pj?{pj,k:pj._k,p:projDaAba(pj._k)}:null; }
-document.addEventListener("click",e=>{
+// eventos da aba Projetos (na página e também na janela por cima de outras janelas)
+function ligarAbaProj(doc){
+doc.addEventListener("click",e=>{
   const b=e.target.closest("[data-pjx],[data-pjliga]"); if(!b||b.tagName==="SELECT") return; const c=pjDaAba(b); if(!c) return; const {k,p}=c;
   if(b.dataset.pjliga){ ligar(p.id,k,b.dataset.pjliga,!ligados(p.id,k).includes(b.dataset.pjliga)); redesenharAbasProj(); return; }
   const op=b.dataset.pjx;
@@ -2174,12 +2221,20 @@ document.addEventListener("click",e=>{
   if(op==="ligada"){ salvarPjd(p.id,k,{modo:"ligada"},80); redesenharAbasProj(); return; }
   if(op==="etapa"){ const inp=c.pj.querySelector(".pj-novaet"), t=inp.value.trim(); if(!t){ inp.focus(); return; } salvarPrj(p.id,{etapas:[...(p.etapas||[]),{id:novoId(),t,disc:k,feito:false,prazo:""}]},80); redesenharAbasProj(); c.pj.querySelector(".pj-novaet")?.focus(); return; }
 });
-document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("pj-novaet")){ e.preventDefault(); e.target.closest(".projs").querySelector('[data-pjx="etapa"]').click(); } });
-document.addEventListener("change",e=>{
+doc.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("pj-novaet")){ e.preventDefault(); e.target.closest(".projs").querySelector('[data-pjx="etapa"]').click(); } });
+doc.addEventListener("change",e=>{
   const t=e.target;
   if(t.dataset.pjx==="trocar"){ const c=pjDaAba(t); PJ_ABA[c.k]=t.value; desenharAbaProj(c.pj,c.k); return; }
   if(t.dataset.pjxet){ const c=pjDaAba(t); const et=(c.p.etapas||[]).map(x=>x.id===t.dataset.pjxet?{...x,feito:t.checked}:x); salvarPrj(c.p.id,{etapas:et},80); redesenharAbasProj(); return; }
 });
+if(doc!==document){ // na janela por cima: o resto dos cliques da aba é tratado aqui e abre na página principal
+  doc.addEventListener("input",e=>{ const t=e.target; if(t.dataset.pjparte){ autoAltura(t); salvarPjd(t.dataset.prj,t.dataset.pjparte,{texto:t.value}); } });
+  doc.addEventListener("click",e=>{ const b=e.target.closest(".projs [data-go],.projs [data-mat],.projs [data-pjx=abrir]"); if(!b) return; e.stopPropagation();
+    if(b.dataset.pjx==="abrir"){ const c=pjDaAba(b); if(c){ PRJ_SEL=c.p.id; ir("projetos"); } } else if(b.dataset.mat){ flushTudo(); abrirMat(b.dataset.mat); } else if(b.dataset.go){ ir(b.dataset.go); if(b.dataset.disc) setTimeout(()=>document.getElementById("d-"+b.dataset.disc)?.scrollIntoView({behavior:"smooth"}),80); }
+    try{ window.focus(); }catch(x){} },true);
+}
+}
+ligarAbaProj(document); window.ligarAbaProj=ligarAbaProj;
 document.addEventListener("input",e=>{
   const t=e.target;
   if(t.dataset.pjparte){ autoAltura(t); salvarPjd(t.dataset.prj,t.dataset.pjparte,{texto:t.value}); return; }

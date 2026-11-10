@@ -35,7 +35,7 @@
 .fmt button:hover{background:var(--accent-soft)}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
-.fmt [data-fmt=flx],.fmt [data-fmt=tab],.fmt [data-fmt=img],.fmt [data-fmt=cheia]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
+.fmt [data-fmt=flx],.fmt [data-fmt=tab],.fmt [data-fmt=img],.fmt [data-fmt=cheia],.fmt [data-fmt=dest],.fmt [data-fmt=fla]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
 .fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
 .fmt-abas{display:flex;gap:2px;margin:0 0 -1px;position:relative;z-index:1}
 .fmt-abas button{border:1px solid var(--line);border-bottom:0;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:5px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
@@ -64,6 +64,11 @@
 .fmt-cheia .pergs,.fmt-cheia .projs{flex:1;max-height:none}
 .pesq{display:inline;border:0;margin:0;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);border-radius:4px;padding:0 4px;font:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;white-space:normal;user-select:all}
 .pesq::after{content:"↗";font-size:.72em;margin-left:2px;vertical-align:.25em;text-decoration:none;display:inline-block}
+.fcm{display:inline;background:color-mix(in srgb,#8e44ad 12%,transparent);color:#8e44ad;border-radius:4px;padding:0 4px;cursor:pointer;font:inherit;border:0;text-decoration:underline dotted;text-underline-offset:3px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fcm{color:#c39bd3}}
+:root[data-theme="dark"] .fcm{color:#c39bd3}
+.fcm::before{content:"";display:inline-block;width:.8em;height:.58em;border:1.5px solid currentColor;border-radius:2px;margin-right:4px;vertical-align:.02em;box-shadow:2px -2px 0 -0.5px var(--surface,#fff),2px -2px 0 1px currentColor}
+.fcm:hover{background:color-mix(in srgb,#8e44ad 22%,transparent)}
 .pesq:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .wys{position:relative;display:block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:120px;max-height:min(60vh,560px);overflow-y:auto;overflow-x:hidden;resize:vertical;line-height:1.6;outline:none;cursor:text;overflow-wrap:anywhere;max-width:none;color:var(--ink,inherit)}
 .wys:focus{outline:2px solid var(--accent);outline-offset:-1px}
@@ -210,17 +215,21 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   const RE_LFX=/^\s*!\[[^\]\n]*\]\(fx:([A-Za-z0-9_-]+)\)\s*$/;
   // <termo> vira um termo pesquisável (abre no mininavegador de pesquisa)
   const RE_PESQ=/<([^\s<>](?:[^<>\n]{0,78}[^\s<>])?)>/g;
+  // {{pergunta}} vira marcador de flashcard (o texto envolvido é a frente do cartão)
+  const RE_FCM=/\{\{([^{}\n]{1,200}?)\}\}/g;
   const escH=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   function inlineHtml(t){
     const codigos=[]; let s=String(t).replace(/`([^`]+)`/g,(x,c)=>{ codigos.push(c); return ""+(codigos.length-1)+""; });
     const termos=[]; s=s.replace(RE_PESQ,(x,q)=>{ termos.push(q); return "\uE003"+(termos.length-1)+"\uE004"; });
+    const cards=[]; if(window.FORMATO_FLASH_MARCA) s=s.replace(RE_FCM,(x,q)=>{ cards.push(q.trim()); return "\uE005"+(cards.length-1)+"\uE006"; });
     s=escH(s)
       .replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}">`)
       .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>")
       .replace(/(^|[^*])\*([^*\s][^*]*)\*/g,"$1<i>$2</i>")
       .replace(/==([^=]+)==/g,"<mark>$1</mark>")
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2">$1</a>');
-    return s.replace(/(\d+)/g,(x,i)=>"<code>"+escH(codigos[+i])+"</code>").replace(/\uE003(\d+)\uE004/g,(x,i)=>`<span class="pesq" contenteditable="false" data-q="${escH(termos[+i])}" title="Pesquisar “${escH(termos[+i])}”">${escH(termos[+i])}</span>`);
+    return s.replace(/(\d+)/g,(x,i)=>"<code>"+escH(codigos[+i])+"</code>").replace(/\uE003(\d+)\uE004/g,(x,i)=>`<span class="pesq" contenteditable="false" data-q="${escH(termos[+i])}" title="Pesquisar “${escH(termos[+i])}”">${escH(termos[+i])}</span>`)
+      .replace(/\uE005(\d+)\uE006/g,(x,i)=>`<span class="fcm" contenteditable="false" data-fc="${escH(cards[+i])}" title="Flashcard: clique para ver ou editar">${escH(cards[+i])}</span>`);
   }
   // Tema do fluxograma: o nome dado pelo usuário ou o primeiro passo que não seja Início/Fim.
   function temaFx(d){ if(!d) return "Fluxograma"; if(d.titulo) return d.titulo; const n=((d.modelo&&d.modelo.nos)||[]).map(x=>x.texto).find(t=>t&&!/^(in[ií]cio|fim)$/i.test(t.trim())); return n||"Fluxograma"; }
@@ -289,6 +298,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(t==="A"){ const h=n.getAttribute("href")||""; const x=inl(n); o+=/^https?:/.test(h)?`[${x||h}](${h})`:x; continue; }
       if(t==="IMG"){ const alt=(n.getAttribute("alt")||"imagem").replace(/[\[\]]/g,""); if(n.dataset.sb) o+=`![${alt}](sb:${n.dataset.sb})`; else if(/^https?:/.test(n.getAttribute("src")||"")) o+=`![${alt}](${n.getAttribute("src")})`; continue; }
       if(t==="SPAN"&&n.classList.contains("pesq")){ o+="<"+(n.dataset.q||n.textContent).trim()+">"; continue; }
+      if(t==="SPAN"&&n.classList.contains("fcm")){ o+="{{"+(n.dataset.fc||n.textContent).trim()+"}}"; continue; }
       if(t==="SPAN"||t==="FONT"){ let x=inl(n); const st=n.style||{}; if(/bold|[6-9]00/.test(st.fontWeight||"")) x=envolve(x,"**"); if(st.fontStyle==="italic") x=envolve(x,"*"); o+=x; continue; }
       o+=inl(n);
     }
@@ -311,7 +321,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(n.nodeType===3||(n.nodeType===1&&!BLOCO.test(t)&&!(n.classList&&n.classList.contains("fx-bloco")))){ if(n.nodeType===3&&!n.nodeValue.trim()&&!buf) continue; if(!buf) buf=document.createElement("div"); buf.appendChild(n.cloneNode(true)); continue; }
       flush(); if(n.nodeType!==1) continue;
       if(n.classList.contains("fx-bloco")){ out.push(n.dataset.linha); continue; }
-      if(n.dataset&&n.dataset.aux&&!n.textContent.replace(/[\u200b\u00a0\s]/g,"")&&!n.querySelector("img,.pesq,.fx-bloco")) continue;
+      if(n.dataset&&n.dataset.aux&&!n.textContent.replace(/[\u200b\u00a0\s]/g,"")&&!n.querySelector("img,.pesq,.fcm,.fx-bloco")) continue;
       if(/^H[1-6]$/.test(t)){ out.push("#".repeat(Math.min(3,+t[1]))+" "+inl(n).replace(/\n/g," ").trim()); continue; }
       if(t==="UL"||t==="OL"){ itens(n,0,out); continue; }
       if(t==="BLOCKQUOTE"){ linhasDe(n).forEach(x=>out.push("> "+x)); continue; }
@@ -557,7 +567,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   let ULT_AUTO=null; // {de, para}
   function autoEd(ed,ch){
     const s=getSelection(); if(!s.rangeCount||!s.isCollapsed) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3||o<2) return;
-    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a,.pesq")) return;
+    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a,.pesq,.fcm")) return;
     const antes=n.nodeValue.slice(0,o-ch.length), m=antes.match(/([A-Za-zÀ-ÖØ-öø-ÿ]+)$/); if(!m) return;
     const ini=antes.length-m[1].length, prev=antes.slice(0,ini);
     const r=corrigida(m[1], !prev.trim()&&!n.previousSibling || /[.!?]\s*$/.test(prev)); if(!r) return;
@@ -777,6 +787,28 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const z=document.createTextNode("\u200b"); r.insertNode(z); r.insertNode(sp);
     const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c);
   }
+  // {{pergunta}} digitado vira marcador e abre a janelinha do flashcard (a página cuida do cartão)
+  function flashDigitado(ed){
+    if(!window.FORMATO_FLASH_MARCA) return;
+    const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3) return;
+    const antes=n.nodeValue.slice(0,o), m=antes.match(/\{\{([^{}\n]{1,200}?)\}\}$/); if(!m||!m[1].trim()) return;
+    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a")) return;
+    const r=document.createRange(); r.setStart(n,o-m[0].length); r.setEnd(n,o); r.deleteContents();
+    const sp=document.createElement("span"); sp.className="fcm"; sp.contentEditable="false"; sp.dataset.fc=m[1].trim(); sp.title="Flashcard: clique para ver ou editar"; sp.textContent=m[1].trim();
+    const z=document.createTextNode("\u200b"); r.insertNode(z); r.insertNode(sp);
+    const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c);
+    sincronizar(ed); abrirMarca(ed,sp,true);
+  }
+  function abrirMarca(ed,sp,novo){
+    const s=getSelection(), rg=s.rangeCount&&ed.contains(s.anchorNode)?s.getRangeAt(0).cloneRange():null;
+    const voltar=()=>{ try{ ed.focus(); if(rg){ const x=getSelection(); x.removeAllRanges(); x.addRange(rg); } }catch(e){} };
+    const mudou=t=>{ if(!sp.isConnected||!t) return; sp.dataset.fc=t; sp.textContent=t; sincronizar(ed); };
+    window.FORMATO_FLASH_MARCA({texto:sp.dataset.fc, ta:ed._ta, el:sp, novo, voltar, mudou});
+  }
+  document.addEventListener("click",e=>{
+    const t=e.target.closest&&e.target.closest(".wys .fcm[data-fc]"); if(!t||!window.FORMATO_FLASH_MARCA) return; e.preventDefault(); e.stopPropagation();
+    abrirMarca(t.closest(".wys"),t,false);
+  },true);
   // Clique num termo pesquisável: a página decide onde pesquisar; sem isso, abre o Google numa aba nova.
   document.addEventListener("click",e=>{
     const t=e.target.closest&&e.target.closest(".pesq[data-q]"); if(!t) return; e.preventDefault(); e.stopPropagation();
@@ -801,6 +833,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const ed=e.target; if(!ed.classList||!ed.classList.contains("wys")) return;
     if(e.inputType==="insertText"&&e.data===" ") atalhoDigitado(ed);
     if(e.inputType==="insertText"&&e.data===">") termoDigitado(ed);
+    if(e.inputType==="insertText"&&e.data==="}") flashDigitado(ed);
     if(e.inputType==="insertParagraph"){ const li=dentroDe(ed,"LI"); if(li&&li.parentNode.classList.contains("tk")&&!li.textContent.trim()) li.dataset.tk="0"; }
     sincronizar(ed);
   });
@@ -1112,6 +1145,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(typeof S==="object") def("S",()=>S);
     if(typeof CONVITE!=="undefined") def("CONVITE",()=>CONVITE);
     ["salvarDoc","apagarDoc","logado"].forEach(n=>{ try{ const f=(0,eval)(n); if(typeof f==="function") w[n]=f; }catch(e){} });
+    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_PROJ"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
+    if(typeof window.ligarAbaProj==="function") window.ligarAbaProj(doc);
     w.toast=t=>{ try{ const d=doc.createElement("div"); d.className="toast"; d.textContent=t; doc.body.appendChild(d); setTimeout(()=>d.remove(),3500); }catch(e){} };
     const carregar=src=>new Promise(ok=>{ const sc=doc.createElement("script"); sc.src=src; sc.onload=sc.onerror=()=>ok(); doc.head.appendChild(sc); });
     carregar("/fluxo.js").then(()=>carregar("/formato.js")).then(()=>{ if(!w.FORMATO){ // sem script na janela: volta à caixa simples
