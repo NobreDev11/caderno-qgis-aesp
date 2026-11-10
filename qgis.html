@@ -2696,7 +2696,14 @@ document.addEventListener("submit",e=>{
   render(); document.getElementById("tk-t").focus();
 });
 
-async function copiar(txt,msg){ try{ await navigator.clipboard.writeText(txt); toast(msg); }catch(e){ toast("Não foi possível copiar. Selecione e copie manualmente."); } }
+// Copia usando a janela que está em foco (a página ou a janela por cima); se a área de transferência recusar, usa o modo antigo.
+async function copiar(txt,msg){
+  const pip=(typeof PIP!=="undefined"&&PIP&&!PIP.closed&&PIP.document.hasFocus())?PIP:null, w=pip||window, doc=w.document;
+  const av=t=>{ if(pip&&pip.toast) pip.toast(t); else toast(t); };
+  try{ await w.navigator.clipboard.writeText(txt); av(msg); return; }catch(e){}
+  try{ const ta=doc.createElement("textarea"); ta.value=txt; ta.setAttribute("readonly",""); ta.style.cssText="position:fixed;left:-9999px;top:0;opacity:0"; doc.body.appendChild(ta); ta.select(); const ok=doc.execCommand("copy"); ta.remove(); if(ok){ av(msg); return; } }catch(e){}
+  av("Não foi possível copiar. Selecione e copie manualmente.");
+}
 function ligarBackup(){
   const g=id=>document.getElementById(id);
   g("bk-dl").onclick=()=>{ baixarArquivo("caderno-qgis-backup_"+dataArq()+".json", gerarBackup(), "application/json"); try{ localStorage.setItem(LS_BK,new Date().toISOString()); }catch(e){} toast("Backup baixado. Confira a pasta Downloads."); setTimeout(render,300); };
