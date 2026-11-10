@@ -304,7 +304,15 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pj-lig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .pj-lig .md{font-size:13.5px}.pj-l-t{margin-top:4px}
 .pj-vazio{padding:4px}
-[data-aba-atual="j"]>.nota-acoes{display:none}
+[data-aba-atual="j"]>.nota-acoes,[data-aba-atual="r"]>.nota-acoes{display:none}
+.pr-lista{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.pr-it{display:flex;gap:8px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 10px;cursor:pointer;font:inherit;color:inherit;width:100%}
+.pr-it.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.pr-it.ok .pr-ic{color:var(--accent)}
+.pr-ic{width:14px;color:var(--muted);flex:none}.pr-t{display:flex;flex-direction:column;gap:1px;min-width:0}.pr-t span{font-size:12.5px}
+.pr-ed{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.pr-ti{font:700 15px var(--display)}
+.pr-passos{display:flex;flex-direction:column;gap:4px}
+.pr-ps{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:6px;align-items:center}.pr-ps.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
 
 /* Estudar: abas e flashcards */
 .est-abas{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:2px 0 4px}
@@ -1077,6 +1085,7 @@ function resultados(){
   DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Anotações: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
   mats().forEach(m=>{const t=(m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-mat="${m.id}"><strong>Material: ${esc(m.titulo)}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
+  praticas().forEach(p=>{ const t=[p.titulo,p.objetivo,p.texto,...(p.passos||[]).map(x=>x.t)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${p.disc}"><strong>Prática: ${esc(p.titulo||"Sem título")}</strong> <span class="muted" style="font-size:12.5px">${p.disc&&DK[p.disc]?esc(nomeDisc(p.disc)):""}</span><div class="ex">${trecho(t,q)}</div></button>`)});
   projetos().forEach(p=>{ const t=[p.titulo,...PJ_CAMPOS.map(c=>p[c[0]]),p.texto,...(p.etapas||[]).map(e=>e.t),...DISC.map(d=>pjd(p.id,d.k).texto)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-pjabre="${p.id}"><strong>Projeto: ${esc(p.titulo||"Sem título")}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   tarefas().forEach(t=>{ if((t.texto||"").toLowerCase().includes(q)) r.push(`<button class="ni" data-go="tarefas"><strong>Tarefa</strong><div class="ex">${trecho(t.texto,q)}</div></button>`)});
   return r.length? r.join("") : '<p class="empty">Nada encontrado.</p>';
@@ -1094,6 +1103,7 @@ function exportarMD(){
   const soltas=notas().filter(n=>!n.disc||!DK[n.disc]);
   if(soltas.length){ o+=`## Notas gerais\n\n`; soltas.forEach(n=>{o+=`### ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;}); }
   projetos().forEach(p=>{ o+=projetoMD(p).replace(/^### /gm,"#### ").replace(/^## /gm,"### ").replace(/^# /,"## Projeto: ")+"\n"; });
+  const prs=praticas(); if(prs.length){ o+=`## Práticas\n\n`; DISC.forEach(d=>{ const xs=prs.filter(p=>p.disc===d.k); if(xs.length) o+=`#### ${nomeDisc(d.k)}\n\n`+xs.map(p=>praticaMD(p).replace(/^### /,"##### ")).join("\n")+"\n"; }); }
   const fcs=flashcards(); if(fcs.length){ o+=`## Flashcards\n`+fcs.map(c=>`- **${c.frente.replace(/\n/g," ")}** — ${c.verso.replace(/\n/g," ")}${c.disc&&DK[c.disc]?" ("+curto(c.disc)+")":""}`).join("\n")+"\n\n"; }
   const ts=tarefas(); if(ts.length){ o+=`## Tarefas\n`+ts.map(t=>`- [${t.feito?"x":" "}] ${t.texto}${t.prazo?" (até "+t.prazo.slice(8,10)+"/"+t.prazo.slice(5,7)+")":""}`).join("\n")+"\n"; }
   return window.FLUXO&&FLUXO.expandir ? FLUXO.expandir(o) : o;
@@ -1807,6 +1817,7 @@ document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.ve
 
 /* ============ AJUDA (ícones "i") ============ */
 const AJUDA={
+  pratica:{t:"Prática",o:"Registre cada exercício de aula como um mini projeto: título, objetivo, passo a passo (com ✓) e anotações completas (imagens, tabelas, fluxogramas, {{flashcards}}).",c:"Cada disciplina tem as suas práticas. “Sugerir passos do QGIS” preenche um roteiro padrão para ajustar. Marque Concluída ao terminar. Entram na Busca e no arquivo exportado."},
   fccria:{t:"Onde nascem os flashcards",o:"1) + Novo flashcard aqui; 2) cada par da aba Perguntas de uma disciplina vira um cartão sozinho; 3) nas anotações, escreva {{pergunta}} — ao fechar as chaves abre uma janelinha para a resposta — ou selecione um trecho e clique em Flashcard na barra (\"termo: explicação\" já separa frente e verso); 4) dentro de um material, Gerar flashcards (IA) ou Copiar pedido / Colar resposta.",c:"Cartões da aba Perguntas são editados lá; os outros, aqui em Ver e editar cartões."},
   fcrev:{t:"Revisão espaçada",o:"Leia a frente, pense na resposta, vire (Espaço) e diga como foi: Errei, Difícil, Bom ou Fácil (teclas 1 a 4).",c:"Errei volta em 10 minutos e repete no fim da rodada; Bom e Fácil empurram o cartão para 1, 2, 4, 8 ou 16 dias. “Para revisar agora” mostra só o que venceu. O número no menu Estudar é quantos estão vencidos."},
   matfc:{t:"Flashcards do material",o:"Cria cartões de memorização a partir do texto e das fotos deste material.",c:"Com a chave da IA configurada, Gerar flashcards faz direto. Sem ela: Copiar pedido, colar no app do Claude e trazer a resposta em Colar resposta. Repetidos (mesma frente) são ignorados."},
@@ -2199,7 +2210,7 @@ function projAbaHTML(k){
 function autoAltura(t){ t.style.height="auto"; t.style.height=Math.min(t.scrollHeight+2,600)+"px"; }
 function desenharAbaProj(pj,k){ if(!pj) return; pj._k=k; pj.innerHTML=projAbaHTML(k); pj.querySelectorAll(".pj-auto").forEach(autoAltura); }
 // redesenha as abas Projetos abertas (menos a que está sendo digitada)
-function redesenharAbasProj(){ [document,(typeof PIP!=="undefined"&&PIP&&!PIP.closed)?PIP.document:null].filter(Boolean).forEach(dc=>dc.querySelectorAll(".projs").forEach(pj=>{ const ae=dc.activeElement; if(pj.hidden||pj.contains(ae)&&ae.tagName==="TEXTAREA") return; desenharAbaProj(pj,pj._k); })); atualizarRotulosProj(); }
+function redesenharAbasProj(){ [document,(typeof PIP!=="undefined"&&PIP&&!PIP.closed)?PIP.document:null].filter(Boolean).forEach(dc=>dc.querySelectorAll(".projs:not(.prats)").forEach(pj=>{ const ae=dc.activeElement; if(pj.hidden||pj.contains(ae)&&ae.tagName==="TEXTAREA") return; desenharAbaProj(pj,pj._k); })); atualizarRotulosProj(); }
 function rotuloProj(k){ const p=projPrincipal(); if(!p) return ""; const n=ligados(p.id,k).length; return n?"↔ "+n:""; }
 function atualizarRotulosProj(){ document.querySelectorAll(".fmt-abas").forEach(ab=>{ const ta=ab._ta, s=ab.querySelector(".fa-j"); if(ta&&ta._pjk&&s) s.textContent=rotuloProj(ta._pjk); }); }
 // botão "Destacar" da barra de formatação: abre a anotação no bloco flutuante (por cima da tela)
@@ -2213,7 +2224,7 @@ window.FORMATO_PROJ={
   desenhar(pj,k){ desenharAbaProj(pj,k); },
   rotulo: rotuloProj,
 };
-function pjDaAba(el){ const pj=el.closest(".projs"); return pj?{pj,k:pj._k,p:projDaAba(pj._k)}:null; }
+function pjDaAba(el){ const pj=el.closest(".projs:not(.prats)"); return pj?{pj,k:pj._k,p:projDaAba(pj._k)}:null; }
 // eventos da aba Projetos (na página e também na janela por cima de outras janelas)
 function ligarAbaProj(doc){
 doc.addEventListener("click",e=>{
@@ -2240,6 +2251,75 @@ if(doc!==document){ // na janela por cima: o resto dos cliques da aba é tratado
 }
 }
 ligarAbaProj(document); window.ligarAbaProj=ligarAbaProj;
+/* ============ PRÁTICAS ============
+   Aba "Prática" nas anotações de cada disciplina: mini projetos do que foi feito em aula/laboratório.
+   prt-<x>: {disc, titulo, objetivo, passos:[{id,t,feito}], texto (anotações ricas), feita, criado, aula} */
+const praticas = k => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="prt"&&!b.apagado&&(!k||b.disc===k)).map(([id,b])=>({id,...b})).sort((a,b)=>(a.criado||0)-(b.criado||0));
+const PRT_ABERTA={}; // prática aberta por disciplina
+const PASSOS_QGIS=["Criar o projeto no QGIS e conferir o SRC","Carregar as camadas e conferir os atributos","Executar a ferramenta / análise","Conferir o resultado (simbologia, tabela, mapa)","Salvar o projeto e exportar o resultado"];
+function salvarPrt(id,mud,atraso){ salvarDoc(id,{...S.docs[id],tipo:"prt",...mud},atraso); }
+function aulaAtualDe(k){ const t=Date.now(), as=AULAS.filter(a=>a.k===k); const a=as.find(a=>statusAula(a)==="cur")||as.find(a=>msDe(a.data,a.ini)>t)||as[as.length-1]; return a?a.id:""; }
+function pratAbaHTML(k){
+  const ps=praticas(k), ab=ps.find(p=>p.id===PRT_ABERTA[k]);
+  const lista=ps.length?`<div class="pr-lista">${ps.map(p=>{ const pa=p.passos||[], f=pa.filter(x=>x.feito).length, a=AK[p.aula];
+      return `<button type="button" class="pr-it${p.id===PRT_ABERTA[k]?" on":""}${p.feita?" ok":""}" data-prx="abrir" data-id="${p.id}"><span class="pr-ic">${p.feita?"✓":"▸"}</span><span class="pr-t"><strong>${esc(p.titulo||"Prática sem título")}</strong><span class="muted">${pa.length?f+"/"+pa.length+" passos":"sem passos"}${a?" · "+fmtData(a.data).slice(0,9):""}${p.feita?" · concluída":""}</span></span></button>`; }).join("")}</div>`
+    : `<p class="muted" style="margin:6px 0;font-size:13.5px">Nenhuma prática ainda. Use para registrar exercícios de aula como mini projetos: objetivo, passo a passo e anotações (com imagens, tabelas e fluxogramas).</p>`;
+  const ed=ab?(()=>{ const pa=ab.passos||[], f=pa.filter(x=>x.feito).length, pct=pa.length?Math.round(f/pa.length*100):0;
+    return `<div class="pr-ed" data-prid="${ab.id}">
+      <div class="row" style="gap:6px;align-items:center"><input type="text" class="pr-ti" data-prc="titulo" value="${esc(ab.titulo||"")}" placeholder="Título da prática (ex.: Mapa de calor de ocorrências)" aria-label="Título da prática" style="flex:1;min-width:0">
+        <label class="row" style="gap:4px;font-size:13px;white-space:nowrap;cursor:pointer"><input type="checkbox" data-prc="feita" ${ab.feita?"checked":""}> Concluída</label></div>
+      <label class="lb" style="margin-top:8px">Objetivo</label><textarea class="pj-auto" data-prc="objetivo" rows="2" placeholder="O que esta prática faz ou entrega. Ex.: gerar um mapa de densidade (kernel) dos CVLI de 2025 no bairro X.">${esc(ab.objetivo||"")}</textarea>
+      <div class="row" style="justify-content:space-between;margin-top:10px"><span class="lb" style="margin:0">Passo a passo ${pa.length?`<span class="mono muted">${f}/${pa.length}</span>`:""}</span>${pa.length?"":`<button type="button" class="btn sm" data-prx="modelo" title="Adiciona os passos típicos de uma prática no QGIS">Sugerir passos do QGIS</button>`}</div>
+      ${pa.length?`<div class="pj-barra" style="margin:4px 0 6px"><i style="width:${pct}%"></i></div>`:""}
+      <div class="pr-passos">${pa.map((x,i)=>`<div class="pr-ps${x.feito?" ok":""}" data-pid="${x.id}"><input type="checkbox" data-prps="feito" ${x.feito?"checked":""} aria-label="Feito"><span class="mono muted" style="font-size:12px">${i+1}.</span><input type="text" data-prps="t" value="${esc(x.t||"")}" aria-label="Passo"><button type="button" class="btn sm" data-prx="tirarpasso" title="Tirar passo">✕</button></div>`).join("")}</div>
+      <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pr-novopasso" placeholder="Novo passo (Enter adiciona)" style="flex:1;min-width:0"><button type="button" class="btn sm" data-prx="passo">+ Passo</button></div>
+      <label class="lb" style="margin-top:12px">Anotações da prática</label>
+      <textarea data-rich="1" data-sem-abas="1" data-prttexto="${ab.id}" aria-label="Anotações da prática" placeholder="Resultados, prints, comandos, problemas e como resolveu…">${esc(ab.texto||"")}</textarea>
+      <div class="row" style="justify-content:space-between;margin-top:10px;gap:6px"><button type="button" class="btn sm" data-prx="fechar">Fechar</button>
+        <span class="row" style="gap:6px"><button type="button" class="btn sm" data-prx="copiar">Copiar como texto</button><button type="button" class="btn sm danger" data-prx="apagar">Apagar</button></span></div>
+    </div>`; })():"";
+  return `<div class="row" style="justify-content:space-between;gap:6px"><span class="lb" style="margin:0">Práticas de ${esc(curto(k))} ${info("pratica")}</span><button type="button" class="btn sm pri" data-prx="nova">+ Nova prática</button></div>${lista}${ed}`;
+}
+function praticaMD(p){
+  const pa=p.passos||[];
+  let o=`### Prática: ${p.titulo||"Sem título"}${p.feita?" ✓":""}\n`;
+  if((p.objetivo||"").trim()) o+=`**Objetivo:** ${p.objetivo.trim()}\n\n`;
+  if(pa.length) o+=pa.map(x=>`- [${x.feito?"x":" "}] ${x.t}`).join("\n")+"\n\n";
+  if((p.texto||"").trim()) o+=p.texto.trim()+"\n";
+  return window.FLUXO&&FLUXO.expandir?FLUXO.expandir(o):o;
+}
+function desenharAbaPrat(pr,k){ if(!pr) return; pr._k=k; pr.innerHTML=pratAbaHTML(k); pr.querySelectorAll(".pj-auto").forEach(autoAltura); }
+function redesenharPrats(k){ [document,(typeof PIP!=="undefined"&&PIP&&!PIP.closed)?PIP.document:null].filter(Boolean).forEach(dc=>dc.querySelectorAll(".prats").forEach(pr=>{ if(pr.hidden||(k&&pr._k!==k)) return; desenharAbaPrat(pr,pr._k); })); rotulosPrat(); }
+function rotuloPrat(k){ const n=praticas(k).length; return n?String(n):""; }
+function rotulosPrat(){ [document,(typeof PIP!=="undefined"&&PIP&&!PIP.closed)?PIP.document:null].filter(Boolean).forEach(dc=>dc.querySelectorAll(".fmt-abas").forEach(ab=>{ const ta=ab._ta, s=ab.querySelector(".fa-r"); if(ta&&ta._pjk&&s) s.textContent=rotuloPrat(ta._pjk); })); }
+window.FORMATO_PRAT={ desenhar(pr,k){ desenharAbaPrat(pr,k); }, rotulo:rotuloPrat };
+function ligarAbaPrat(doc){
+  const ctx=el=>{ const pr=el.closest(".prats"); if(!pr) return null; const ed=el.closest(".pr-ed"); return {pr,k:pr._k,id:ed&&ed.dataset.prid}; };
+  doc.addEventListener("click",e=>{
+    const b=e.target.closest("[data-prx]"); if(!b) return; const c=ctx(b); if(!c) return; const op=b.dataset.prx, {k,id}=c;
+    if(op==="nova"){ const nid="prt-"+novoId(); salvarDoc(nid,{tipo:"prt",disc:k,titulo:"",objetivo:"",passos:[],texto:"",feita:false,criado:Date.now(),aula:aulaAtualDe(k)},50); PRT_ABERTA[k]=nid; redesenharPrats(k); setTimeout(()=>c.pr.querySelector(".pr-ti")?.focus(),30); return; }
+    if(op==="abrir"){ PRT_ABERTA[k]=PRT_ABERTA[k]===b.dataset.id?null:b.dataset.id; redesenharPrats(k); return; }
+    if(op==="fechar"){ PRT_ABERTA[k]=null; redesenharPrats(k); return; }
+    const p=id&&S.docs[id]; if(!p) return;
+    if(op==="modelo"){ salvarPrt(id,{passos:PASSOS_QGIS.map(t=>({id:novoId(),t,feito:false}))},50); redesenharPrats(k); return; }
+    if(op==="passo"){ const inp=c.pr.querySelector(".pr-novopasso"), t=inp.value.trim(); if(!t){ inp.focus(); return; } salvarPrt(id,{passos:[...(p.passos||[]),{id:novoId(),t,feito:false}]},50); redesenharPrats(k); c.pr.querySelector(".pr-novopasso")?.focus(); return; }
+    if(op==="tirarpasso"){ const pid=b.closest(".pr-ps").dataset.pid; salvarPrt(id,{passos:(p.passos||[]).filter(x=>x.id!==pid)},50); redesenharPrats(k); return; }
+    if(op==="copiar"){ copiar(praticaMD(S.docs[id]),"Prática copiada como texto."); return; }
+    if(op==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
+      apagarDoc(id); PRT_ABERTA[k]=null; redesenharPrats(k); return; }
+  });
+  doc.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("pr-novopasso")){ e.preventDefault(); e.target.closest(".pr-ed").querySelector('[data-prx="passo"]').click(); } });
+  doc.addEventListener("change",e=>{ const t=e.target, c=ctx(t); if(!c||!c.id) return;
+    if(t.dataset.prc==="feita"){ salvarPrt(c.id,{feita:t.checked},50); redesenharPrats(c.k); return; }
+    if(t.dataset.prps==="feito"){ const pid=t.closest(".pr-ps").dataset.pid; salvarPrt(c.id,{passos:(S.docs[c.id].passos||[]).map(x=>x.id===pid?{...x,feito:t.checked}:x)},50); redesenharPrats(c.k); return; } });
+  doc.addEventListener("input",e=>{ const t=e.target;
+    if(t.dataset&&t.dataset.prttexto){ salvarPrt(t.dataset.prttexto,{texto:t.value}); return; }
+    const c=ctx(t); if(!c||!c.id) return;
+    if(t.dataset.prc==="titulo"||t.dataset.prc==="objetivo"){ if(t.tagName==="TEXTAREA") autoAltura(t); salvarPrt(c.id,{[t.dataset.prc]:t.value}); if(t.dataset.prc==="titulo"){ const it=c.pr.querySelector(`.pr-it[data-id="${c.id}"] strong`); if(it) it.textContent=t.value||"Prática sem título"; } return; }
+    if(t.dataset.prps==="t"){ const pid=t.closest(".pr-ps").dataset.pid; salvarPrt(c.id,{passos:(S.docs[c.id].passos||[]).map(x=>x.id===pid?{...x,t:t.value}:x)}); } });
+}
+ligarAbaPrat(document); window.ligarAbaPrat=ligarAbaPrat;
+
 document.addEventListener("input",e=>{
   const t=e.target;
   if(t.dataset.pjparte){ autoAltura(t); salvarPjd(t.dataset.prj,t.dataset.pjparte,{texto:t.value}); return; }

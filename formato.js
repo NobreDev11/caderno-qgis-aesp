@@ -47,6 +47,7 @@
 .pergs[hidden]{display:none}
 .projs{border:1px solid var(--line);border-radius:0 8px 8px 8px;background:var(--bg);padding:10px;max-height:min(70vh,720px);overflow-y:auto}
 .projs[hidden]{display:none}
+.fmt-abas .fa-r{font:500 11.5px var(--mono,monospace);color:var(--accent);margin-left:4px}
 .fmt-abas .fa-j{font:500 11.5px var(--mono,monospace);color:var(--accent);margin-left:4px}
 .pg-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .pg-f{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
@@ -379,12 +380,13 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   // aba aberta por caixa (Anotações / Perguntas / Projetos) sobrevive ao redesenho da tela
   const ABA_MEM={}; const chaveAba=ta=>ta.id||(ta.dataset.dnota?"d:"+ta.dataset.dnota:"");
   function trocarAba(ta,aba,semFoco){
-    if(aba==="j"&&!ta._pj) aba="n";
+    if((aba==="j"&&!ta._pj)||(aba==="r"&&!ta._pr)) aba="n";
     ta._aba=aba; const ab=ta._abas, bar=ab.nextElementSibling&&ab.nextElementSibling.classList.contains("fmt")?ab.nextElementSibling:null;
     const ch=chaveAba(ta); if(ch) ABA_MEM[ch]=aba;
     if(ab.parentNode&&ab.parentNode.setAttribute) ab.parentNode.setAttribute("data-aba-atual",aba);
     ab.querySelectorAll("[data-faba]").forEach(b=>{ const on=b.dataset.faba===aba; b.classList.toggle("on",on); b.setAttribute("aria-selected",String(on)); });
-    if(bar) bar.hidden=aba!=="n"; if(ta._ed) ta._ed.hidden=aba!=="n"; ta._pg.hidden=aba!=="p"; if(ta._pj) ta._pj.hidden=aba!=="j";
+    if(bar) bar.hidden=aba!=="n"; if(ta._ed) ta._ed.hidden=aba!=="n"; ta._pg.hidden=aba!=="p"; if(ta._pj) ta._pj.hidden=aba!=="j"; if(ta._pr) ta._pr.hidden=aba!=="r";
+    if(aba==="r"){ if(window.FORMATO_PRAT) FORMATO_PRAT.desenhar(ta._pr, ta._pjk, ta); return; }
     if(aba==="j"){ if(window.FORMATO_PROJ) FORMATO_PROJ.desenhar(ta._pj, ta._pjk, ta); return; }
     if(semFoco){ if(aba==="p") desenharPergs(ta); return; }
     if(aba==="p"){ desenharPergs(ta); const t=ta._pg.querySelector(".pg-p"); if(!t) ta._pg.querySelector('[data-pg="nova"]').focus(); } else if(ta._ed) ta._ed.focus();
@@ -409,11 +411,13 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const pk=window.FORMATO_PROJ&&FORMATO_PROJ.disc ? FORMATO_PROJ.disc(ta) : null;
     const ab=document.createElement("div"); ab.className="fmt-abas"; ab.setAttribute("role","tablist"); ab._ta=ta;
     ab.innerHTML=`<button type="button" role="tab" class="on" aria-selected="true" data-faba="n">Anotações</button><button type="button" role="tab" aria-selected="false" data-faba="p">Perguntas <span class="fa-n"></span></button>`+
+      (pk&&window.FORMATO_PRAT?`<button type="button" role="tab" aria-selected="false" data-faba="r" title="Práticas desta disciplina: mini projetos com objetivo, passos e anotações">Prática <span class="fa-r"></span></button>`:"")+
       (pk?`<button type="button" role="tab" aria-selected="false" data-faba="j" title="Parte desta disciplina no projeto e ligação com outras disciplinas">Projetos <span class="fa-j"></span></button>`:"");
     bar.before(ab); ta._abas=ab;
     const pg=document.createElement("div"); pg.className="pergs"; pg.hidden=true; pg._ta=ta; (ta._ed||ta).after(pg); ta._pg=pg; ta._aba="n";
     if(pk){ const pj=document.createElement("div"); pj.className="projs"; pj.hidden=true; pj._ta=ta; pg.after(pj); ta._pj=pj; ta._pjk=pk;
-      const n=FORMATO_PROJ.rotulo&&FORMATO_PROJ.rotulo(pk); ab.querySelector(".fa-j").textContent=n||""; }
+      const n=FORMATO_PROJ.rotulo&&FORMATO_PROJ.rotulo(pk); ab.querySelector(".fa-j").textContent=n||"";
+      if(window.FORMATO_PRAT){ const pr=document.createElement("div"); pr.className="projs prats"; pr.hidden=true; pr._ta=ta; pg.after(pr); ta._pr=pr; const r=FORMATO_PRAT.rotulo&&FORMATO_PRAT.rotulo(pk); ab.querySelector(".fa-r").textContent=r||""; } }
     contarPergs(ta);
     const mem=ABA_MEM[chaveAba(ta)]; if(mem&&mem!=="n") trocarAba(ta,mem,true);
   }
@@ -1065,7 +1069,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const ov=doc.createElement("div"); ov.className="fmt-cheia"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-label","Anotação em tela cheia");
     ov.innerHTML=`<header><span class="fc-t"></span><span class="fc-n"></span><button type="button" data-fc="ver">Visualizar</button><button type="button" data-fc="sair">Sair da tela cheia</button></header><div class="fc-b"></div>`;
     ov.querySelector(".fc-t").textContent=tituloDe(ta);
-    const corpo=ov.querySelector(".fc-b"); if(ta._abas) corpo.appendChild(ta._abas); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._ed) corpo.appendChild(ta._ed); if(ta._pg) corpo.appendChild(ta._pg); if(ta._pj) corpo.appendChild(ta._pj);
+    const corpo=ov.querySelector(".fc-b"); if(ta._abas) corpo.appendChild(ta._abas); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._ed) corpo.appendChild(ta._ed); if(ta._pg) corpo.appendChild(ta._pg); if(ta._pr) corpo.appendChild(ta._pr); if(ta._pj) corpo.appendChild(ta._pj);
     const prev=doc.createElement("div"); prev.className="md fc-prev"; prev.hidden=true; corpo.appendChild(prev);
     doc.body.appendChild(ov); doc.body.style.overflow="hidden";
     CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false};
@@ -1078,7 +1082,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!CHEIA) return; const {ta,bar,marca,ov,fs}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Tela cheia";
     ta.hidden=!!ta._ed; if(ta._ed) ta._ed.hidden=false; if(bar) bar.hidden=false;
-    if(marca.isConnected){ if(ta._abas) marca.before(ta._abas); if(bar) marca.before(bar); marca.before(ta); if(ta._ed) ta.after(ta._ed); if(ta._pg) (ta._ed||ta).after(ta._pg); if(ta._pj) ta._pg.after(ta._pj); marca.remove(); ov.remove(); reajustar(ta); segAtivo(ta).focus(); }
+    if(marca.isConnected){ if(ta._abas) marca.before(ta._abas); if(bar) marca.before(bar); marca.before(ta); if(ta._ed) ta.after(ta._ed); if(ta._pg) (ta._ed||ta).after(ta._pg); if(ta._pr) ta._pg.after(ta._pr); if(ta._pj) (ta._pr||ta._pg).after(ta._pj); marca.remove(); ov.remove(); reajustar(ta); segAtivo(ta).focus(); }
     else { ov.remove(); if(typeof render==="function") try{ render(); }catch(e){} if(typeof renderPane==="function"&&typeof PANE!=="undefined"&&PANE) try{ renderPane(); }catch(e){} }
     doc.body.style.overflow="";
     if(fs && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(()=>{});
@@ -1145,8 +1149,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(typeof S==="object") def("S",()=>S);
     if(typeof CONVITE!=="undefined") def("CONVITE",()=>CONVITE);
     ["salvarDoc","apagarDoc","logado"].forEach(n=>{ try{ const f=(0,eval)(n); if(typeof f==="function") w[n]=f; }catch(e){} });
-    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_PROJ"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
+    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_PROJ","FORMATO_PRAT"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
     if(typeof window.ligarAbaProj==="function") window.ligarAbaProj(doc);
+    if(typeof window.ligarAbaPrat==="function") window.ligarAbaPrat(doc);
     w.toast=t=>{ try{ const d=doc.createElement("div"); d.className="toast"; d.textContent=t; doc.body.appendChild(d); setTimeout(()=>d.remove(),3500); }catch(e){} };
     const carregar=src=>new Promise(ok=>{ const sc=doc.createElement("script"); sc.src=src; sc.onload=sc.onerror=()=>ok(); doc.head.appendChild(sc); });
     carregar("/fluxo.js").then(()=>carregar("/formato.js")).then(()=>{ if(!w.FORMATO){ // sem script na janela: volta à caixa simples
