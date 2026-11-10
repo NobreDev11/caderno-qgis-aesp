@@ -311,11 +311,20 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-ic{width:14px;color:var(--muted);flex:none}.pr-t{display:flex;flex-direction:column;gap:1px;min-width:0}.pr-t span{font-size:12.5px}
 .pr-ed{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
 .pr-ti{font:700 15px var(--display)}
-.pr-passos{display:flex;flex-direction:column;gap:4px}.pr-passos[hidden]{display:none}
+.pr-passos{display:flex;flex-direction:column;gap:4px;margin-top:6px}.pr-blocos{display:flex;flex-direction:column;gap:8px}.pr-blocos[hidden]{display:none}
+.pr-bl{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:9px;padding:8px 10px;background:var(--bg)}
+.pr-bh{display:flex;gap:6px;align-items:center}.pr-bh input[type=text]{flex:1;min-width:0;font-weight:700}
+.pr-liga{width:auto!important;max-width:52px;padding:3px 4px!important;font-size:12px}
+.pr-ps .pr-lks{grid-column:3/-1}
+.pr-lks{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.pr-lk{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:1px 4px 1px 8px;font:600 11.5px var(--mono);color:var(--accent)}
+.pr-lkt{font:400 11.5px var(--body);color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-lk button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;padding:0 2px}
+.pr-seq{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:8px;margin:6px 0;overflow:auto;max-height:520px}
 .pr-tog{border:0;background:transparent;padding:0;font:600 13px var(--body);color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}.pr-tog:hover{color:var(--ink)}.pr-seta{width:10px;display:inline-block}
 .pr-notas{display:flex;flex-direction:column;gap:6px}
 .pr-nt{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--bg)}.pr-nt summary{cursor:pointer}
-.pr-ps{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:6px;align-items:center}.pr-ps.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
+.pr-ps{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;gap:6px;align-items:center}.pr-ps.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
 
 /* Estudar: abas e flashcards */
 .est-abas{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:2px 0 4px}
@@ -1088,7 +1097,7 @@ function resultados(){
   DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Anotações: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
   mats().forEach(m=>{const t=(m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-mat="${m.id}"><strong>Material: ${esc(m.titulo)}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
-  praticas().forEach(p=>{ const t=[p.titulo,p.objetivo,p.texto,...(p.notas||[]).map(n=>n.titulo+"\n"+n.texto),...(p.passos||[]).map(x=>x.t)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${p.disc}"><strong>Prática: ${esc(p.titulo||"Sem título")}</strong> <span class="muted" style="font-size:12.5px">${p.disc&&DK[p.disc]?esc(nomeDisc(p.disc)):""}</span><div class="ex">${trecho(t,q)}</div></button>`)});
+  praticas().forEach(p=>{ const t=[p.titulo,p.objetivo,p.texto,...(p.notas||[]).map(n=>n.titulo+"\n"+n.texto),...todosPassos(p).map(x=>x.t),...blocosDe(p).map(b=>b.titulo)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${p.disc}"><strong>Prática: ${esc(p.titulo||"Sem título")}</strong> <span class="muted" style="font-size:12.5px">${p.disc&&DK[p.disc]?esc(nomeDisc(p.disc)):""}</span><div class="ex">${trecho(t,q)}</div></button>`)});
   projetos().forEach(p=>{ const t=[p.titulo,...PJ_CAMPOS.map(c=>p[c[0]]),p.texto,...(p.etapas||[]).map(e=>e.t),...DISC.map(d=>pjd(p.id,d.k).texto)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-pjabre="${p.id}"><strong>Projeto: ${esc(p.titulo||"Sem título")}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   tarefas().forEach(t=>{ if((t.texto||"").toLowerCase().includes(q)) r.push(`<button class="ni" data-go="tarefas"><strong>Tarefa</strong><div class="ex">${trecho(t.texto,q)}</div></button>`)});
   return r.length? r.join("") : '<p class="empty">Nada encontrado.</p>';
@@ -1820,6 +1829,7 @@ document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.ve
 
 /* ============ AJUDA (ícones "i") ============ */
 const AJUDA={
+  prblocos:{t:"Blocos e ligações",o:"Divida a prática em blocos (partes), cada um com seus passos. 🔗 liga um passo a um passo de outro bloco, ou um bloco a outro bloco.",c:"Ver sequência desenha tudo num fluxograma: dentro do bloco as setas seguem a ordem dos passos; as ligações aparecem como setas grossas. Passos feitos ficam verdes. ↑↓ muda a ordem dos blocos; ▸ recolhe um bloco e deixa só o campo de novo passo."},
   prnota:{t:"Salvar anotação na prática",o:"Funciona como o “Salvar nota em Materiais”: o texto vira uma anotação guardada dentro desta prática (a 1ª linha é o título) e o campo fica limpo para a próxima.",c:"Dois cliques: o primeiro pede confirmação. As anotações salvas aparecem embaixo; Editar volta o texto para o campo."},
   pratica:{t:"Prática",o:"Registre cada exercício de aula como um mini projeto: título, objetivo, passo a passo (com ✓) e anotações completas (imagens, tabelas, fluxogramas, {{flashcards}}).",c:"Cada disciplina tem as suas práticas. “Sugerir passos do QGIS” preenche um roteiro padrão para ajustar. Marque Concluída ao terminar. Entram na Busca e no arquivo exportado."},
   fccria:{t:"Onde nascem os flashcards",o:"1) + Novo flashcard aqui; 2) cada par da aba Perguntas de uma disciplina vira um cartão sozinho; 3) nas anotações, escreva {{pergunta}} — ao fechar as chaves abre uma janelinha para a resposta — ou selecione um trecho e clique em Flashcard na barra (\"termo: explicação\" já separa frente e verso); 4) dentro de um material, Gerar flashcards (IA) ou Copiar pedido / Colar resposta.",c:"Cartões da aba Perguntas são editados lá; os outros, aqui em Ver e editar cartões."},
@@ -2261,22 +2271,62 @@ ligarAbaProj(document); window.ligarAbaProj=ligarAbaProj;
 const praticas = k => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="prt"&&!b.apagado&&(!k||b.disc===k)).map(([id,b])=>({id,...b})).sort((a,b)=>(a.criado||0)-(b.criado||0));
 const PRT_ABERTA={}; // prática aberta por disciplina
 const PASSOS_QGIS=["Criar o projeto no QGIS e conferir o SRC","Carregar as camadas e conferir os atributos","Executar a ferramenta / análise","Conferir o resultado (simbologia, tabela, mapa)","Salvar o projeto e exportar o resultado"];
+// Passo a passo em blocos: blocos:[{id,titulo,rec,liga:[blocoId],passos:[{id,t,feito,liga:[passoId]}]}].
+// Práticas antigas (passos soltos) viram um bloco "Parte 1".
+function blocosDe(p){ if(Array.isArray(p.blocos)) return p.blocos; const pa=p.passos||[]; return pa.length?[{id:"b0",titulo:"Parte 1",rec:false,liga:[],passos:pa.map(x=>({liga:[],...x}))}]:[]; }
+const todosPassos = p => blocosDe(p).flatMap(b=>b.passos||[]);
+function rotulosPassos(bs){ const m={}; bs.forEach((b,i)=>{ m[b.id]={n:String(i+1),t:b.titulo||"Bloco "+(i+1),bloco:true}; (b.passos||[]).forEach((x,j)=>m[x.id]={n:(i+1)+"."+(j+1),t:x.t||"",bloco:false,b:b.id}); }); return m; }
+function salvarBlocos(id,bs){ salvarPrt(id,{blocos:bs,passos:[]},50); }
+// sequência em fluxograma (Mermaid): blocos viram grupos; setas cheias = ordem dentro do bloco; setas grossas = ligações
+function sequenciaMermaid(bs){
+  const q=t=>String(t||"").replace(/["\[\]{}()<>|#;`]/g," ").replace(/\s+/g," ").trim().slice(0,60)||"…";
+  const R=rotulosPassos(bs), N=id=>"n"+String(id).replace(/[^A-Za-z0-9]/g,""), B=id=>"b"+String(id).replace(/[^A-Za-z0-9]/g,"");
+  let o="flowchart TD\n"; const ok=[];
+  bs.forEach((b,i)=>{ o+=`  subgraph ${B(b.id)}["${i+1}. ${q(b.titulo||"Bloco "+(i+1))}"]\n    direction TB\n`;
+    if(!(b.passos||[]).length) o+=`    ${B(b.id)}v[" "]\n`;
+    (b.passos||[]).forEach((x,j)=>{ o+=`    ${N(x.id)}["${R[x.id].n} ${q(x.t)}"]\n`; if(x.feito) ok.push(N(x.id)); });
+    (b.passos||[]).forEach((x,j,a)=>{ if(j) o+=`    ${N(a[j-1].id)} --> ${N(x.id)}\n`; });
+    o+="  end\n"; });
+  bs.forEach(b=>{ (b.liga||[]).forEach(d=>{ if(R[d]&&R[d].bloco) o+=`  ${B(b.id)} ==> ${B(d)}\n`; });
+    (b.passos||[]).forEach(x=>(x.liga||[]).forEach(d=>{ if(R[d]&&!R[d].bloco) o+=`  ${N(x.id)} ==> ${N(d)}\n`; })); });
+  if(ok.length) o+=`  classDef ok fill:#d5f5e3,stroke:#1e8449\n  class ${ok.join(",")} ok\n`;
+  return o;
+}
+const PRT_SEQ={}; // sequência aberta por prática
 function salvarPrt(id,mud,atraso){ salvarDoc(id,{...S.docs[id],tipo:"prt",...mud},atraso); }
 function aulaAtualDe(k){ const t=Date.now(), as=AULAS.filter(a=>a.k===k); const a=as.find(a=>statusAula(a)==="cur")||as.find(a=>msDe(a.data,a.ini)>t)||as[as.length-1]; return a?a.id:""; }
 function pratAbaHTML(k){
   const ps=praticas(k), ab=ps.find(p=>p.id===PRT_ABERTA[k]);
-  const lista=ps.length?`<div class="pr-lista">${ps.map(p=>{ const pa=p.passos||[], f=pa.filter(x=>x.feito).length, a=AK[p.aula];
+  const lista=ps.length?`<div class="pr-lista">${ps.map(p=>{ const pa=todosPassos(p), f=pa.filter(x=>x.feito).length, a=AK[p.aula];
       return `<button type="button" class="pr-it${p.id===PRT_ABERTA[k]?" on":""}${p.feita?" ok":""}" data-prx="abrir" data-id="${p.id}"><span class="pr-ic">${p.feita?"✓":"▸"}</span><span class="pr-t"><strong>${esc(p.titulo||"Prática sem título")}</strong><span class="muted">${pa.length?f+"/"+pa.length+" passos":"sem passos"}${(p.notas||[]).length?" · "+p.notas.length+" anotação(ões)":""}${a?" · "+fmtData(a.data).slice(0,9):""}${p.feita?" · concluída":""}</span></span></button>`; }).join("")}</div>`
     : `<p class="muted" style="margin:6px 0;font-size:13.5px">Nenhuma prática ainda. Use para registrar exercícios de aula como mini projetos: objetivo, passo a passo e anotações (com imagens, tabelas e fluxogramas).</p>`;
-  const ed=ab?(()=>{ const pa=ab.passos||[], f=pa.filter(x=>x.feito).length, pct=pa.length?Math.round(f/pa.length*100):0;
+  const ed=ab?(()=>{ const bs=blocosDe(ab), pa=bs.flatMap(b=>b.passos||[]), f=pa.filter(x=>x.feito).length, pct=pa.length?Math.round(f/pa.length*100):0, R=rotulosPassos(bs);
+    const chip=(dest,dono)=>R[dest]?`<span class="pr-lk" title="${esc(R[dest].t)}">→ ${R[dest].bloco?"Bloco ":""}${R[dest].n} <span class="pr-lkt">${esc(R[dest].t.slice(0,40))}</span><button type="button" data-prx="desligar" data-de="${dono}" data-para="${dest}" aria-label="Tirar ligação">✕</button></span>`:"";
+    const selLiga=(dono,ehBloco)=>{ const op=ehBloco? bs.filter(b=>b.id!==dono).map(b=>`<option value="${b.id}">Bloco ${R[b.id].n} · ${esc(R[b.id].t.slice(0,40))}</option>`).join("")
+        : bs.map(b=>`<optgroup label="${R[b.id].n}. ${esc(R[b.id].t.slice(0,40))}">${(b.passos||[]).filter(x=>x.id!==dono).map(x=>`<option value="${x.id}">${R[x.id].n} ${esc((x.t||"").slice(0,50))}</option>`).join("")}</optgroup>`).join("");
+      return op?`<select class="pr-liga" data-prlig="${dono}" aria-label="Ligar a…" title="Ligar a outro ${ehBloco?"bloco":"passo"} (mostra a sequência)"><option value="">🔗</option>${op}</select>`:""; };
     return `<div class="pr-ed" data-prid="${ab.id}">
       <div class="row" style="gap:6px;align-items:center"><input type="text" class="pr-ti" data-prc="titulo" value="${esc(ab.titulo||"")}" placeholder="Título da prática (ex.: Mapa de calor de ocorrências)" aria-label="Título da prática" style="flex:1;min-width:0">
         <label class="row" style="gap:4px;font-size:13px;white-space:nowrap;cursor:pointer"><input type="checkbox" data-prc="feita" ${ab.feita?"checked":""}> Concluída</label></div>
       <label class="lb" style="margin-top:8px">Objetivo</label><textarea class="pj-auto" data-prc="objetivo" rows="2" placeholder="O que esta prática faz ou entrega. Ex.: gerar um mapa de densidade (kernel) dos CVLI de 2025 no bairro X.">${esc(ab.objetivo||"")}</textarea>
-      <div class="row" style="justify-content:space-between;margin-top:10px"><button type="button" class="pr-tog" data-prx="dobrar" aria-expanded="${!ab.passosRec}" title="${ab.passosRec?"Mostrar os passos":"Recolher os passos"}"><span class="pr-seta">${ab.passosRec?"▸":"▾"}</span> Passo a passo ${pa.length?`<span class="mono muted">${f}/${pa.length}</span>`:""}</button>${pa.length?"":`<button type="button" class="btn sm" data-prx="modelo" title="Adiciona os passos típicos de uma prática no QGIS">Sugerir passos do QGIS</button>`}</div>
+      <div class="row" style="justify-content:space-between;margin-top:10px;gap:6px"><button type="button" class="pr-tog" data-prx="dobrar" aria-expanded="${!ab.passosRec}" title="${ab.passosRec?"Mostrar os blocos":"Recolher os blocos"}"><span class="pr-seta">${ab.passosRec?"▸":"▾"}</span> Passo a passo ${pa.length?`<span class="mono muted">${f}/${pa.length}</span>`:""}</button>
+        <span class="row" style="gap:6px">${bs.length?`<button type="button" class="btn sm${PRT_SEQ[ab.id]?" on":""}" data-prx="seq" title="Mostra blocos, passos e ligações num fluxograma">${PRT_SEQ[ab.id]?"Esconder sequência":"Ver sequência"}</button>`:""}${pa.length?"":`<button type="button" class="btn sm" data-prx="modelo" title="Cria um bloco com os passos típicos de uma prática no QGIS">Sugerir passos do QGIS</button>`}${info("prblocos")}</span></div>
       ${pa.length?`<div class="pj-barra" style="margin:4px 0 6px"><i style="width:${pct}%"></i></div>`:""}
-      <div class="pr-passos"${ab.passosRec?" hidden":""}>${pa.map((x,i)=>`<div class="pr-ps${x.feito?" ok":""}" data-pid="${x.id}"><input type="checkbox" data-prps="feito" ${x.feito?"checked":""} aria-label="Feito"><span class="mono muted" style="font-size:12px">${i+1}.</span><input type="text" data-prps="t" value="${esc(x.t||"")}" aria-label="Passo"><button type="button" class="btn sm" data-prx="tirarpasso" title="Tirar passo">✕</button></div>`).join("")}</div>
-      <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pr-novopasso" placeholder="Novo passo (Enter adiciona)" style="flex:1;min-width:0"><button type="button" class="btn sm" data-prx="passo">+ Passo</button></div>
+      ${PRT_SEQ[ab.id]&&bs.length?`<div class="pr-seq"><div class="fx-svg" data-src="${encodeURIComponent(sequenciaMermaid(bs))}"><p class="muted">Desenhando sequência…</p></div></div>`:""}
+      <div class="pr-blocos"${ab.passosRec?" hidden":""}>${bs.map((b,bi)=>{ const bp=b.passos||[], bf=bp.filter(x=>x.feito).length;
+        return `<div class="pr-bl${b.rec?" rec":""}" data-bid="${b.id}">
+          <div class="pr-bh"><button type="button" class="pr-tog" data-prx="dobrarbloco" aria-expanded="${!b.rec}" title="${b.rec?"Mostrar passos":"Recolher passos"}"><span class="pr-seta">${b.rec?"▸":"▾"}</span><span class="mono">${bi+1}</span></button>
+            <input type="text" data-prbl="titulo" value="${esc(b.titulo||"")}" placeholder="Nome do bloco (ex.: Preparar os dados)" aria-label="Nome do bloco">
+            <span class="mono muted" style="font-size:12px">${bp.length?bf+"/"+bp.length:""}</span>
+            ${selLiga(b.id,true)}
+            <span class="pj-mv"><button type="button" data-prx="blsobe" title="Subir bloco" ${bi?"":"disabled"}>↑</button><button type="button" data-prx="bldesce" title="Descer bloco" ${bi<bs.length-1?"":"disabled"}>↓</button><button type="button" data-prx="bltirar" title="Apagar bloco">✕</button></span></div>
+          ${(b.liga||[]).length?`<div class="pr-lks">${b.liga.map(d=>chip(d,b.id)).join("")}</div>`:""}
+          ${b.rec?"":`<div class="pr-passos">${bp.map((x,i)=>`<div class="pr-ps${x.feito?" ok":""}" data-pid="${x.id}"><input type="checkbox" data-prps="feito" ${x.feito?"checked":""} aria-label="Feito"><span class="mono muted" style="font-size:12px">${bi+1}.${i+1}</span><input type="text" data-prps="t" value="${esc(x.t||"")}" aria-label="Passo">${selLiga(x.id,false)}<button type="button" class="btn sm" data-prx="tirarpasso" title="Tirar passo">✕</button>
+            ${(x.liga||[]).length?`<div class="pr-lks">${x.liga.map(d=>chip(d,x.id)).join("")}</div>`:""}</div>`).join("")}</div>`}
+          <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pr-novopasso" placeholder="Novo passo neste bloco (Enter adiciona)" style="flex:1;min-width:0"><button type="button" class="btn sm" data-prx="passo">+ Passo</button></div>
+        </div>`; }).join("")}</div>
+      ${ab.passosRec&&bs.length?`<div class="row" style="gap:6px;margin-top:4px"><select class="pr-alvo" aria-label="Bloco" style="width:auto;max-width:40%">${bs.map((b,i)=>`<option value="${b.id}" ${i===bs.length-1?"selected":""}>${i+1}. ${esc((b.titulo||"Bloco "+(i+1)).slice(0,30))}</option>`).join("")}</select><input type="text" class="pr-novopasso" placeholder="Novo passo (Enter adiciona)" style="flex:1;min-width:0"><button type="button" class="btn sm" data-prx="passo">+ Passo</button></div>`:""}
+      <div class="row" style="gap:6px;margin-top:8px"><button type="button" class="btn sm" data-prx="bloco">+ Bloco</button>${bs.length?"":`<span class="muted" style="font-size:12.5px">Divida a prática em partes (blocos), cada uma com seus passos.</span>`}</div>
       <label class="lb" style="margin-top:12px">Anotações da prática</label>
       <textarea data-rich="1" data-sem-abas="1" data-prttexto="${ab.id}" aria-label="Anotações da prática" placeholder="Resultados, prints, comandos, problemas e como resolveu…">${esc(ab.texto||"")}</textarea>
       <div class="row" style="margin-top:6px;gap:6px"><button type="button" class="btn sm pri" data-prx="salvarnota" title="Guarda este texto dentro da prática (1ª linha = título) e limpa o campo para a próxima anotação">Salvar anotação na prática</button>${info("prnota")}</div>
@@ -2289,10 +2339,11 @@ function pratAbaHTML(k){
   return `<div class="row" style="justify-content:space-between;gap:6px"><span class="lb" style="margin:0">Práticas de ${esc(curto(k))} ${info("pratica")}</span><button type="button" class="btn sm pri" data-prx="nova">+ Nova prática</button></div>${lista}${ed}`;
 }
 function praticaMD(p){
-  const pa=p.passos||[];
+  const bs=blocosDe(p), R=rotulosPassos(bs);
   let o=`### Prática: ${p.titulo||"Sem título"}${p.feita?" ✓":""}\n`;
   if((p.objetivo||"").trim()) o+=`**Objetivo:** ${p.objetivo.trim()}\n\n`;
-  if(pa.length) o+=pa.map(x=>`- [${x.feito?"x":" "}] ${x.t}`).join("\n")+"\n\n";
+  bs.forEach((b,i)=>{ o+=`**${i+1}. ${b.titulo||"Bloco "+(i+1)}**${(b.liga||[]).length?" → "+b.liga.filter(d=>R[d]).map(d=>"bloco "+R[d].n).join(", "):""}\n`+(b.passos||[]).map(x=>`- [${x.feito?"x":" "}] ${R[x.id].n} ${x.t}${(x.liga||[]).length?" → "+x.liga.filter(d=>R[d]).map(d=>R[d].n).join(", "):""}`).join("\n")+"\n\n"; });
+  if(bs.length) o+="```mermaid\n"+sequenciaMermaid(bs)+"```\n\n";
   (p.notas||[]).forEach(n=>{ o+=`**${n.titulo}**\n${n.texto}\n\n`; });
   if((p.texto||"").trim()) o+=p.texto.trim()+"\n";
   return window.FLUXO&&FLUXO.expandir?FLUXO.expandir(o):o;
@@ -2312,9 +2363,24 @@ function ligarAbaPrat(doc){
     const p=id&&S.docs[id]; if(!p) return;
     if(op==="dobrarnotas"){ salvarPrt(id,{notasRec:!p.notasRec},50); redesenharPrats(k); return; }
     if(op==="dobrar"){ salvarPrt(id,{passosRec:!p.passosRec},50); redesenharPrats(k); return; }
-    if(op==="modelo"){ salvarPrt(id,{passos:PASSOS_QGIS.map(t=>({id:novoId(),t,feito:false}))},50); redesenharPrats(k); return; }
-    if(op==="passo"){ const inp=c.pr.querySelector(".pr-novopasso"), t=inp.value.trim(); if(!t){ inp.focus(); return; } salvarPrt(id,{passos:[...(p.passos||[]),{id:novoId(),t,feito:false}]},50); redesenharPrats(k); c.pr.querySelector(".pr-novopasso")?.focus(); if(p.passosRec){ const av=c.pr.ownerDocument===document?toast:(c.pr.ownerDocument.defaultView.toast||toast); av("Passo adicionado ("+((p.passos||[]).length+1)+" no total)."); } return; }
-    if(op==="tirarpasso"){ const pid=b.closest(".pr-ps").dataset.pid; salvarPrt(id,{passos:(p.passos||[]).filter(x=>x.id!==pid)},50); redesenharPrats(k); return; }
+    const bs=JSON.parse(JSON.stringify(blocosDe(p))), bel=b.closest(".pr-bl"), bid=bel&&bel.dataset.bid, bi=bs.findIndex(x=>x.id===bid);
+    const av=t=>{ const f=c.pr.ownerDocument===document?toast:(c.pr.ownerDocument.defaultView.toast||toast); f(t); };
+    if(op==="modelo"){ bs.push({id:novoId(),titulo:"Prática no QGIS",rec:false,liga:[],passos:PASSOS_QGIS.map(t=>({id:novoId(),t,feito:false,liga:[]}))}); salvarBlocos(id,bs); redesenharPrats(k); return; }
+    if(op==="seq"){ PRT_SEQ[id]=!PRT_SEQ[id]; redesenharPrats(k); return; }
+    if(op==="bloco"){ const nb={id:novoId(),titulo:"",rec:false,liga:[],passos:[]}; bs.push(nb); salvarBlocos(id,bs); if(p.passosRec) salvarPrt(id,{passosRec:false},50); redesenharPrats(k); setTimeout(()=>c.pr.querySelector(`.pr-bl[data-bid="${nb.id}"] [data-prbl=titulo]`)?.focus(),30); return; }
+    if(op==="dobrarbloco"&&bi>=0){ bs[bi].rec=!bs[bi].rec; salvarBlocos(id,bs); redesenharPrats(k); return; }
+    if((op==="blsobe"||op==="bldesce")&&bi>=0){ const j=op==="blsobe"?bi-1:bi+1; if(j<0||j>=bs.length) return; [bs[bi],bs[j]]=[bs[j],bs[bi]]; salvarBlocos(id,bs); redesenharPrats(k); return; }
+    if(op==="bltirar"&&bi>=0){ if((bs[bi].passos||[]).length&&!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Apagar?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="✕"; } },3000); return; }
+      const fora=new Set([bs[bi].id,...(bs[bi].passos||[]).map(x=>x.id)]); bs.splice(bi,1);
+      bs.forEach(x=>{ x.liga=(x.liga||[]).filter(d=>!fora.has(d)); (x.passos||[]).forEach(y=>y.liga=(y.liga||[]).filter(d=>!fora.has(d))); }); salvarBlocos(id,bs); redesenharPrats(k); return; }
+    if(op==="passo"){ const caixa=b.closest(".row"), inp=caixa.querySelector(".pr-novopasso"), t=inp.value.trim(); if(!t){ inp.focus(); return; }
+      let alvo=bi; const selA=caixa.querySelector(".pr-alvo"); if(selA) alvo=bs.findIndex(x=>x.id===selA.value);
+      if(alvo<0){ if(!bs.length) bs.push({id:novoId(),titulo:"Parte 1",rec:false,liga:[],passos:[]}); alvo=bs.length-1; }
+      bs[alvo].passos=[...(bs[alvo].passos||[]),{id:novoId(),t,feito:false,liga:[]}]; salvarBlocos(id,bs); redesenharPrats(k);
+      const foco=selA?c.pr.querySelector(".pr-alvo")?.closest(".row").querySelector(".pr-novopasso"):c.pr.querySelector(`.pr-bl[data-bid="${bs[alvo].id}"] .pr-novopasso`); foco?.focus();
+      if(p.passosRec||bs[alvo].rec) av("Passo adicionado em “"+(bs[alvo].titulo||"Bloco "+(alvo+1))+"” ("+bs[alvo].passos.length+" no bloco)."); return; }
+    if(op==="tirarpasso"&&bi>=0){ const pid=b.closest(".pr-ps").dataset.pid; bs[bi].passos=bs[bi].passos.filter(x=>x.id!==pid); bs.forEach(x=>(x.passos||[]).forEach(y=>y.liga=(y.liga||[]).filter(d=>d!==pid))); salvarBlocos(id,bs); redesenharPrats(k); return; }
+    if(op==="desligar"){ const de=b.dataset.de, para=b.dataset.para; bs.forEach(x=>{ if(x.id===de) x.liga=(x.liga||[]).filter(d=>d!==para); (x.passos||[]).forEach(y=>{ if(y.id===de) y.liga=(y.liga||[]).filter(d=>d!==para); }); }); salvarBlocos(id,bs); redesenharPrats(k); return; }
     if(op==="copiar"){ copiar(praticaMD(S.docs[id]),"Prática copiada como texto."); return; }
     if(op==="salvarnota"){ flushTudo(); const txt=String(S.docs[id].texto||"").replace(/^\s+|\s+$/g,"");
       if(!txt){ b.textContent="Escreva algo antes de salvar"; setTimeout(()=>{ if(b.isConnected) b.textContent="Salvar anotação na prática"; },2500); return; }
@@ -2333,15 +2399,18 @@ function ligarAbaPrat(doc){
     if(op==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
       apagarDoc(id); PRT_ABERTA[k]=null; redesenharPrats(k); return; }
   });
-  doc.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("pr-novopasso")){ e.preventDefault(); e.target.closest(".pr-ed").querySelector('[data-prx="passo"]').click(); } });
+  doc.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("pr-novopasso")){ e.preventDefault(); e.target.closest(".row").querySelector('[data-prx="passo"]').click(); } });
   doc.addEventListener("change",e=>{ const t=e.target, c=ctx(t); if(!c||!c.id) return;
     if(t.dataset.prc==="feita"){ salvarPrt(c.id,{feita:t.checked},50); redesenharPrats(c.k); return; }
-    if(t.dataset.prps==="feito"){ const pid=t.closest(".pr-ps").dataset.pid; salvarPrt(c.id,{passos:(S.docs[c.id].passos||[]).map(x=>x.id===pid?{...x,feito:t.checked}:x)},50); redesenharPrats(c.k); return; } });
+    if(t.dataset.prps==="feito"){ const pid=t.closest(".pr-ps").dataset.pid, bs=JSON.parse(JSON.stringify(blocosDe(S.docs[c.id]))); bs.forEach(b=>(b.passos||[]).forEach(x=>{ if(x.id===pid) x.feito=t.checked; })); salvarBlocos(c.id,bs); redesenharPrats(c.k); return; }
+    if(t.dataset.prlig&&t.value){ const de=t.dataset.prlig, para=t.value, bs=JSON.parse(JSON.stringify(blocosDe(S.docs[c.id])));
+      bs.forEach(b=>{ if(b.id===de) b.liga=[...new Set([...(b.liga||[]),para])]; (b.passos||[]).forEach(x=>{ if(x.id===de) x.liga=[...new Set([...(x.liga||[]),para])]; }); }); salvarBlocos(c.id,bs); redesenharPrats(c.k); return; } });
   doc.addEventListener("input",e=>{ const t=e.target;
     if(t.dataset&&t.dataset.prttexto){ salvarPrt(t.dataset.prttexto,{texto:t.value}); return; }
     const c=ctx(t); if(!c||!c.id) return;
     if(t.dataset.prc==="titulo"||t.dataset.prc==="objetivo"){ if(t.tagName==="TEXTAREA") autoAltura(t); salvarPrt(c.id,{[t.dataset.prc]:t.value}); if(t.dataset.prc==="titulo"){ const it=c.pr.querySelector(`.pr-it[data-id="${c.id}"] strong`); if(it) it.textContent=t.value||"Prática sem título"; } return; }
-    if(t.dataset.prps==="t"){ const pid=t.closest(".pr-ps").dataset.pid; salvarPrt(c.id,{passos:(S.docs[c.id].passos||[]).map(x=>x.id===pid?{...x,t:t.value}:x)}); } });
+    if(t.dataset.prps==="t"){ const pid=t.closest(".pr-ps").dataset.pid, bs=JSON.parse(JSON.stringify(blocosDe(S.docs[c.id]))); bs.forEach(b=>(b.passos||[]).forEach(x=>{ if(x.id===pid) x.t=t.value; })); salvarPrt(c.id,{blocos:bs,passos:[]}); return; }
+    if(t.dataset.prbl==="titulo"){ const bid=t.closest(".pr-bl").dataset.bid, bs=JSON.parse(JSON.stringify(blocosDe(S.docs[c.id]))); bs.forEach(b=>{ if(b.id===bid) b.titulo=t.value; }); salvarPrt(c.id,{blocos:bs,passos:[]}); } });
 }
 ligarAbaPrat(document); window.ligarAbaPrat=ligarAbaPrat;
 
