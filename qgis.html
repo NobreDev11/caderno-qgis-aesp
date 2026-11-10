@@ -854,7 +854,9 @@ function vDisciplinas(){
 let SECOES={}; try{ SECOES=JSON.parse(localStorage.getItem("caderno-qgis:secoes")||"{}")||{}; }catch(e){}
 const secAberta = id => SECOES[id]!==false;
 document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.sec) return; SECOES[d.dataset.sec]=d.open; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(x){} if(d.open&&d.dataset.sec.startsWith("nav-")) montarNavs(); },true);
-function matSecHTML(k){ const ms=mats().filter(m=>m.disc===k); return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div>`+(ms.length?ms.map(matItem).join(""):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
+function matSecHTML(k){ const ms=mats().filter(m=>m.disc===k), ns=ms.filter(m=>m.origem==="nota"), as=ms.filter(m=>m.origem!=="nota");
+  const grupo=(t,xs)=>xs.length?`<div class="mat-g"><span class="lb" style="margin:6px 0 4px">${t} (${xs.length})</span>${xs.map(matItem).join("")}</div>`:"";
+  return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div>`+(ms.length?grupo("Arquivos e links",as)+grupo("Notas salvas",ns):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
 function atualizarMatSec(k){ const el=document.querySelector(`[data-matsec="${k}"]`); if(el) el.innerHTML=matSecHTML(k); const c=document.querySelector(`[data-matcont="${k}"]`); if(c) c.textContent=`Materiais (${mats().filter(m=>m.disc===k).length})`; }
 
 /* ---- Mininavegador de pesquisa (por disciplina) ----
@@ -1489,27 +1491,29 @@ function matItem(m){
     ${m.criado?`<span class="chip">${new Date(m.criado).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</span>`:""}${m.resumo?'<span class="chip">resumo</span>':""}${st.total?`<span class="chip">${st.total} questões · ${st.acertos}/${st.feitas}</span>`:""}</div></button>`;
 }
 let FILTRO_MAT="";
-const FM={q:"",origem:"",estado:"",ordem:"antigos"};
+const FM={q:"",origem:"",estado:"",ordem:"antigos",grupo:"arquivos"};
 function matsFiltrados(){
   const q=FM.q.trim().toLowerCase();
-  let ms=mats().filter(m=>(!FILTRO_MAT||m.disc===FILTRO_MAT)&&(!FM.origem||m.origem===FM.origem)&&(!FM.estado
+  let ms=mats().filter(m=>(FM.grupo==="notas"?m.origem==="nota":m.origem!=="nota")&&(!FILTRO_MAT||m.disc===FILTRO_MAT)&&(!FM.origem||m.origem===FM.origem)&&(!FM.estado
     ||(FM.estado==="resumo"&&m.resumo)||(FM.estado==="semresumo"&&!m.resumo)
     ||(FM.estado==="questoes"&&(m.questoes||[]).length)||(FM.estado==="pendentes"&&(()=>{const st=statsMat(m);return st.total&&st.feitas<st.total;})()))
     &&(!q||((m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||"")).toLowerCase().includes(q)));
   if(FM.ordem==="recentes") ms=ms.reverse();
   return ms;
 }
-function listaMatHTML(){ const ms=matsFiltrados(); const tot=mats().length;
-  return ms.length?`<p class="muted" style="font-size:13px;margin:0 0 6px">${ms.length===tot?ms.length+" materiais":ms.length+" de "+tot+" materiais"}</p>`+ms.map(matItem).join("")
-    :(tot?'<p class="empty">Nenhum material com esses filtros.</p>':'<p class="empty">Nenhum material ainda. Envie o PDF dos slides, um link ou fotos do quadro.</p>'); }
+function listaMatHTML(){ const ms=matsFiltrados(); const tot=mats().filter(m=>FM.grupo==="notas"?m.origem==="nota":m.origem!=="nota").length;
+  const nome=FM.grupo==="notas"?["nota salva","notas salvas"]:["arquivo ou link","arquivos e links"];
+  return ms.length?`<p class="muted" style="font-size:13px;margin:0 0 6px">${ms.length===tot?ms.length+" "+(ms.length===1?nome[0]:nome[1]):ms.length+" de "+tot+" "+nome[1]}</p>`+ms.map(matItem).join("")
+    :(tot?'<p class="empty">Nada com esses filtros.</p>':FM.grupo==="notas"?'<p class="empty">Nenhuma nota salva ainda. Use “Salvar nota em Materiais” abaixo da anotação de uma disciplina.</p>':'<p class="empty">Nenhum arquivo ainda. Envie o PDF dos slides, um link ou fotos do quadro.</p>'); }
 function vMateriais(){
   return `<div class="row" style="justify-content:space-between"><div><h2>Materiais ${info("materiais")}</h2><p class="sub">PDFs, slides, links e fotos das aulas. Cada material ganha resumo e questões.</p></div>
     <button class="btn pri" data-addmat="${FILTRO_MAT}">Adicionar material</button></div>
     ${IA_OK===false?`<div class="card" style="font-size:14px"><strong>Geração automática desligada.</strong> <span class="muted">Funciona copiando o pedido para o app do Claude e colando a resposta. Para gerar direto aqui, cadastre a chave <span class="mono">ANTHROPIC_API_KEY</span> na Vercel.</span></div>`:""}
+    <div class="est-abas" role="tablist">${[["arquivos","Arquivos e links",mats().filter(m=>m.origem!=="nota").length],["notas","Notas salvas",mats().filter(m=>m.origem==="nota").length]].map(([v,t,n])=>`<button role="tab" aria-selected="${FM.grupo===v}" class="${FM.grupo===v?"on":""}" data-fmgrupo="${v}">${t} <span class="mono muted" style="font-size:12px">${n}</span></button>`).join("")}</div>
     <div class="fm">
       <div class="fm-c fm-q"><label class="lb" for="fmq">Buscar</label><input id="fmq" type="search" placeholder="Título, resumo ou texto" value="${esc(FM.q)}"></div>
       <div class="fm-c"><label class="lb" for="fmd">Disciplina</label><select id="fmd"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_MAT===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
-      <div class="fm-c"><label class="lb" for="fmo">Tipo</label><select id="fmo">${[["","Todos"],["nota","Nota salva"],["arquivo","PDF/arquivo"],["link","Link"],["fotos","Fotos"],["texto","Texto"]].map(([v,t])=>`<option value="${v}" ${FM.origem===v?"selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="fm-c"${FM.grupo==="notas"?' style="display:none"':""}><label class="lb" for="fmo">Tipo</label><select id="fmo">${(FM.grupo==="notas"?[["","Todas"]]:[["","Todos"],["arquivo","PDF/arquivo"],["link","Link"],["fotos","Fotos"],["texto","Texto"]]).map(([v,t])=>`<option value="${v}" ${FM.origem===v?"selected":""}>${t}</option>`).join("")}</select></div>
       <div class="fm-c"><label class="lb" for="fme">Situação</label><select id="fme">${[["","Todas"],["resumo","Com resumo"],["semresumo","Sem resumo"],["questoes","Com questões"],["pendentes","Questões a fazer"]].map(([v,t])=>`<option value="${v}" ${FM.estado===v?"selected":""}>${t}</option>`).join("")}</select></div>
       <div class="fm-c"><label class="lb" for="fmr">Ordem</label><select id="fmr">${[["antigos","Antigos primeiro"],["recentes","Recentes primeiro"]].map(([v,t])=>`<option value="${v}" ${FM.ordem===v?"selected":""}>${t}</option>`).join("")}</select></div>
       ${FILTRO_MAT||FM.q||FM.origem||FM.estado||FM.ordem!=="antigos"?'<button class="btn sm" data-fmlimpa="1" style="align-self:flex-end">Limpar</button>':""}
@@ -1798,6 +1802,7 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("input",e=>{ if(e.target.id!=="fmq") return; FM.q=e.target.value; const l=document.getElementById("matlista"); if(l) l.innerHTML=listaMatHTML(); });
 document.addEventListener("click",e=>{ if(!e.target.closest("[data-fmlimpa]")) return; FILTRO_MAT=""; Object.assign(FM,{q:"",origem:"",estado:"",ordem:"antigos"}); render(); });
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-fmgrupo]"); if(!b) return; FM.grupo=b.dataset.fmgrupo; FM.origem=""; render(); });
 document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.verTexto=e.target.open; },true);
 
 /* ============ AJUDA (ícones "i") ============ */
