@@ -312,6 +312,8 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-ed{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
 .pr-ti{font:700 15px var(--display)}
 .pr-passos{display:flex;flex-direction:column;gap:4px}
+.pr-notas{display:flex;flex-direction:column;gap:6px}
+.pr-nt{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--bg)}.pr-nt summary{cursor:pointer}
 .pr-ps{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:6px;align-items:center}.pr-ps.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
 
 /* Estudar: abas e flashcards */
@@ -1085,7 +1087,7 @@ function resultados(){
   DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Anotações: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
   mats().forEach(m=>{const t=(m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-mat="${m.id}"><strong>Material: ${esc(m.titulo)}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
-  praticas().forEach(p=>{ const t=[p.titulo,p.objetivo,p.texto,...(p.passos||[]).map(x=>x.t)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${p.disc}"><strong>Prática: ${esc(p.titulo||"Sem título")}</strong> <span class="muted" style="font-size:12.5px">${p.disc&&DK[p.disc]?esc(nomeDisc(p.disc)):""}</span><div class="ex">${trecho(t,q)}</div></button>`)});
+  praticas().forEach(p=>{ const t=[p.titulo,p.objetivo,p.texto,...(p.notas||[]).map(n=>n.titulo+"\n"+n.texto),...(p.passos||[]).map(x=>x.t)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${p.disc}"><strong>Prática: ${esc(p.titulo||"Sem título")}</strong> <span class="muted" style="font-size:12.5px">${p.disc&&DK[p.disc]?esc(nomeDisc(p.disc)):""}</span><div class="ex">${trecho(t,q)}</div></button>`)});
   projetos().forEach(p=>{ const t=[p.titulo,...PJ_CAMPOS.map(c=>p[c[0]]),p.texto,...(p.etapas||[]).map(e=>e.t),...DISC.map(d=>pjd(p.id,d.k).texto)].filter(Boolean).join("\n"); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-pjabre="${p.id}"><strong>Projeto: ${esc(p.titulo||"Sem título")}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   tarefas().forEach(t=>{ if((t.texto||"").toLowerCase().includes(q)) r.push(`<button class="ni" data-go="tarefas"><strong>Tarefa</strong><div class="ex">${trecho(t.texto,q)}</div></button>`)});
   return r.length? r.join("") : '<p class="empty">Nada encontrado.</p>';
@@ -1817,6 +1819,7 @@ document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.ve
 
 /* ============ AJUDA (ícones "i") ============ */
 const AJUDA={
+  prnota:{t:"Salvar anotação na prática",o:"Funciona como o “Salvar nota em Materiais”: o texto vira uma anotação guardada dentro desta prática (a 1ª linha é o título) e o campo fica limpo para a próxima.",c:"Dois cliques: o primeiro pede confirmação. As anotações salvas aparecem embaixo; Editar volta o texto para o campo."},
   pratica:{t:"Prática",o:"Registre cada exercício de aula como um mini projeto: título, objetivo, passo a passo (com ✓) e anotações completas (imagens, tabelas, fluxogramas, {{flashcards}}).",c:"Cada disciplina tem as suas práticas. “Sugerir passos do QGIS” preenche um roteiro padrão para ajustar. Marque Concluída ao terminar. Entram na Busca e no arquivo exportado."},
   fccria:{t:"Onde nascem os flashcards",o:"1) + Novo flashcard aqui; 2) cada par da aba Perguntas de uma disciplina vira um cartão sozinho; 3) nas anotações, escreva {{pergunta}} — ao fechar as chaves abre uma janelinha para a resposta — ou selecione um trecho e clique em Flashcard na barra (\"termo: explicação\" já separa frente e verso); 4) dentro de um material, Gerar flashcards (IA) ou Copiar pedido / Colar resposta.",c:"Cartões da aba Perguntas são editados lá; os outros, aqui em Ver e editar cartões."},
   fcrev:{t:"Revisão espaçada",o:"Leia a frente, pense na resposta, vire (Espaço) e diga como foi: Errei, Difícil, Bom ou Fácil (teclas 1 a 4).",c:"Errei volta em 10 minutos e repete no fim da rodada; Bom e Fácil empurram o cartão para 1, 2, 4, 8 ou 16 dias. “Para revisar agora” mostra só o que venceu. O número no menu Estudar é quantos estão vencidos."},
@@ -2262,7 +2265,7 @@ function aulaAtualDe(k){ const t=Date.now(), as=AULAS.filter(a=>a.k===k); const 
 function pratAbaHTML(k){
   const ps=praticas(k), ab=ps.find(p=>p.id===PRT_ABERTA[k]);
   const lista=ps.length?`<div class="pr-lista">${ps.map(p=>{ const pa=p.passos||[], f=pa.filter(x=>x.feito).length, a=AK[p.aula];
-      return `<button type="button" class="pr-it${p.id===PRT_ABERTA[k]?" on":""}${p.feita?" ok":""}" data-prx="abrir" data-id="${p.id}"><span class="pr-ic">${p.feita?"✓":"▸"}</span><span class="pr-t"><strong>${esc(p.titulo||"Prática sem título")}</strong><span class="muted">${pa.length?f+"/"+pa.length+" passos":"sem passos"}${a?" · "+fmtData(a.data).slice(0,9):""}${p.feita?" · concluída":""}</span></span></button>`; }).join("")}</div>`
+      return `<button type="button" class="pr-it${p.id===PRT_ABERTA[k]?" on":""}${p.feita?" ok":""}" data-prx="abrir" data-id="${p.id}"><span class="pr-ic">${p.feita?"✓":"▸"}</span><span class="pr-t"><strong>${esc(p.titulo||"Prática sem título")}</strong><span class="muted">${pa.length?f+"/"+pa.length+" passos":"sem passos"}${(p.notas||[]).length?" · "+p.notas.length+" anotação(ões)":""}${a?" · "+fmtData(a.data).slice(0,9):""}${p.feita?" · concluída":""}</span></span></button>`; }).join("")}</div>`
     : `<p class="muted" style="margin:6px 0;font-size:13.5px">Nenhuma prática ainda. Use para registrar exercícios de aula como mini projetos: objetivo, passo a passo e anotações (com imagens, tabelas e fluxogramas).</p>`;
   const ed=ab?(()=>{ const pa=ab.passos||[], f=pa.filter(x=>x.feito).length, pct=pa.length?Math.round(f/pa.length*100):0;
     return `<div class="pr-ed" data-prid="${ab.id}">
@@ -2275,6 +2278,10 @@ function pratAbaHTML(k){
       <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pr-novopasso" placeholder="Novo passo (Enter adiciona)" style="flex:1;min-width:0"><button type="button" class="btn sm" data-prx="passo">+ Passo</button></div>
       <label class="lb" style="margin-top:12px">Anotações da prática</label>
       <textarea data-rich="1" data-sem-abas="1" data-prttexto="${ab.id}" aria-label="Anotações da prática" placeholder="Resultados, prints, comandos, problemas e como resolveu…">${esc(ab.texto||"")}</textarea>
+      <div class="row" style="margin-top:6px;gap:6px"><button type="button" class="btn sm pri" data-prx="salvarnota" title="Guarda este texto dentro da prática (1ª linha = título) e limpa o campo para a próxima anotação">Salvar anotação na prática</button>${info("prnota")}</div>
+      ${(ab.notas||[]).length?`<div class="pr-notas"><span class="lb" style="margin:10px 0 4px">Anotações salvas (${ab.notas.length})</span>${ab.notas.map(n=>`<details class="pr-nt" data-nid="${n.id}"><summary><strong>${esc(n.titulo||"Anotação")}</strong> <span class="mono muted" style="font-size:12px">${new Date(n.criado||0).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span></summary>
+        <div class="md" style="margin-top:6px">${md(n.texto||"")}</div>
+        <div class="row" style="justify-content:flex-end;gap:6px;margin-top:6px"><button type="button" class="btn sm" data-prx="copiarnota">Copiar</button><button type="button" class="btn sm" data-prx="editarnota" title="Volta o texto para o campo de anotações para editar e salvar de novo">Editar</button><button type="button" class="btn sm danger" data-prx="apagarnota">Apagar</button></div></details>`).join("")}</div>`:""}
       <div class="row" style="justify-content:space-between;margin-top:10px;gap:6px"><button type="button" class="btn sm" data-prx="fechar">Fechar</button>
         <span class="row" style="gap:6px"><button type="button" class="btn sm" data-prx="copiar">Copiar como texto</button><button type="button" class="btn sm danger" data-prx="apagar">Apagar</button></span></div>
     </div>`; })():"";
@@ -2285,6 +2292,7 @@ function praticaMD(p){
   let o=`### Prática: ${p.titulo||"Sem título"}${p.feita?" ✓":""}\n`;
   if((p.objetivo||"").trim()) o+=`**Objetivo:** ${p.objetivo.trim()}\n\n`;
   if(pa.length) o+=pa.map(x=>`- [${x.feito?"x":" "}] ${x.t}`).join("\n")+"\n\n";
+  (p.notas||[]).forEach(n=>{ o+=`**${n.titulo}**\n${n.texto}\n\n`; });
   if((p.texto||"").trim()) o+=p.texto.trim()+"\n";
   return window.FLUXO&&FLUXO.expandir?FLUXO.expandir(o):o;
 }
@@ -2305,6 +2313,20 @@ function ligarAbaPrat(doc){
     if(op==="passo"){ const inp=c.pr.querySelector(".pr-novopasso"), t=inp.value.trim(); if(!t){ inp.focus(); return; } salvarPrt(id,{passos:[...(p.passos||[]),{id:novoId(),t,feito:false}]},50); redesenharPrats(k); c.pr.querySelector(".pr-novopasso")?.focus(); return; }
     if(op==="tirarpasso"){ const pid=b.closest(".pr-ps").dataset.pid; salvarPrt(id,{passos:(p.passos||[]).filter(x=>x.id!==pid)},50); redesenharPrats(k); return; }
     if(op==="copiar"){ copiar(praticaMD(S.docs[id]),"Prática copiada como texto."); return; }
+    if(op==="salvarnota"){ flushTudo(); const txt=String(S.docs[id].texto||"").replace(/^\s+|\s+$/g,"");
+      if(!txt){ b.textContent="Escreva algo antes de salvar"; setTimeout(()=>{ if(b.isConnected) b.textContent="Salvar anotação na prática"; },2500); return; }
+      if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar: guardar e limpar o campo"; setTimeout(()=>{ if(b.isConnected&&b.dataset.conf){ delete b.dataset.conf; b.textContent="Salvar anotação na prática"; } },4000); return; }
+      const ls=txt.split("\n"); let i=ls.findIndex(l=>l.trim()&&!/^!\[[^\]]*\]\(fx:/.test(l)); if(i<0) i=0;
+      const titulo=(limparMd(ls[i])||"Anotação").slice(0,100), corpo=ls.filter((l,n)=>n!==i).join("\n").replace(/^\s+|\s+$/g,"")||ls[i];
+      salvarPrt(id,{texto:"",notas:[...(S.docs[id].notas||[]),{id:novoId(),titulo,texto:corpo,criado:Date.now()}]},50);
+      redesenharPrats(k); const av=c.pr.ownerDocument===document?toast:(c.pr.ownerDocument.defaultView.toast||toast); av("Anotação “"+titulo+"” salva na prática."); return; }
+    if(op==="copiarnota"||op==="editarnota"||op==="apagarnota"){ const nid=b.closest(".pr-nt").dataset.nid, n=(p.notas||[]).find(x=>x.id===nid); if(!n) return;
+      if(op==="copiarnota"){ copiar(n.titulo+"\n"+n.texto,"Anotação copiada."); return; }
+      if(op==="apagarnota"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Apagar?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
+        salvarPrt(id,{notas:(p.notas||[]).filter(x=>x.id!==nid)},50); redesenharPrats(k); return; }
+      // editar: devolve ao campo (o que já estava no campo continua embaixo)
+      const atual=String(p.texto||"").trim(); salvarPrt(id,{texto:n.titulo+"\n"+n.texto+(atual?"\n\n"+atual:""),notas:(p.notas||[]).filter(x=>x.id!==nid)},50); redesenharPrats(k);
+      setTimeout(()=>c.pr.querySelector(".pr-ed .wys")?.focus(),40); return; }
     if(op==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
       apagarDoc(id); PRT_ABERTA[k]=null; redesenharPrats(k); return; }
   });
