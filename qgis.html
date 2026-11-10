@@ -311,7 +311,8 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-ic{width:14px;color:var(--muted);flex:none}.pr-t{display:flex;flex-direction:column;gap:1px;min-width:0}.pr-t span{font-size:12.5px}
 .pr-ed{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
 .pr-ti{font:700 15px var(--display)}
-.pr-passos{display:flex;flex-direction:column;gap:4px}
+.pr-passos{display:flex;flex-direction:column;gap:4px}.pr-passos[hidden]{display:none}
+.pr-tog{border:0;background:transparent;padding:0;font:600 13px var(--body);color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}.pr-tog:hover{color:var(--ink)}.pr-seta{width:10px;display:inline-block}
 .pr-notas{display:flex;flex-direction:column;gap:6px}
 .pr-nt{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--bg)}.pr-nt summary{cursor:pointer}
 .pr-ps{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:6px;align-items:center}.pr-ps.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
@@ -2272,9 +2273,9 @@ function pratAbaHTML(k){
       <div class="row" style="gap:6px;align-items:center"><input type="text" class="pr-ti" data-prc="titulo" value="${esc(ab.titulo||"")}" placeholder="Título da prática (ex.: Mapa de calor de ocorrências)" aria-label="Título da prática" style="flex:1;min-width:0">
         <label class="row" style="gap:4px;font-size:13px;white-space:nowrap;cursor:pointer"><input type="checkbox" data-prc="feita" ${ab.feita?"checked":""}> Concluída</label></div>
       <label class="lb" style="margin-top:8px">Objetivo</label><textarea class="pj-auto" data-prc="objetivo" rows="2" placeholder="O que esta prática faz ou entrega. Ex.: gerar um mapa de densidade (kernel) dos CVLI de 2025 no bairro X.">${esc(ab.objetivo||"")}</textarea>
-      <div class="row" style="justify-content:space-between;margin-top:10px"><span class="lb" style="margin:0">Passo a passo ${pa.length?`<span class="mono muted">${f}/${pa.length}</span>`:""}</span>${pa.length?"":`<button type="button" class="btn sm" data-prx="modelo" title="Adiciona os passos típicos de uma prática no QGIS">Sugerir passos do QGIS</button>`}</div>
+      <div class="row" style="justify-content:space-between;margin-top:10px"><button type="button" class="pr-tog" data-prx="dobrar" aria-expanded="${!ab.passosRec}" title="${ab.passosRec?"Mostrar os passos":"Recolher os passos"}"><span class="pr-seta">${ab.passosRec?"▸":"▾"}</span> Passo a passo ${pa.length?`<span class="mono muted">${f}/${pa.length}</span>`:""}</button>${pa.length?"":`<button type="button" class="btn sm" data-prx="modelo" title="Adiciona os passos típicos de uma prática no QGIS">Sugerir passos do QGIS</button>`}</div>
       ${pa.length?`<div class="pj-barra" style="margin:4px 0 6px"><i style="width:${pct}%"></i></div>`:""}
-      <div class="pr-passos">${pa.map((x,i)=>`<div class="pr-ps${x.feito?" ok":""}" data-pid="${x.id}"><input type="checkbox" data-prps="feito" ${x.feito?"checked":""} aria-label="Feito"><span class="mono muted" style="font-size:12px">${i+1}.</span><input type="text" data-prps="t" value="${esc(x.t||"")}" aria-label="Passo"><button type="button" class="btn sm" data-prx="tirarpasso" title="Tirar passo">✕</button></div>`).join("")}</div>
+      <div class="pr-passos"${ab.passosRec?" hidden":""}>${pa.map((x,i)=>`<div class="pr-ps${x.feito?" ok":""}" data-pid="${x.id}"><input type="checkbox" data-prps="feito" ${x.feito?"checked":""} aria-label="Feito"><span class="mono muted" style="font-size:12px">${i+1}.</span><input type="text" data-prps="t" value="${esc(x.t||"")}" aria-label="Passo"><button type="button" class="btn sm" data-prx="tirarpasso" title="Tirar passo">✕</button></div>`).join("")}</div>
       <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pr-novopasso" placeholder="Novo passo (Enter adiciona)" style="flex:1;min-width:0"><button type="button" class="btn sm" data-prx="passo">+ Passo</button></div>
       <label class="lb" style="margin-top:12px">Anotações da prática</label>
       <textarea data-rich="1" data-sem-abas="1" data-prttexto="${ab.id}" aria-label="Anotações da prática" placeholder="Resultados, prints, comandos, problemas e como resolveu…">${esc(ab.texto||"")}</textarea>
@@ -2309,8 +2310,9 @@ function ligarAbaPrat(doc){
     if(op==="abrir"){ PRT_ABERTA[k]=PRT_ABERTA[k]===b.dataset.id?null:b.dataset.id; redesenharPrats(k); return; }
     if(op==="fechar"){ PRT_ABERTA[k]=null; redesenharPrats(k); return; }
     const p=id&&S.docs[id]; if(!p) return;
+    if(op==="dobrar"){ salvarPrt(id,{passosRec:!p.passosRec},50); redesenharPrats(k); return; }
     if(op==="modelo"){ salvarPrt(id,{passos:PASSOS_QGIS.map(t=>({id:novoId(),t,feito:false}))},50); redesenharPrats(k); return; }
-    if(op==="passo"){ const inp=c.pr.querySelector(".pr-novopasso"), t=inp.value.trim(); if(!t){ inp.focus(); return; } salvarPrt(id,{passos:[...(p.passos||[]),{id:novoId(),t,feito:false}]},50); redesenharPrats(k); c.pr.querySelector(".pr-novopasso")?.focus(); return; }
+    if(op==="passo"){ const inp=c.pr.querySelector(".pr-novopasso"), t=inp.value.trim(); if(!t){ inp.focus(); return; } salvarPrt(id,{passos:[...(p.passos||[]),{id:novoId(),t,feito:false}]},50); redesenharPrats(k); c.pr.querySelector(".pr-novopasso")?.focus(); if(p.passosRec){ const av=c.pr.ownerDocument===document?toast:(c.pr.ownerDocument.defaultView.toast||toast); av("Passo adicionado ("+((p.passos||[]).length+1)+" no total)."); } return; }
     if(op==="tirarpasso"){ const pid=b.closest(".pr-ps").dataset.pid; salvarPrt(id,{passos:(p.passos||[]).filter(x=>x.id!==pid)},50); redesenharPrats(k); return; }
     if(op==="copiar"){ copiar(praticaMD(S.docs[id]),"Prática copiada como texto."); return; }
     if(op==="salvarnota"){ flushTudo(); const txt=String(S.docs[id].texto||"").replace(/^\s+|\s+$/g,"");
