@@ -519,6 +519,11 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(b.length>1) out.add(a+b[1]+b[0]+b.slice(2));
       for(const c of ALFA){ if(b) out.add(a+c+b.slice(1)); out.add(a+c+b); } }
     out.delete(w); return out; }
+  // termos do curso + palavras das suas anotações (≥3 vezes), indexados sem acento
+  let DOM=null, DOM_T=0;
+  function dominio(){ if(DOM&&Date.now()-DOM_T<60000) return DOM; vocabulario(); const m=new Map();
+    BASE_L.forEach(w=>{ const k=desac(w); if(!m.has(k)) m.set(k,w); }); VOC_L.forEach((n,w)=>{ if(n>=3){ const k=desac(w); if(!m.has(k)) m.set(k,w); } });
+    DOM=m; DOM_T=Date.now(); return m; }
   function conhecida(lw){ if(BASE_L.has(lw)) return true; vocabulario(); return (VOC_L.get(lw)||0)>=3; }
   function pelaLista(lw){
     if(!DIC||lw.length<3||/[^a-zà-öø-ÿ]/.test(lw)||conhecida(lw)) return null;
@@ -526,12 +531,12 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(rw!==undefined){ // palavra existe; só troca se for a versão sem acento, rara, de uma palavra bem mais usada (otima → ótima)
       if(rw<8000||desac(lw)!==lw) return null; const a=DESAC.get(lw), ra=a!==undefined&&a!==lw?DIC.get(a):undefined;
       return ra!==undefined&&ra*8<rw ? a : null; }
-    const so=DESAC.get(desac(lw)); if(so) return so; // só faltou/sobrou acento
+    const dom=dominio(); const so=dom.get(desac(lw))||DESAC.get(desac(lw)); if(so&&so!==lw) return so; // só faltou/sobrou acento
     if(lw.length<5) return null; // palavras curtas desconhecidas costumam ser siglas
     // a 1 letra de distância: primeiro termos do curso e das suas anotações, depois as palavras mais usadas
     let best=null, br=Infinity;
     for(const c of edicoes(lw)){
-      if(BASE_L.has(c)||(VOC_L.get(c)||0)>=3){ const r=-1-(VOC_L.get(c)||0); if(r<br){ br=r; best=c; } continue; }
+      const dw=dom.get(desac(c)); if(dw){ const r=-1-(VOC_L.get(dw)||0); if(r<br){ br=r; best=dw; } continue; }
       let w2=c, r=DIC.get(c); if(r===undefined){ const a=DESAC.get(desac(c)); if(a!==undefined){ w2=a; r=DIC.get(a); } } if(r!==undefined&&r<br){ br=r; best=w2; } }
     return best;
   }
@@ -570,14 +575,18 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!ok){ ta.setRangeText(r,ini,antes.length,"end"); ta.dispatchEvent(new Event("input",{bubbles:true})); }
     const p=ini+r.length+ch.length; ta.setSelectionRange(p,p); ULT_AUTO={de:m[1],para:r};
   }
-  document.addEventListener("input",e=>{
-    const t=e.target; if(typeof InputEvent!=="undefined"&&!(e instanceof InputEvent)) return; // eventos de sincronização da caixa escondida
+  function revInput(e){
+    const t=e.target, IE=(t.ownerDocument&&t.ownerDocument.defaultView||window).InputEvent; if(IE&&!(e instanceof IE)) return; // eventos de sincronização da caixa escondida
     if(e.inputType==="historyUndo"&&ULT_AUTO){ ignorar(ULT_AUTO.de.toLowerCase()); ULT_AUTO=null; return; } // desfez a correção: não corrige mais essa palavra
     if(e.inputType!=="insertText"||!e.data) { if(e.inputType!=="insertText") esconderSug(); return; }
     if(!t.matches||!t.matches(ALVO_REV)) return;
     if(FIMPAL.test(e.data)){ ULT_AUTO=null; esconderSug(); if(REV.auto){ if(t.classList.contains("wys")) autoEd(t,e.data); else if(t.tagName==="TEXTAREA") autoTa(t,e.data); } return; }
     if(REV.tab&&t.classList.contains("wys")&&LETRA.test(e.data)) sugerir(t); else esconderSug();
-  },true);
+  }
+  document.addEventListener("input",revInput,true);
+  // janela "por cima de outras janelas" (PiP): mesma correção automática na caixa de texto de lá
+  function ligarRev(doc){ if(doc===document||doc._rev) return; doc._rev=1; doc.addEventListener("input",revInput,true);
+    doc.addEventListener("focusin",e=>{ if(REV.auto&&e.target.matches&&e.target.matches(ALVO_REV)) carregarDic(); }); }
 
   document.addEventListener("focusin",e=>{ if(REV.auto&&e.target.matches&&e.target.matches(ALVO_REV)) carregarDic(); });
   // ---- sugestão por Tab (vocabulário: suas anotações + termos do curso) ----
@@ -1091,7 +1100,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   // Janela "por cima de outras janelas" do bloco flutuante (Picture-in-Picture)
   if(typeof window.ligarFlutuante==="function"){
     const orig=window.ligarFlutuante;
-    window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); } };
+    window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); ligarRev(doc); } };
   }
   window.FORMATO={listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();
