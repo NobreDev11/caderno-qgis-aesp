@@ -248,6 +248,11 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
   .pane header,.pane .body{padding-left:14px;padding-right:14px}
 }
 /* bloco flutuante de anotações */
+.flut .fl-p{align-items:center;flex-wrap:wrap}
+.flut .fl-p .btn{font-size:12.5px;padding:4px 10px}
+.flut .fmt-abas,.flut .fmt{flex:none}
+.flut .wys,.flut .pergs{flex:1;min-height:0;overflow:auto;max-height:none}
+.fl-on .marco{bottom:auto;top:16px}
 .flut{position:fixed;z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .22);display:flex;flex-direction:column;overflow:hidden;resize:both;min-width:280px;min-height:180px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}
 .flut.min{resize:none;min-height:0}
 .fl-h{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--accent-soft);cursor:move;touch-action:none;flex:none}
@@ -1691,7 +1696,7 @@ function htmlFlutuante(){
     ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: o QGIS ou os slides)" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
    ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações da disciplina" placeholder="Anote aqui durante a aula. Uma anotação para a disciplina toda; salva sozinho.">${esc(notaDaAula(a.id))}</textarea>
-   <div class="fl-p"><span>${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}</span><span class="mono">${fmtData(a.data)} ${a.ini}–${a.fim}</span></div>`}`;
+   <div class="fl-p"><span class="mono" title="${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}">${fmtData(a.data)} ${a.ini}–${a.fim} · salva sozinho</span><button type="button" class="btn sm pri" data-flsalvar title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button></div>`}`;
 }
 function posicionar(el){
   if(innerWidth<=820) return;
@@ -1704,6 +1709,7 @@ function posicionar(el){
 function renderFlutuante(){
   const host=document.getElementById("floatHost");
   if(_flRO){ _flRO.disconnect(); _flRO=null; }
+  document.body.classList.toggle("fl-on", !!FL.aberto&&!PIP);
   if(!FL.aberto){ host.innerHTML=""; return; }
   if(PIP){ host.innerHTML=""; PIP.document.getElementById("pipbox").innerHTML=htmlFlutuante(); return; }
   host.innerHTML=`<section class="flut ${FL.min?"min":""}" id="flut" role="dialog" aria-label="Bloco de anotações">${htmlFlutuante()}</section>`;
@@ -1737,7 +1743,12 @@ async function destacarFlutuante(){
 }
 function ligarFlutuante(doc){
   doc.addEventListener("click",e=>{
-    const b=e.target.closest("[data-flx],[data-flmin],[data-flpip],[data-flabrir]"); if(!b) return;
+    const b=e.target.closest("[data-flx],[data-flmin],[data-flpip],[data-flabrir],[data-flsalvar]"); if(!b) return;
+    if(b.dataset.flsalvar!==undefined){ const a=AK[FL.id]; if(!a) return; flushTudo();
+      const n=(window.FORMATO&&FORMATO.separar?FORMATO.separar(discD(a.k).nota||"").notas:(discD(a.k).nota||"")).trim();
+      if(!n){ b.textContent="A nota está vazia"; setTimeout(()=>{ if(b.isConnected) b.textContent="Salvar nota em Materiais"; },2500); return; }
+      if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar: mover para Materiais e limpar"; setTimeout(()=>{ if(b.isConnected&&b.dataset.conf){ delete b.dataset.conf; b.textContent="Salvar nota em Materiais"; } },4000); return; }
+      delete b.dataset.conf; if(salvarNotaEmMateriais(a.k, a.id)){ b.textContent="Salvo em Materiais ✓"; setTimeout(()=>{ if(b.isConnected) b.textContent="Salvar nota em Materiais"; },2500); } return; }
     if(b.dataset.flabrir!==undefined){ abrirFlutuante(b.dataset.flabrir); return; }
     if(b.dataset.flx!==undefined){ fecharFlutuante(); return; }
     if(b.dataset.flmin!==undefined){ FL.min=!FL.min; salvarFL(); renderFlutuante(); return; }
