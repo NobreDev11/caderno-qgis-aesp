@@ -1100,7 +1100,20 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   // Janela "por cima de outras janelas" do bloco flutuante (Picture-in-Picture)
   if(typeof window.ligarFlutuante==="function"){
     const orig=window.ligarFlutuante;
-    window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document){ const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); ligarRev(doc); } };
+    // Na janela por cima, carrega o mesmo editor (formato.js + fluxo.js) dentro dela: fica igual às anotações
+    // da página (visual, fluxograma, tabela, revisão). Dados e funções de salvar são os da página principal.
+    window.ligarFlutuante=function(doc){ orig(doc); if(doc!==document) editorNaJanela(doc); };
+  }
+  function editorNaJanela(doc){
+    const w=doc.defaultView; if(!w||w.FORMATO) return;
+    const def=(nome,val)=>{ try{ Object.defineProperty(w,nome,{get:val,configurable:true}); }catch(e){} };
+    if(typeof S==="object") def("S",()=>S);
+    if(typeof CONVITE!=="undefined") def("CONVITE",()=>CONVITE);
+    ["salvarDoc","apagarDoc","logado"].forEach(n=>{ try{ const f=(0,eval)(n); if(typeof f==="function") w[n]=f; }catch(e){} });
+    w.toast=t=>{ try{ const d=doc.createElement("div"); d.className="toast"; d.textContent=t; doc.body.appendChild(d); setTimeout(()=>d.remove(),3500); }catch(e){} };
+    const carregar=src=>new Promise(ok=>{ const sc=doc.createElement("script"); sc.src=src; sc.onload=sc.onerror=()=>ok(); doc.head.appendChild(sc); });
+    carregar("/fluxo.js").then(()=>carregar("/formato.js")).then(()=>{ if(!w.FORMATO){ // sem script na janela: volta à caixa simples
+      const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); ligarRev(doc); } });
   }
   window.FORMATO={listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();
