@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Prática · Caderno QGIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<meta name="theme-color" content="#0f6b5c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Página pública de UMA prática compartilhada pelo link (/pratica?t=CODIGO).
+   Quem abre vê a prática e marca os passos numa cópia própria (guardada neste aparelho). */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --ink:#18231f; --muted:#5d6b66; --line:#d9e0dc;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#e1efeb;
+  --display:"Archivo","Segoe UI",system-ui,sans-serif; --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1715;--surface:#16211e;--ink:#e3ece8;--muted:#9aaba5;--line:#2a3834;--accent:#4fb8a3;--accent-ink:#0b1311;--accent-soft:#1d3530;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.topo{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.topo-in{max-width:880px;margin:0 auto;padding:14px 18px 12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.marca{font:700 12px var(--mono);color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+h1{margin:2px 0 0;font:800 23px/1.2 var(--display);letter-spacing:-.01em}
+.prog{margin-left:auto;display:flex;align-items:center;gap:10px;font:600 13px var(--mono);color:var(--muted)}
+.barra{width:150px;height:8px;border-radius:99px;background:var(--line);overflow:hidden}.barra i{display:block;height:100%;background:var(--accent);transition:width .3s}
+main{max-width:880px;margin:0 auto;padding:18px 18px 60px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.lb{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin:0 0 4px}
+.muted{color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:2px 10px;font-size:12.5px;background:var(--surface)}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.bloco{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.bh{display:flex;gap:10px;align-items:center;padding:11px 14px;cursor:pointer;background:color-mix(in srgb,var(--c) 8%,var(--surface));user-select:none}
+.num{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--c);color:#fff;font:800 14px var(--display)}
+.bh b{flex:1;font:700 15.5px var(--display);min-width:0;overflow-wrap:anywhere}
+.bh small{font:500 12px var(--mono);color:var(--muted)}
+.seta{color:var(--muted);width:12px}
+.bc{padding:6px 14px 12px}
+.bloco.rec .bc{display:none}
+.bloco ol{list-style:none;margin:0;padding:0}
+.bloco li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:8px 4px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.bloco li:last-child{border-bottom:0}
+.bloco li.alvo{background:color-mix(in srgb,var(--c) 12%,transparent);border-radius:8px}
+.ck{appearance:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--c);margin:1px 0 0;cursor:pointer;display:grid;place-items:center;background:var(--surface)}
+.ck:checked{background:var(--c)}.ck:checked::after{content:"✓";color:#fff;font-size:12px;font-weight:700}
+.bloco li.ok .tx{color:var(--muted);text-decoration:line-through}
+.pn{font:600 12px var(--mono);color:var(--muted);margin-right:6px}
+.lk{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:1px 9px;font:600 11.5px var(--mono);color:var(--c,var(--accent));cursor:pointer}
+.imgs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
+.imgs img{width:96px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:var(--bg)}
+.nt{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:8px;background:var(--bg)}
+.nt summary{cursor:pointer;font-weight:600}
+.nt .corpo{margin-top:6px;overflow-wrap:anywhere}
+.corpo img{max-width:100%;border-radius:8px;cursor:zoom-in}
+.corpo table{border-collapse:collapse}.corpo td,.corpo th{border:1px solid var(--line);padding:4px 8px}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:5px 10px;font:600 12.5px var(--body);cursor:pointer;white-space:nowrap}
+.corpo ul,.corpo ol{padding-left:1.4em;margin:.3em 0}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.aviso{text-align:center;padding:60px 20px;color:var(--muted)}
+.rodape{text-align:center;color:var(--muted);font-size:12.5px;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="topo"><div class="topo-in"><div style="min-width:0"><div class="marca" id="disc">Prática compartilhada</div><h1 id="ti">Carregando…</h1></div>
+  <div class="prog" id="prog" hidden><span id="pt"></span><div class="barra"><i id="pb"></i></div></div></div></div>
+<main id="main"><p class="aviso">Carregando a prática…</p></main>
+<script src="/vendor/supabase.js"></script>
+<script src="/formato.js"></script>
+<script>
+const SUPA_URL="https://ytionrwdwdmcxbdgqnkt.supabase.co";
+const SUPA_KEY="sb_publishable_MFrDp-4qr0yA2vyX1UJWOw_7RN7rdMX"; // chave publicável (pública por natureza)
+const DISC={cart:["Ambientação e Introdução à Cartografia","#3b7dd8"],sig:["Fundamentos de Geoprocessamento e SIG","#8a5cd0"],gmaps:["Google Maps e Google My Maps Aplicados à Segurança Pública","#d0453b"],qgis:["Introdução ao QGIS","#2f9e44"],edic:["Edição e Manipulação de Dados","#c9871a"],bases:["Bases de Dados Geográficas","#1592a3"],anal:["Análises Espaciais Aplicadas à Segurança","#b8407a"],prod:["Elaboração de Produtos Cartográficos","#6c7a1f"],proj:["Projeto Prático: Diagnóstico Territorial","#d2622a"]};
+const CORES=["#2e86c1","#d35400","#16a085","#8e44ad","#c0392b","#b7950b","#2c3e50","#ca6f1e"];
+const TOKEN=new URLSearchParams(location.search).get("t")||"";
+const LS="pratica-marcas:"+TOKEN.slice(0,40), LSR="pratica-recolhidos:"+TOKEN.slice(0,40);
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let P=null, MARC={}, REC={};
+try{ MARC=JSON.parse(localStorage.getItem(LS)||"{}"); REC=JSON.parse(localStorage.getItem(LSR)||"{}"); }catch(e){}
+const sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:"caderno-pratica-pub"}});
+function blocos(p){ if(Array.isArray(p.blocos)) return p.blocos; const pa=p.passos||[]; return pa.length?[{id:"b0",titulo:"Parte 1",passos:pa}]:[]; }
+// Markdown do caderno → HTML (mesmo conversor das anotações), sem fluxogramas nem marcadores
+function mdHtml(t){ t=String(t||"").replace(/^\s*!\[[^\]]*\]\(fx:[^)]+\)\s*$/gm,"_(fluxograma no caderno)_").replace(/\{\{([^{}\n]+)\}\}/g,"$1");
+  let h=window.FORMATO&&FORMATO.mdParaHtml?FORMATO.mdParaHtml(t):esc(t).replace(/\n/g,"<br>");
+  return h.replace(/data-sb=/g,"data-pubsb=").replace(/contenteditable="false"/g,""); }
+const imgTag=u=>u.startsWith("sb:")?`<img data-pubsb="${esc(u.slice(3))}" alt="imagem">`:`<img src="${esc(u)}" alt="imagem">`;
+async function resolverImagens(){
+  for(const im of document.querySelectorAll("img[data-pubsb]:not([data-ok])")){ im.dataset.ok="1";
+    try{ const {data,error}=await sb.storage.from("caderno").createSignedUrl(im.dataset.pubsb,3600); if(error) throw error; im.src=data.signedUrl; }
+    catch(e){ im.alt="imagem indisponível"; im.style.opacity=".4"; } }
+}
+function salvarMarc(){ try{ localStorage.setItem(LS,JSON.stringify(MARC)); localStorage.setItem(LSR,JSON.stringify(REC)); }catch(e){} }
+function progresso(){ const ps=blocos(P).flatMap(b=>b.passos||[]); const f=ps.filter(x=>MARC[x.id]).length, pct=ps.length?Math.round(f/ps.length*100):0;
+  document.getElementById("prog").hidden=!ps.length; document.getElementById("pt").textContent=f+"/"+ps.length+" · "+pct+"%"; document.getElementById("pb").style.width=pct+"%"; }
+function desenhar(){
+  const bs=blocos(P), R={}; bs.forEach((b,i)=>{ R[b.id]={n:String(i+1),t:b.titulo||"Bloco "+(i+1),bloco:true}; (b.passos||[]).forEach((x,j)=>R[x.id]={n:(i+1)+"."+(j+1),t:x.t||""}); });
+  const d=DISC[P.disc]; document.title=(P.titulo||"Prática")+" · Caderno QGIS";
+  document.getElementById("ti").textContent=P.titulo||"Prática sem título";
+  document.getElementById("disc").textContent=d?d[0]:"Prática compartilhada";
+  const lk=(dest,cor)=>R[dest]?`<button type="button" class="lk" data-ir="${dest}" style="--c:${cor}" title="${esc(R[dest].t)}">→ ${R[dest].bloco?"bloco ":""}${R[dest].n}</button>`:"";
+  let h="";
+  if((P.objetivo||"").trim()) h+=`<div class="card"><span class="lb">Objetivo</span><div>${esc(P.objetivo).replace(/\n/g,"<br>")}</div></div>`;
+  if(bs.length) h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 2px 8px"><span class="lb" style="margin:0">Passo a passo</span><span><button class="btn" id="bexp">Expandir todos</button> <button class="btn" id="blimpa" title="Desmarca todos os seus passos">Limpar minhas marcações</button></span></div>`;
+  h+=bs.map((b,i)=>{ const cor=CORES[i%CORES.length], ps=b.passos||[], f=ps.filter(x=>MARC[x.id]).length;
+    return `<section class="bloco${REC[b.id]?" rec":""}" id="B${b.id}" style="--c:${cor}"><div class="bh" data-dobra="${b.id}"><span class="seta">${REC[b.id]?"▸":"▾"}</span><span class="num">${i+1}</span><b>${esc(b.titulo||"Bloco "+(i+1))}</b><small>${f}/${ps.length}</small></div>
+      <div class="bc">${(b.liga||[]).length?`<div class="chips">${b.liga.map(x=>lk(x,cor)).join("")}</div>`:""}${(b.imgs||[]).length?`<div class="imgs">${b.imgs.map(imgTag).join("")}</div>`:""}
+      <ol>${ps.map((x,j)=>`<li id="P${x.id}" class="${MARC[x.id]?"ok":""}"><input type="checkbox" class="ck" data-p="${x.id}" ${MARC[x.id]?"checked":""} aria-label="Feito"><div><span class="tx"><span class="pn">${i+1}.${j+1}</span>${esc(x.t)}</span>
+        ${(x.liga||[]).length?`<div class="chips">${x.liga.map(z=>lk(z,cor)).join("")}</div>`:""}${(x.imgs||[]).length?`<div class="imgs">${x.imgs.map(imgTag).join("")}</div>`:""}</div></li>`).join("")}</ol>
+      ${ps.length?"":`<p class="muted" style="margin:6px 0">Sem passos.</p>`}</div></section>`; }).join("");
+  const notas=P.notas||[];
+  if(notas.length||(P.texto||"").trim()) h+=`<div class="card"><span class="lb">Anotações da prática</span>${notas.map(n=>`<details class="nt"><summary>${esc(n.titulo||"Anotação")} <span class="muted" style="font:500 12px var(--mono)">${n.criado?new Date(n.criado).toLocaleDateString("pt-BR"):""}</span></summary><div class="corpo">${mdHtml(n.texto)}</div></details>`).join("")}
+    ${(P.texto||"").trim()?`<details class="nt" ${notas.length?"":"open"}><summary>Rascunho atual</summary><div class="corpo">${mdHtml(P.texto)}</div></details>`:""}</div>`;
+  h+=`<p class="rodape">Você está vendo uma prática compartilhada. Suas marcações ficam só neste aparelho. <button class="btn" id="batual">Atualizar</button></p>`;
+  document.getElementById("main").innerHTML=h; progresso(); resolverImagens();
+}
+document.addEventListener("change",e=>{ const c=e.target.closest(".ck"); if(!c) return; if(c.checked) MARC[c.dataset.p]=1; else delete MARC[c.dataset.p]; salvarMarc(); c.closest("li").classList.toggle("ok",c.checked);
+  const sec=c.closest(".bloco"), all=[...sec.querySelectorAll(".ck")]; sec.querySelector(".bh small").textContent=all.filter(x=>x.checked).length+"/"+all.length; progresso(); });
+document.addEventListener("click",e=>{
+  const d=e.target.closest("[data-dobra]"); if(d){ const id=d.dataset.dobra; REC[id]=!REC[id]; if(!REC[id]) delete REC[id]; salvarMarc(); const s=document.getElementById("B"+id); s.classList.toggle("rec",!!REC[id]); d.querySelector(".seta").textContent=REC[id]?"▸":"▾"; return; }
+  const ir=e.target.closest("[data-ir]"); if(ir){ const id=ir.dataset.ir, el=document.getElementById("P"+id)||document.getElementById("B"+id); if(!el) return;
+    const sec=el.closest(".bloco")||el; if(sec.classList.contains("rec")){ sec.classList.remove("rec"); delete REC[sec.id.slice(1)]; salvarMarc(); }
+    el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("alvo"); setTimeout(()=>el.classList.remove("alvo"),1600); return; }
+  const im=e.target.closest("main img[src]"); if(im&&window.FORMATO&&FORMATO.ampliar){ FORMATO.ampliar(im); return; }
+  if(e.target.id==="blimpa"){ if(!e.target.dataset.conf){ e.target.dataset.conf="1"; e.target.textContent="Confirmar: limpar tudo"; return; } MARC={}; salvarMarc(); desenhar(); return; }
+  if(e.target.id==="bexp"){ REC={}; salvarMarc(); desenhar(); return; }
+  if(e.target.id==="batual"){ carregar(); return; }
+});
+async function carregar(){
+  if(TOKEN.length<20){ document.getElementById("ti").textContent="Link incompleto"; document.getElementById("main").innerHTML='<p class="aviso">Este link está incompleto. Peça o link de novo a quem compartilhou.</p>'; return; }
+  try{ const {data,error}=await sb.rpc("caderno_pratica_ver",{p_token:TOKEN}); if(error) throw error;
+    if(!data||!data.body||data.body.apagado){ document.getElementById("ti").textContent="Prática indisponível"; document.getElementById("main").innerHTML='<p class="aviso">Este link foi desativado ou a prática foi apagada.</p>'; return; }
+    P=data.body; desenhar(); }
+  catch(e){ document.getElementById("ti").textContent="Não deu para abrir"; document.getElementById("main").innerHTML='<p class="aviso">Não foi possível carregar a prática agora. Verifique a internet e tente de novo.</p>'; }
+}
+carregar();
+</script>
+</body>
+</html>

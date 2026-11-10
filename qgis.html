@@ -331,6 +331,7 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-lb{position:fixed;inset:0;z-index:90;background:rgb(0 0 0 / .82);display:grid;place-items:center;cursor:zoom-out}
 .pr-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5)}
 .pr-lb button{position:fixed;top:14px;right:16px;border:0;border-radius:50%;width:36px;height:36px;background:rgb(255 255 255 / .9);font-size:16px;cursor:pointer}
+.pr-comp{margin-top:12px;border:1px dashed var(--accent);border-radius:9px;padding:8px 10px;background:var(--accent-soft)}
 .pr-seq{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:8px;margin:6px 0;overflow:auto;max-height:520px}
 .pr-tog{border:0;background:transparent;padding:0;font:600 13px var(--body);color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}.pr-tog:hover{color:var(--ink)}.pr-seta{width:10px;display:inline-block}
 .pr-notas{display:flex;flex-direction:column;gap:6px}
@@ -1845,6 +1846,7 @@ document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.ve
 
 /* ============ AJUDA (ícones "i") ============ */
 const AJUDA={
+  prlink:{t:"Link da prática",o:"Quem abrir o link vê só esta prática: título, objetivo, blocos, passos, ligações, imagens e anotações salvas. Não vê o resto do caderno.",c:"Cada pessoa marca os passos na própria cópia (fica no aparelho dela); suas marcações não mudam. O que você alterar aqui aparece para eles ao atualizar a página. Desativar corta o acesso na hora."},
   prblocos:{t:"Blocos e ligações",o:"Divida a prática em blocos (partes), cada um com seus passos. 🔗 liga um passo a um passo de outro bloco, ou um bloco a outro bloco.",c:"Ver sequência desenha tudo num fluxograma: dentro do bloco as setas seguem a ordem dos passos; as ligações aparecem como setas grossas. Passos feitos ficam verdes. ↑↓ muda a ordem dos blocos; ▸ recolhe um bloco e deixa só o campo de novo passo."},
   prnota:{t:"Salvar anotação na prática",o:"Funciona como o “Salvar nota em Materiais”: o texto vira uma anotação guardada dentro desta prática (a 1ª linha é o título) e o campo fica limpo para a próxima.",c:"Dois cliques: o primeiro pede confirmação. As anotações salvas aparecem embaixo; Editar volta o texto para o campo."},
   pratica:{t:"Prática",o:"Registre cada exercício de aula como um mini projeto: título, objetivo, passo a passo (com ✓) e anotações completas (imagens, tabelas, fluxogramas, {{flashcards}}).",c:"Cada disciplina tem as suas práticas. “Sugerir passos do QGIS” preenche um roteiro padrão para ajustar. Marque Concluída ao terminar. Entram na Busca e no arquivo exportado."},
@@ -2467,8 +2469,9 @@ function pratAbaHTML(k){
       ${(ab.notas||[]).length?`<div class="pr-notas"><button type="button" class="pr-tog" data-prx="dobrarnotas" aria-expanded="${!ab.notasRec}" title="${ab.notasRec?"Mostrar as anotações salvas":"Recolher as anotações salvas"}" style="margin:10px 0 2px"><span class="pr-seta">${ab.notasRec?"▸":"▾"}</span> Anotações salvas <span class="mono muted">${ab.notas.length}</span></button>${ab.notasRec?"":ab.notas.map(n=>`<details class="pr-nt" data-nid="${n.id}"><summary><strong>${esc(n.titulo||"Anotação")}</strong> <span class="mono muted" style="font-size:12px">${new Date(n.criado||0).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span></summary>
         <div class="md" style="margin-top:6px">${md(n.texto||"")}</div>
         <div class="row" style="justify-content:flex-end;gap:6px;margin-top:6px"><button type="button" class="btn sm" data-prx="copiarnota">Copiar</button><button type="button" class="btn sm" data-prx="editarnota" title="Volta o texto para o campo de anotações para editar e salvar de novo">Editar</button><button type="button" class="btn sm danger" data-prx="apagarnota">Apagar</button></div></details>`).join("")}</div>`:""}
+      ${ab.link?`<div class="pr-comp"><span class="lb" style="margin:0 0 4px">Link desta prática ${info("prlink")}</span><div class="row" style="gap:6px"><input type="text" readonly value="${esc(location.origin+"/pratica?t="+ab.link)}" class="pr-url" aria-label="Link da prática" style="flex:1;min-width:0;font:12.5px var(--mono)"><button type="button" class="btn sm pri" data-prx="copiarlink">Copiar</button><button type="button" class="btn sm" data-prx="abrirlink">Abrir</button><button type="button" class="btn sm danger" data-prx="desligarlink">Desativar</button></div></div>`:""}
       <div class="row" style="justify-content:space-between;margin-top:10px;gap:6px"><button type="button" class="btn sm" data-prx="fechar">Fechar</button>
-        <span class="row" style="gap:6px"><button type="button" class="btn sm" data-prx="copiar">Copiar como texto</button><button type="button" class="btn sm danger" data-prx="apagar">Apagar</button></span></div>
+        <span class="row" style="gap:6px">${ab.link?"":`<button type="button" class="btn sm" data-prx="compart" title="Cria um link só desta prática para outras pessoas verem e marcarem os passos (cada uma na sua cópia)">Compartilhar link</button>`}<button type="button" class="btn sm" data-prx="copiar">Copiar como texto</button><button type="button" class="btn sm danger" data-prx="apagar">Apagar</button></span></div>
     </div>`; })():"";
   return `<div class="row" style="justify-content:space-between;gap:6px"><span class="lb" style="margin:0">Práticas de ${esc(curto(k))} ${info("pratica")}</span><button type="button" class="btn sm pri" data-prx="nova">+ Nova prática</button></div>${lista}${ed}`;
 }
@@ -2490,7 +2493,7 @@ function rotulosPrat(){ [document,(typeof PIP!=="undefined"&&PIP&&!PIP.closed)?P
 window.FORMATO_PRAT={ desenhar(pr,k){ desenharAbaPrat(pr,k); }, rotulo:rotuloPrat };
 function ligarAbaPrat(doc){
   const ctx=el=>{ const pr=el.closest(".prats"); if(!pr) return null; const ed=el.closest(".pr-ed"); return {pr,k:pr._k,id:ed&&ed.dataset.prid}; };
-  doc.addEventListener("click",e=>{
+  doc.addEventListener("click",async e=>{
     const b=e.target.closest("[data-prx]"); if(!b) return; const c=ctx(b); if(!c) return; const op=b.dataset.prx, {k,id}=c;
     if(op==="nova"){ const nid="prt-"+novoId(); salvarDoc(nid,{tipo:"prt",disc:k,titulo:"",objetivo:"",passos:[],texto:"",feita:false,criado:Date.now(),aula:aulaAtualDe(k)},50); PRT_ABERTA[k]=nid; redesenharPrats(k); setTimeout(()=>c.pr.querySelector(".pr-ti")?.focus(),30); return; }
     if(op==="abrir"){ PRT_ABERTA[k]=PRT_ABERTA[k]===b.dataset.id?null:b.dataset.id; redesenharPrats(k); return; }
@@ -2521,6 +2524,20 @@ function ligarAbaPrat(doc){
       salvarBlocos(id,bs); redesenharPrats(k); if(fora&&fora.startsWith("sb:")&&logado()) S.sb.storage.from("caderno").remove([fora.slice(3)]).catch(()=>{}); return; }
     if(op==="desligar"){ const de=b.dataset.de, para=b.dataset.para; bs.forEach(x=>{ if(x.id===de) x.liga=(x.liga||[]).filter(d=>d!==para); (x.passos||[]).forEach(y=>{ if(y.id===de) y.liga=(y.liga||[]).filter(d=>d!==para); }); }); salvarBlocos(id,bs); redesenharPrats(k); return; }
     if(op==="copiar"){ copiar(praticaMD(S.docs[id]),"Prática copiada como texto."); return; }
+    if(op==="compart"){ const av=t=>{ const f=c.pr.ownerDocument===document?toast:(c.pr.ownerDocument.defaultView.toast||toast); f(t); };
+      if(CONVITE||!logado()){ av("Entre na sua conta para compartilhar a prática por link."); return; }
+      if(!navigator.onLine){ av("Sem internet: o link só pode ser criado com conexão."); return; }
+      b.disabled=true; b.textContent="Criando link…";
+      const abc="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", r=crypto.getRandomValues(new Uint8Array(26)); const tok=[...r].map(x=>abc[x%abc.length]).join("");
+      try{ const r=await S.sb.rpc("caderno_pratica_criar",{p_token:tok,p_doc:id}); if(r&&r.error) throw r.error;
+        salvarPrt(id,{link:tok},10); flushTudo(); redesenharPrats(k); copiar(location.origin+"/pratica?t="+tok,"Link copiado. Quem abrir vê só esta prática e marca na própria cópia."); }
+      catch(e){ b.disabled=false; b.textContent="Compartilhar link"; av(/caderno_pratica_criar|function|schema cache/i.test(e.message||"")?"Falta rodar o SQL supabase/caderno_pratica_links.sql no Supabase.":"Não deu para criar o link: "+(e.message||"erro")); }
+      return; }
+    if(op==="copiarlink"){ copiar(location.origin+"/pratica?t="+p.link,"Link copiado."); return; }
+    if(op==="abrirlink"){ window.open("/pratica?t="+p.link,"_blank","noopener"); return; }
+    if(op==="desligarlink"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Desativar"; } },3000); return; }
+      try{ if(logado()){ const r=await S.sb.rpc("caderno_pratica_desativar",{p_doc:id}); if(r&&r.error) throw r.error; } salvarPrt(id,{link:""},10); redesenharPrats(k); toast("Link desativado: quem tinha não consegue mais abrir."); }
+      catch(e){ toast("Não deu para desativar: "+(e.message||"erro")); } return; }
     if(op==="salvarnota"){ flushTudo(); const txt=String(S.docs[id].texto||"").replace(/^\s+|\s+$/g,"");
       if(!txt){ b.textContent="Escreva algo antes de salvar"; setTimeout(()=>{ if(b.isConnected) b.textContent="Salvar anotação na prática"; },2500); return; }
       if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar: guardar e limpar o campo"; setTimeout(()=>{ if(b.isConnected&&b.dataset.conf){ delete b.dataset.conf; b.textContent="Salvar anotação na prática"; } },4000); return; }
@@ -2536,6 +2553,7 @@ function ligarAbaPrat(doc){
       const atual=String(p.texto||"").trim(); salvarPrt(id,{texto:n.titulo+"\n"+n.texto+(atual?"\n\n"+atual:""),notas:(p.notas||[]).filter(x=>x.id!==nid)},50); redesenharPrats(k);
       setTimeout(()=>c.pr.querySelector(".pr-ed .wys")?.focus(),40); return; }
     if(op==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
+      if(p.link&&logado()) S.sb.rpc("caderno_pratica_desativar",{p_doc:id}).then(()=>{},()=>{});
       apagarDoc(id); PRT_ABERTA[k]=null; redesenharPrats(k); return; }
   });
   doc.addEventListener("click",e=>{ const im=e.target.closest&&e.target.closest(".pr-im img:not([src])"); if(im) toast("Imagem ainda carregando…"); });
