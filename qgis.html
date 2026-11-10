@@ -321,6 +321,16 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-lk{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:1px 4px 1px 8px;font:600 11.5px var(--mono);color:var(--accent)}
 .pr-lkt{font:400 11.5px var(--body);color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pr-lk button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;padding:0 2px}
+.pr-imgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pr-im{position:relative;display:inline-block}
+.pr-im img{width:84px;height:62px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:zoom-in;display:block;background:var(--surface)}
+.pr-im button{position:absolute;top:2px;right:2px;border:0;border-radius:50%;width:20px;height:20px;background:rgb(0 0 0 / .55);color:#fff;font-size:11px;cursor:pointer;opacity:0;transition:opacity .15s}
+.pr-im:hover button,.pr-im button:focus{opacity:1}
+.pr-imb{padding:2px 7px!important;font-size:13px!important}
+.pr-ps{grid-template-columns:auto auto minmax(0,1fr) auto auto auto!important}
+.pr-lb{position:fixed;inset:0;z-index:90;background:rgb(0 0 0 / .82);display:grid;place-items:center;cursor:zoom-out}
+.pr-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5)}
+.pr-lb button{position:fixed;top:14px;right:16px;border:0;border-radius:50%;width:36px;height:36px;background:rgb(255 255 255 / .9);font-size:16px;cursor:pointer}
 .pr-seq{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:8px;margin:6px 0;overflow:auto;max-height:520px}
 .pr-tog{border:0;background:transparent;padding:0;font:600 13px var(--body);color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}.pr-tog:hover{color:var(--ink)}.pr-seta{width:10px;display:inline-block}
 .pr-notas{display:flex;flex-direction:column;gap:6px}
@@ -2294,12 +2304,26 @@ function sequenciaMermaid(bs){
   return o;
 }
 /* ---- "Ver sequência": janela própria com os blocos em colunas e as ligações desenhadas como setas ---- */
+/* imagens em blocos e passos da prática: "sb:caminho" (nuvem, logado) ou data URL (sem login, fica no aparelho) */
+const imgPrHTML = (lista,dono) => (lista||[]).length?`<div class="pr-imgs">${lista.map((u,i)=>`<span class="pr-im"><img class="md-img" ${u.startsWith("sb:")?`data-sb="${esc(u.slice(3))}"`:`src="${esc(u)}"`} alt="imagem ${i+1}"><button type="button" data-prx="tirarimg" data-dono="${dono}" data-i="${i}" title="Tirar imagem">✕</button></span>`).join("")}</div>`:"";
+async function enviarImgsPrat(id,dono,files,doc){
+  const fs=[...files].filter(f=>/^image\//.test(f.type)); if(!fs.length) return;
+  const av=t=>{ const f=doc===document?toast:(doc.defaultView.toast||toast); f(t); };
+  av(fs.length>1?`Preparando ${fs.length} imagens…`:"Preparando imagem…");
+  const urls=[];
+  for(const f of fs){ try{ const b=await comprimirImagem(f); if(logado()&&navigator.onLine){ const r=await subir(id,"pratica.jpg",b,"image/jpeg"); urls.push("sb:"+r.path); } else urls.push(await paraDataURL(b)); }catch(e){ av(e.message||"Falha ao enviar imagem."); } }
+  if(!urls.length) return;
+  const bs=JSON.parse(JSON.stringify(blocosDe(S.docs[id]))); bs.forEach(b=>{ if(b.id===dono) b.imgs=[...(b.imgs||[]),...urls]; (b.passos||[]).forEach(x=>{ if(x.id===dono) x.imgs=[...(x.imgs||[]),...urls]; }); });
+  salvarBlocos(id,bs); redesenharPrats(S.docs[id].disc); av(urls.length>1?urls.length+" imagens adicionadas.":"Imagem adicionada."+(logado()?"":" (Sem login: fica só neste aparelho.)"));
+}
+function verImagem(img){ const doc=img.ownerDocument, d=doc.createElement("div"); d.className="pr-lb"; d.innerHTML=`<img src="${img.currentSrc||img.src}" alt=""><button type="button" aria-label="Fechar">✕</button>`; doc.body.appendChild(d);
+  const f=()=>{ d.remove(); doc.removeEventListener("keydown",k,true); }, k=e=>{ if(e.key==="Escape"){ e.stopPropagation(); f(); } }; d.onclick=f; doc.addEventListener("keydown",k,true); }
 const SEQ_WIN={};
 const SEQ_CORES=["#2e86c1","#d35400","#16a085","#8e44ad","#c0392b","#b7950b","#2c3e50","#ca6f1e"];
 function dadosSeq(id){ const p=S.docs[id]; if(!p) return null; const bs=blocosDe(p), R=rotulosPassos(bs);
   return {id, titulo:p.titulo||"Prática", objetivo:p.objetivo||"", disc:p.disc&&DK[p.disc]?nomeDisc(p.disc):"",
     blocos:bs.map((b,i)=>({id:b.id, n:i+1, titulo:b.titulo||"Bloco "+(i+1), cor:SEQ_CORES[i%SEQ_CORES.length], liga:(b.liga||[]).filter(d=>R[d]&&R[d].bloco),
-      passos:(b.passos||[]).map(x=>({id:x.id, n:R[x.id].n, t:x.t||"", feito:!!x.feito, liga:(x.liga||[]).filter(d=>R[d]&&!R[d].bloco)}))}))}; }
+      imgs:(b.imgs||[]).length, passos:(b.passos||[]).map(x=>({id:x.id, n:R[x.id].n, t:x.t||"", feito:!!x.feito, imgs:(x.imgs||[]).length, liga:(x.liga||[]).filter(d=>R[d]&&!R[d].bloco)}))}))}; }
 window.__seqMarcar=(id,pid)=>{ const p=S.docs[id]; if(!p) return; const bs=JSON.parse(JSON.stringify(blocosDe(p))); bs.forEach(b=>(b.passos||[]).forEach(x=>{ if(x.id===pid) x.feito=!x.feito; })); salvarBlocos(id,bs); redesenharPrats(p.disc); };
 function atualizarSeq(id){ const w=SEQ_WIN[id]; if(w&&!w.closed&&w.desenhar){ try{ w.desenhar(dadosSeq(id)); }catch(e){} } }
 function abrirSequencia(id){
@@ -2366,7 +2390,7 @@ function desenhar(d){ D=d; if(!d) return;
   document.getElementById("pt").textContent=f+"/"+ps.length+" passos · "+pct+"%"; document.getElementById("pb").style.width=pct+"%";
   document.getElementById("col").innerHTML=d.blocos.map(b=>{ const bf=b.passos.filter(x=>x.feito).length, bp=b.passos.length?Math.round(bf/b.passos.length*100):0;
     return '<section class="bloco" id="B'+b.id+'" style="--c:'+b.cor+'"><div class="bh"><span class="num">'+b.n+'</span><div class="bt"><b>'+esc(b.titulo)+'</b><small>'+bf+'/'+b.passos.length+' passos</small></div></div><div class="mini"><i style="width:'+bp+'%"></i></div>'+
-      (b.passos.length?'<ol>'+b.passos.map(x=>'<li id="P'+x.id+'" class="'+(x.feito?"ok":"")+'" data-p="'+x.id+'" title="Clique para marcar/desmarcar"><span class="ck">'+(x.feito?"✓":"")+'</span><span class="tx"><span class="pn">'+x.n+'</span>'+esc(x.t)+'</span></li>').join("")+'</ol>':'<div class="vazio">Sem passos ainda.</div>')+'</section>'; }).join("");
+      (b.passos.length?'<ol>'+b.passos.map(x=>'<li id="P'+x.id+'" class="'+(x.feito?"ok":"")+'" data-p="'+x.id+'" title="Clique para marcar/desmarcar"><span class="ck">'+(x.feito?"✓":"")+'</span><span class="tx"><span class="pn">'+x.n+'</span>'+esc(x.t)+(x.imgs?' <span class="pn" title="imagens">🖼'+x.imgs+'</span>':'')+'</span></li>').join("")+'</ol>':'<div class="vazio">Sem passos ainda.</div>')+'</section>'; }).join("");
   requestAnimationFrame(fios);
 }
 function fios(){ if(!D) return; const pal=document.getElementById("palco"), svg=document.getElementById("fios"), base=pal.getBoundingClientRect();
@@ -2423,10 +2447,12 @@ function pratAbaHTML(k){
             <input type="text" data-prbl="titulo" value="${esc(b.titulo||"")}" placeholder="Nome do bloco (ex.: Preparar os dados)" aria-label="Nome do bloco">
             <span class="mono muted" style="font-size:12px">${bp.length?bf+"/"+bp.length:""}</span>
             ${selLiga(b.id,true)}
+            <button type="button" class="btn sm pr-imb" data-prx="addimg" data-dono="${b.id}" title="Adicionar imagem ao bloco (ou arraste a imagem para cá)">🖼${(b.imgs||[]).length?" "+b.imgs.length:""}</button>
             <span class="pj-mv"><button type="button" data-prx="blsobe" title="Subir bloco" ${bi?"":"disabled"}>↑</button><button type="button" data-prx="bldesce" title="Descer bloco" ${bi<bs.length-1?"":"disabled"}>↓</button><button type="button" data-prx="bltirar" title="Apagar bloco">✕</button></span></div>
           ${(b.liga||[]).length?`<div class="pr-lks">${b.liga.map(d=>chip(d,b.id)).join("")}</div>`:""}
-          ${b.rec?"":`<div class="pr-passos">${bp.map((x,i)=>`<div class="pr-ps${x.feito?" ok":""}" data-pid="${x.id}"><input type="checkbox" data-prps="feito" ${x.feito?"checked":""} aria-label="Feito"><span class="mono muted" style="font-size:12px">${bi+1}.${i+1}</span><input type="text" data-prps="t" value="${esc(x.t||"")}" aria-label="Passo">${selLiga(x.id,false)}<button type="button" class="btn sm" data-prx="tirarpasso" title="Tirar passo">✕</button>
-            ${(x.liga||[]).length?`<div class="pr-lks">${x.liga.map(d=>chip(d,x.id)).join("")}</div>`:""}</div>`).join("")}</div>`}
+          ${b.rec?"":imgPrHTML(b.imgs,b.id)}
+          ${b.rec?"":`<div class="pr-passos">${bp.map((x,i)=>`<div class="pr-ps${x.feito?" ok":""}" data-pid="${x.id}"><input type="checkbox" data-prps="feito" ${x.feito?"checked":""} aria-label="Feito"><span class="mono muted" style="font-size:12px">${bi+1}.${i+1}</span><input type="text" data-prps="t" value="${esc(x.t||"")}" aria-label="Passo">${selLiga(x.id,false)}<button type="button" class="btn sm pr-imb" data-prx="addimg" data-dono="${x.id}" title="Adicionar imagem ao passo (ou arraste a imagem para o passo)">🖼${(x.imgs||[]).length?" "+x.imgs.length:""}</button><button type="button" class="btn sm" data-prx="tirarpasso" title="Tirar passo">✕</button>
+            ${(x.liga||[]).length?`<div class="pr-lks">${x.liga.map(d=>chip(d,x.id)).join("")}</div>`:""}${(x.imgs||[]).length?`<div class="pr-lks">${imgPrHTML(x.imgs,x.id)}</div>`:""}</div>`).join("")}</div>`}
           <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pr-novopasso" placeholder="Novo passo neste bloco (Enter adiciona)" style="flex:1;min-width:0"><button type="button" class="btn sm" data-prx="passo">+ Passo</button></div>
         </div>`; }).join("")}</div>
       <div class="row" style="gap:6px;margin-top:8px"><button type="button" class="btn sm" data-prx="bloco">+ Bloco</button>${bs.length?"":`<span class="muted" style="font-size:12.5px">Divida a prática em partes (blocos), cada uma com seus passos.</span>`}</div>
@@ -2445,7 +2471,8 @@ function praticaMD(p){
   const bs=blocosDe(p), R=rotulosPassos(bs);
   let o=`### Prática: ${p.titulo||"Sem título"}${p.feita?" ✓":""}\n`;
   if((p.objetivo||"").trim()) o+=`**Objetivo:** ${p.objetivo.trim()}\n\n`;
-  bs.forEach((b,i)=>{ o+=`**${i+1}. ${b.titulo||"Bloco "+(i+1)}**${(b.liga||[]).length?" → "+b.liga.filter(d=>R[d]).map(d=>"bloco "+R[d].n).join(", "):""}\n`+(b.passos||[]).map(x=>`- [${x.feito?"x":" "}] ${R[x.id].n} ${x.t}${(x.liga||[]).length?" → "+x.liga.filter(d=>R[d]).map(d=>R[d].n).join(", "):""}`).join("\n")+"\n\n"; });
+  const imgMd=l=>(l||[]).filter(u=>u.startsWith("sb:")).map(u=>`![imagem](${u})`).join(" ");
+  bs.forEach((b,i)=>{ o+=`**${i+1}. ${b.titulo||"Bloco "+(i+1)}**${(b.liga||[]).length?" → "+b.liga.filter(d=>R[d]).map(d=>"bloco "+R[d].n).join(", "):""}\n`+((b.imgs||[]).length?imgMd(b.imgs)+"\n":"")+(b.passos||[]).map(x=>`- [${x.feito?"x":" "}] ${R[x.id].n} ${x.t}${(x.liga||[]).length?" → "+x.liga.filter(d=>R[d]).map(d=>R[d].n).join(", "):""}${(x.imgs||[]).length?" "+imgMd(x.imgs):""}`).join("\n")+"\n\n"; });
   if(bs.length) o+="```mermaid\n"+sequenciaMermaid(bs)+"```\n\n";
   (p.notas||[]).forEach(n=>{ o+=`**${n.titulo}**\n${n.texto}\n\n`; });
   if((p.texto||"").trim()) o+=p.texto.trim()+"\n";
@@ -2482,6 +2509,11 @@ function ligarAbaPrat(doc){
       const foco=selA?c.pr.querySelector(".pr-alvo")?.closest(".row").querySelector(".pr-novopasso"):c.pr.querySelector(`.pr-bl[data-bid="${bs[alvo].id}"] .pr-novopasso`); foco?.focus();
       if(bs[alvo].rec) av("Passo adicionado em “"+(bs[alvo].titulo||"Bloco "+(alvo+1))+"” ("+bs[alvo].passos.length+" no bloco)."); return; }
     if(op==="tirarpasso"&&bi>=0){ const pid=b.closest(".pr-ps").dataset.pid; bs[bi].passos=bs[bi].passos.filter(x=>x.id!==pid); bs.forEach(x=>(x.passos||[]).forEach(y=>y.liga=(y.liga||[]).filter(d=>d!==pid))); salvarBlocos(id,bs); redesenharPrats(k); return; }
+    if(op==="addimg"){ const dono=b.dataset.dono, inp=c.pr.ownerDocument.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.multiple=true; inp.onchange=()=>{ if(inp.files.length) enviarImgsPrat(id,dono,inp.files,c.pr.ownerDocument); }; inp.click(); return; }
+    if(op==="tirarimg"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="?"; b.title="Clique de novo para tirar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="✕"; } },3000); return; }
+      const dono=b.dataset.dono, i=+b.dataset.i; let fora=null;
+      bs.forEach(x=>{ if(x.id===dono&&x.imgs){ fora=x.imgs.splice(i,1)[0]; } (x.passos||[]).forEach(y=>{ if(y.id===dono&&y.imgs){ fora=y.imgs.splice(i,1)[0]; } }); });
+      salvarBlocos(id,bs); redesenharPrats(k); if(fora&&fora.startsWith("sb:")&&logado()) S.sb.storage.from("caderno").remove([fora.slice(3)]).catch(()=>{}); return; }
     if(op==="desligar"){ const de=b.dataset.de, para=b.dataset.para; bs.forEach(x=>{ if(x.id===de) x.liga=(x.liga||[]).filter(d=>d!==para); (x.passos||[]).forEach(y=>{ if(y.id===de) y.liga=(y.liga||[]).filter(d=>d!==para); }); }); salvarBlocos(id,bs); redesenharPrats(k); return; }
     if(op==="copiar"){ copiar(praticaMD(S.docs[id]),"Prática copiada como texto."); return; }
     if(op==="salvarnota"){ flushTudo(); const txt=String(S.docs[id].texto||"").replace(/^\s+|\s+$/g,"");
@@ -2501,6 +2533,11 @@ function ligarAbaPrat(doc){
     if(op==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Clique de novo para apagar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Apagar"; } },3000); return; }
       apagarDoc(id); PRT_ABERTA[k]=null; redesenharPrats(k); return; }
   });
+  doc.addEventListener("click",e=>{ const im=e.target.closest&&e.target.closest(".pr-im img"); if(im) verImagem(im); });
+  // arrastar imagens para um bloco ou passo
+  doc.addEventListener("dragover",e=>{ if(e.target.closest&&e.target.closest(".prats .pr-bl")&&[...(e.dataTransfer&&e.dataTransfer.items||[])].some(i=>i.kind==="file")) e.preventDefault(); });
+  doc.addEventListener("drop",e=>{ const alvo=e.target.closest&&(e.target.closest(".prats .pr-ps")||e.target.closest(".prats .pr-bl")); if(!alvo) return; const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])].filter(f=>/^image\//.test(f.type)); if(!fs.length) return; e.preventDefault();
+    const c=ctx(alvo); if(c&&c.id) enviarImgsPrat(c.id, alvo.dataset.pid||alvo.dataset.bid, fs, doc); });
   // clicar numa parte vazia do cabeçalho do bloco também recolhe/expande
   doc.addEventListener("click",e=>{ const h=e.target.closest&&e.target.closest(".pr-bh"); if(!h||e.target.closest("input,select,button")) return; h.querySelector('[data-prx="dobrarbloco"]')?.click(); });
   doc.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("pr-novopasso")){ e.preventDefault(); e.target.closest(".row").querySelector('[data-prx="passo"]').click(); } });
