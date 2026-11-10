@@ -305,6 +305,32 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pj-lig .md{font-size:13.5px}.pj-l-t{margin-top:4px}
 .pj-vazio{padding:4px}
 [data-aba-atual="j"]>.nota-acoes{display:none}
+
+/* Estudar: abas e flashcards */
+.est-abas{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:2px 0 4px}
+.est-abas button{border:1px solid transparent;border-bottom:0;background:transparent;color:var(--muted);padding:8px 16px;border-radius:8px 8px 0 0;font:600 14.5px var(--body);cursor:pointer;margin-bottom:-1px}
+.est-abas button.on{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.est-n{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font:700 11.5px/18px var(--mono);margin-left:4px}
+.fc-sessao{max-width:760px}
+.fc-card{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--bg);padding:22px 22px;min-height:180px;display:flex;flex-direction:column;gap:14px;cursor:pointer;outline:none}
+.fc-card:focus-visible{box-shadow:0 0 0 2px var(--accent)}
+.fc-card.virado{cursor:default}
+.fc-tx{font:600 18px/1.5 var(--body)}.fc-tx p{margin:.2em 0}
+.fc-verso{border-top:1px dashed var(--line);padding-top:14px}.fc-verso .fc-tx{font-weight:500;font-size:16.5px}
+.fc-dica{margin-top:auto;text-align:center;color:var(--muted);font-size:13px}
+.fc-notas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.fc-notas .btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;position:relative}
+.fc-notas .btn span{font-size:12px;color:var(--muted);font-weight:400}
+.fc-notas kbd,.fc-dica kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted)}
+.fc-notas kbd{position:absolute;top:4px;right:6px}
+.fc-n0 b{color:var(--warn,#c0392b)}.fc-n3 b{color:var(--accent)}
+@media (max-width:520px){.fc-notas{grid-template-columns:repeat(2,1fr)}.fc-notas kbd{display:none}}
+.fc-lista{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.fc-li{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface)}
+.fc-li-f{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc-li-v{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fc-dlg-fundo{position:fixed;inset:0;z-index:60;background:rgb(0 0 0 / .35);display:flex;align-items:center;justify-content:center;padding:16px}
+.fc-dlg{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgb(0 0 0 / .3);padding:16px;width:min(520px,100%);display:flex;flex-direction:column}
+.fc-dlg textarea{width:100%;resize:vertical}
 </style>
 </head>
 <body>
@@ -670,7 +696,7 @@ function ir(v){ VIEW=v; try{ history.replaceState(null,"","#"+v);}catch(e){ loca
 
 function renderNav(){
   const nn=notas().length, tp=tarefas().filter(t=>!t.feito).length;
-  const cnt={caderno:nn||"", tarefas:tp||"", materiais:(typeof mats==="function"&&mats().length)||"", projetos:(typeof projetos==="function"&&projetos().filter(p=>p.status!=="concluido").length)||""};
+  const cnt={caderno:nn||"", tarefas:tp||"", materiais:(typeof mats==="function"&&mats().length)||"", projetos:(typeof projetos==="function"&&projetos().filter(p=>p.status!=="concluido").length)||"", estudar:(typeof flashcards==="function"&&flashcards().filter(c=>fcDevido(c)).length)||""};
   document.getElementById("nav").innerHTML=VIEWS.map(([k,l])=>`<button data-go="${k}" title="${l}" ${VIEW===k?'aria-current="page"':""}>${icone(k)}<span class="lbl">${l}</span><span class="cnt">${cnt[k]??""}</span></button>`).join("");
   renderProg();
 }
@@ -1061,6 +1087,7 @@ function exportarMD(){
   const soltas=notas().filter(n=>!n.disc||!DK[n.disc]);
   if(soltas.length){ o+=`## Notas gerais\n\n`; soltas.forEach(n=>{o+=`### ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;}); }
   projetos().forEach(p=>{ o+=projetoMD(p).replace(/^### /gm,"#### ").replace(/^## /gm,"### ").replace(/^# /,"## Projeto: ")+"\n"; });
+  const fcs=flashcards(); if(fcs.length){ o+=`## Flashcards\n`+fcs.map(c=>`- **${c.frente.replace(/\n/g," ")}** — ${c.verso.replace(/\n/g," ")}${c.disc&&DK[c.disc]?" ("+curto(c.disc)+")":""}`).join("\n")+"\n\n"; }
   const ts=tarefas(); if(ts.length){ o+=`## Tarefas\n`+ts.map(t=>`- [${t.feito?"x":" "}] ${t.texto}${t.prazo?" (até "+t.prazo.slice(8,10)+"/"+t.prazo.slice(5,7)+")":""}`).join("\n")+"\n"; }
   return window.FLUXO&&FLUXO.expandir ? FLUXO.expandir(o) : o;
 }
@@ -1376,7 +1403,7 @@ function paneMat(){
   (m.arquivos||[]).forEach((a,i)=>orig.push(`<button class="btn sm" data-mabrir="${esc(a.path)}">${a.mime==="application/pdf"?"Abrir PDF":"Foto "+(i+1)}</button>`));
   const nImg=(m.arquivos||[]).filter(a=>a.mime.startsWith("image/")).length+(t.imgs||[]).length;
   const busy=P.busy?`<p class="chip" style="margin:0">${esc(P.busy)}</p>`:"";
-  const blocoColar = k => P.colar===k ? `<div><label class="lb" for="mc-${k}">${k==="resumo"?"Cole a resposta do Claude (o resumo)":"Cole a resposta do Claude (o JSON das questões)"}</label><textarea id="mc-${k}" style="min-height:160px"></textarea><div class="row" style="margin-top:6px"><button class="btn sm pri" data-msalvacolar="${k}">Salvar</button><button class="btn sm" data-mcolar="">Cancelar</button></div></div>` : "";
+  const blocoColar = k => P.colar===k ? `<div><label class="lb" for="mc-${k}">${k==="resumo"?"Cole a resposta do Claude (o resumo)":k==="flashcards"?"Cole a resposta do Claude (o JSON dos flashcards)":"Cole a resposta do Claude (o JSON das questões)"}</label><textarea id="mc-${k}" style="min-height:160px"></textarea><div class="row" style="margin-top:6px"><button class="btn sm pri" data-msalvacolar="${k}">Salvar</button><button class="btn sm" data-mcolar="">Cancelar</button></div></div>` : "";
   const qLista = qs.map((q,i)=>{ const r=(m.resp||{})[q.id]; return `<details class="qd"><summary><span class="mono muted">${i+1}.</span> ${esc(q.pergunta)} ${r?(r.ok?'<span class="fl-p">✓</span>':'<span class="fl-f">✗</span>'):""}</summary><ol type="A">${q.alternativas.map((a,j)=>`<li ${j===q.correta?'class="fl-p"':""}>${esc(a)}</li>`).join("")}</ol>${q.explicacao?`<p class="muted" style="margin:4px 0 0">${esc(q.explicacao)}</p>`:""}</details>`; }).join("");
   return `<div class="shade" data-fechar></div><section class="pane wide" role="dialog" aria-label="Material">
     <header><div style="flex:1;min-width:0">
@@ -1404,6 +1431,14 @@ function paneMat(){
         ${blocoColar("questoes")}
         ${qs.length?`<div class="row" style="margin:8px 0"><button class="btn sm pri" data-mestudar="${P.id}">Estudar estas questões</button><button class="btn sm danger" data-mlimparq>Apagar questões</button></div><div class="qlist">${qLista}</div>`:'<p class="empty">Nenhuma questão ainda.</p>'}
       </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><h3>Flashcards ${info("matfc")} <span class="mono muted" style="font-size:13px">${(()=>{ const n=flashcards().filter(c=>c.mat===P.id).length; return n?n+" deste material":""; })()}</span></h3>
+          <div class="row"><select id="mt-nf" style="width:auto" aria-label="Quantidade">${[8,12,20].map(n=>`<option ${n===(P.nf||12)?"selected":""}>${n}</option>`).join("")}</select>
+          ${podeIA?`<button class="btn sm pri" data-mgerar="flashcards" ${P.busy?"disabled":""}>Gerar flashcards</button>`:""}
+          <button class="btn sm" data-mcopiar="flashcards">Copiar pedido</button><button class="btn sm" data-mcolar="flashcards">Colar resposta</button></div></div>
+        ${blocoColar("flashcards")}
+        <div class="row" style="margin-top:8px">${flashcards().some(c=>c.mat===P.id)?`<button class="btn sm pri" data-fcmat="${P.id}">Revisar estes flashcards</button>`:""}<button class="btn sm" data-fcnovomat="${P.id}">+ Flashcard à mão</button></div>
+      </div>
       <details class="card" ${P.verTexto?"open":""} id="mt-det"><summary><strong>Texto do material</strong> ${info("mattx")} <span class="muted" style="font-size:13px">(pode corrigir ou colar mais conteúdo)</span></summary>
         <textarea id="mt-tx" style="min-height:260px;margin-top:8px" placeholder="Sem texto. Cole aqui a transcrição, o conteúdo do slide…">${esc(t.texto||"")}</textarea></details>
       <div class="row" style="justify-content:flex-end"><button class="btn sm danger" data-mapagar>Apagar material</button></div>
@@ -1413,6 +1448,7 @@ function pedido(mid, modo){
   const m=S.docs[mid], t=mtx(mid); const nImg=(m.arquivos||[]).filter(a=>a.mime.startsWith("image/")).length+(t.imgs||[]).length;
   const meta={titulo:m.titulo, disciplina:m.disc?nomeDisc(m.disc):"", n:PANE.n||8};
   const tx=(t.texto||"").slice(0,150000);
+  if(modo==="flashcards") return PROMPTS.pedidoFlashcards({...meta,n:PANE.nf||12},tx,nImg);
   return modo==="resumo"? PROMPTS.pedidoResumo(meta,tx,nImg) : PROMPTS.pedidoQuestoes(meta,tx,nImg);
 }
 function addQuestoes(mid, novas){
@@ -1422,12 +1458,13 @@ function addQuestoes(mid, novas){
 }
 async function gerar(mid, modo){
   const m=S.docs[mid], t=mtx(mid);
-  PANE.busy= modo==="resumo"?"Gerando resumo… (até 1 minuto)":"Gerando questões… (até 1 minuto)"; renderPane();
+  PANE.busy= modo==="resumo"?"Gerando resumo… (até 1 minuto)":modo==="flashcards"?"Gerando flashcards… (até 1 minuto)":"Gerando questões… (até 1 minuto)"; renderPane();
   try{
     let imagens=[...(t.imgs||[])];
     for(const a of (m.arquivos||[]).filter(a=>a.mime.startsWith("image/"))) imagens.push(await paraDataURL(await baixar(a.path)));
-    const j=await api("/api/ia",{modo,n:PANE.n||8,texto:(t.texto||""),imagens:imagens.slice(0,8),titulo:m.titulo,disciplina:m.disc?nomeDisc(m.disc):""});
+    const j=await api("/api/ia",{modo,n:modo==="flashcards"?(PANE.nf||12):(PANE.n||8),texto:(t.texto||""),imagens:imagens.slice(0,8),titulo:m.titulo,disciplina:m.disc?nomeDisc(m.disc):""});
     if(modo==="resumo"){ salvarDoc(mid,{...S.docs[mid],resumo:j.resumo},50); toast(j.cortado?"Resumo pronto (material muito longo: usei o começo).":"Resumo pronto."); }
+    else if(modo==="flashcards"){ const n=addFlashMat(mid,j.flashcards||[]); toast(n+" flashcards novos. Revise em Estudar → Flashcards."); }
     else { const n=addQuestoes(mid,j.questoes); toast(n+" questões novas."); }
   }catch(e){ toast(e.message||"Falha ao gerar."); }
   if(PANE&&PANE.id===mid){ PANE.busy=""; renderPane(); }
@@ -1493,7 +1530,152 @@ function responder(j){
   salvarDoc(it.mid,{...m,resp:{...(m.resp||{}),[q.id]:{e:j,ok,t:Date.now()}}},400);
   render();
 }
+/* ============ FLASHCARDS ============
+   Fontes: (1) cartões criados à mão ou pela IA — docs fc-<x> {frente, verso, disc, origem:"manual"|"ia"|"sel", mat, criado, cx, prox, v, a};
+   (2) pares da aba Perguntas de cada disciplina — viram cartões sozinhos; o progresso fica em fcr-<disc> {r:{hash:{cx,prox,v,a}}}.
+   Revisão espaçada (caixas de Leitner): Errei volta para a caixa 0 (10 min); Difícil mantém; Bom sobe 1; Fácil sobe 2. */
+const FC_INT=[10*60e3, 864e5, 2*864e5, 4*864e5, 8*864e5, 16*864e5]; // tempo até a próxima revisão por caixa
+const fcHash = t => { let h=5381; for(const c of String(t)) h=((h<<5)+h+c.charCodeAt(0))|0; return (h>>>0).toString(36); };
+function flashcards(){
+  const out=[];
+  Object.entries(S.docs).forEach(([id,b])=>{ if(b&&b.tipo==="fc"&&!b.apagado) out.push({id,fonte:"fc",disc:b.disc||"",frente:b.frente||"",verso:b.verso||"",origem:b.origem||"manual",mat:b.mat||"",criado:b.criado||0,est:{cx:b.cx||0,prox:b.prox||0,v:b.v||0,a:b.a||0}}); });
+  if(window.FORMATO&&FORMATO.separar&&FORMATO.lerPergs) DISC.forEach(d=>{ const pg=FORMATO.separar(discD(d.k).nota||"").pergs, r=(S.docs["fcr-"+d.k]||{}).r||{};
+    FORMATO.lerPergs(pg).forEach(x=>{ if(!x.p.trim()||!x.r.trim()) return; const h=fcHash(x.p.trim()); const e=r[h]||{};
+      out.push({id:"pg-"+d.k+"-"+h,fonte:"pg",h,disc:d.k,frente:x.p.trim(),verso:x.r.trim(),origem:"perguntas",criado:0,est:{cx:e.cx||0,prox:e.prox||0,v:e.v||0,a:e.a||0}}); }); });
+  return out;
+}
+const fcDevido = (c,t=Date.now()) => !c.est.prox || c.est.prox<=t;
+function salvarEstFc(c,est){
+  if(c.fonte==="fc") salvarDoc(c.id,{...S.docs[c.id],...est},300);
+  else { const k="fcr-"+c.disc, d=S.docs[k]||{tipo:"fcr",r:{}}; salvarDoc(k,{...d,tipo:"fcr",r:{...(d.r||{}),[c.h]:est}},300); }
+}
+function novoFlash(disc,frente,verso,origem,mat){ const id="fc-"+novoId(); salvarDoc(id,{tipo:"fc",disc:disc||"",frente,verso,origem:origem||"manual",mat:mat||"",criado:Date.now(),cx:0,prox:0,v:0,a:0},50); return id; }
+function addFlashMat(mid,lista){ const m=S.docs[mid]; const ja=new Set(flashcards().map(c=>c.frente.toLowerCase())); let n=0;
+  lista.forEach(c=>{ if(ja.has(c.frente.toLowerCase())) return; ja.add(c.frente.toLowerCase()); novoFlash(m.disc,c.frente,c.verso,"ia",mid); n++; }); return n; }
+const rotIntervalo = ms => ms<36e5?Math.round(ms/6e4)+" min":ms<864e5?Math.round(ms/36e5)+" h":Math.round(ms/864e5)+(Math.round(ms/864e5)===1?" dia":" dias");
+function proxEst(est,nota){ // nota: 0 errei · 1 difícil · 2 bom · 3 fácil
+  const t=Date.now(); let cx=est.cx||0, ms;
+  if(nota===0){ cx=0; ms=FC_INT[0]; }
+  else if(nota===1){ cx=Math.max(1,cx); ms=Math.max(FC_INT[0]*3,FC_INT[cx]/2); }
+  else { cx=Math.min(FC_INT.length-1,cx+(nota===3?2:1)); ms=FC_INT[cx]; }
+  return {cx,prox:t+ms,v:(est.v||0)+1,a:(est.a||0)+(nota>=2?1:0),ms};
+}
+
+let FLASH=null; const FF={disc:"",quais:"devidos"};
+let EST_ABA=(()=>{ try{ return localStorage.getItem("caderno-qgis-aesp:estudar-aba")||"questoes"; }catch(e){ return "questoes"; } })();
+function iniciarFlash(filtro){
+  const t=Date.now(); let cs=flashcards().filter(c=>(!FF.disc||c.disc===FF.disc)&&(!filtro||filtro(c)));
+  if(!filtro){ if(FF.quais==="devidos") cs=cs.filter(c=>fcDevido(c,t)); else if(FF.quais==="novos") cs=cs.filter(c=>!c.est.v); else if(FF.quais==="dificeis") cs=cs.filter(c=>c.est.v&&(c.est.cx||0)<=1); }
+  cs.sort((a,b)=>(a.est.prox||0)-(b.est.prox||0)||Math.random()-.5);
+  FLASH={fila:cs.map(c=>c.id),i:0,virado:false,certos:0,feitos:0,repetidos:new Set()};
+}
+function vFlash(){
+  const todos=flashcards(), t=Date.now(), dev=todos.filter(c=>fcDevido(c,t));
+  const porDisc=DISC.map(d=>{ const xs=todos.filter(c=>c.disc===d.k); return {d,tot:xs.length,dev:xs.filter(c=>fcDevido(c,t)).length}; }).filter(x=>x.tot);
+  const geral=todos.filter(c=>!c.disc||!DK[c.disc]);
+  const criar=`<div class="card"><div class="row" style="justify-content:space-between"><h3>Criar flashcard ${info("fccria")}</h3><button class="btn sm pri" data-fcnovo>+ Novo flashcard</button></div>
+    <p class="muted" style="margin:6px 0 0;font-size:13.5px">Também viram flashcards: os pares da aba <b>Perguntas</b> de cada disciplina (sozinhos), um trecho selecionado nas anotações (botão <b>Flashcard</b> da barra) e os gerados de um material (botão <b>Flashcards</b> dentro do material).</p></div>`;
+  let sessao="";
+  if(FLASH&&FLASH.fila.length){
+    if(FLASH.i>=FLASH.fila.length){
+      sessao=`<div class="card"><h3>Fim da revisão</h3><p style="font:800 30px var(--display);margin:8px 0">${FLASH.certos}/${FLASH.feitos} <span class="muted" style="font-size:16px">lembrados</span></p>
+        <div class="row"><button class="btn pri" data-fccomecar>Revisar de novo</button><button class="btn" data-fcsair>Fechar</button></div></div>`;
+    } else {
+      const c=todos.find(x=>x.id===FLASH.fila[FLASH.i]);
+      if(!c){ FLASH.i++; return vFlash(); }
+      const cor=c.disc&&DK[c.disc]?DK[c.disc].cor:"var(--accent)";
+      const bts=[["Errei",0],["Difícil",1],["Bom",2],["Fácil",3]].map(([l,n])=>`<button class="btn fc-n${n}" data-fcnota="${n}"><b>${l}</b><span>${rotIntervalo(proxEst(c.est,n).ms)}</span><kbd>${n+1}</kbd></button>`).join("");
+      sessao=`<div class="card fc-sessao" style="border-left:6px solid ${cor}">
+        <div class="row" style="justify-content:space-between"><span class="mono muted" style="font-size:12.5px">Cartão ${FLASH.i+1} de ${FLASH.fila.length} · ${c.disc&&DK[c.disc]?esc(curto(c.disc)):"Geral"} · ${{perguntas:"da aba Perguntas",ia:"gerado do material",sel:"das anotações",manual:"criado por você"}[c.origem]||""}</span>
+          <span class="row" style="gap:6px">${c.fonte==="fc"?`<button class="btn sm" data-fceditar="${c.id}">Editar</button>`:`<button class="btn sm" data-go="disciplinas" data-disc="${c.disc}">Editar em Perguntas</button>`}<button class="btn sm" data-fcsair>Parar</button></span></div>
+        <div class="fc-card${FLASH.virado?" virado":""}" data-fcvirar tabindex="0" role="button" aria-label="${FLASH.virado?"Resposta":"Mostrar resposta"}">
+          <div class="fc-frente"><span class="lb" style="margin:0 0 6px">Frente</span><div class="fc-tx">${md(c.frente)}</div></div>
+          ${FLASH.virado?`<div class="fc-verso"><span class="lb" style="margin:0 0 6px">Verso</span><div class="fc-tx">${md(c.verso)}</div></div>`:`<div class="fc-dica">Pense na resposta e toque para virar <kbd>Espaço</kbd></div>`}
+        </div>
+        ${FLASH.virado?`<div class="fc-notas">${bts}</div><p class="muted" style="margin:6px 0 0;font-size:12.5px;text-align:center">Quando você vai ver este cartão de novo</p>`:`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn pri" data-fcvirar>Mostrar resposta</button></div>`}
+      </div>`;
+    }
+  } else if(FLASH){ sessao=`<div class="card"><p class="empty" style="padding:0">Nenhum cartão com esses filtros${FF.quais==="devidos"?" para revisar agora. Tudo em dia!":"."}</p></div>`; }
+  const filtros=`<div class="card row" style="align-items:end">
+      <div style="flex:1;min-width:160px"><label class="lb" for="ff-d">Disciplina</label><select id="ff-d"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FF.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
+      <div style="min-width:170px"><label class="lb" for="ff-q">Quais</label><select id="ff-q">${[["devidos","Para revisar agora"],["todos","Todos"],["novos","Nunca vistos"],["dificeis","Difíceis"]].map(([v,l])=>`<option value="${v}" ${FF.quais===v?"selected":""}>${l}</option>`).join("")}</select></div>
+      <button class="btn pri" data-fccomecar>${FLASH?"Recomeçar":"Começar revisão"}</button>${info("fcrev")}</div>`;
+  const resumo=todos.length?`<div class="card"><div class="row" style="justify-content:space-between"><h3>Seus flashcards</h3><span class="mono muted" style="font-size:13px">${todos.length} no total · <b style="color:var(--accent)">${dev.length}</b> para revisar</span></div>
+      ${porDisc.map(x=>`<div class="row" style="gap:8px;margin:5px 0"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sw(x.d.k)} ${esc(nomeDisc(x.d.k))}</span><span class="mono muted" style="font-size:12.5px">${x.tot} · ${x.dev} p/ revisar</span><button class="btn sm" data-fcdisc="${x.d.k}" ${x.dev?"":"disabled"}>Revisar</button></div>`).join("")}
+      ${geral.length?`<div class="row" style="gap:8px;margin:5px 0"><span style="flex:1">Geral</span><span class="mono muted" style="font-size:12.5px">${geral.length}</span></div>`:""}</div>`:"";
+  const lista=todos.length?`<details class="card"><summary><strong>Ver e editar cartões</strong> <span class="muted" style="font-size:13px">(${todos.length})</span></summary>
+      <div class="fc-lista">${todos.slice().sort((a,b)=>(a.disc||"").localeCompare(b.disc||"")||(a.criado-b.criado)).filter(c=>!FF.disc||c.disc===FF.disc).map(c=>`<div class="fc-li" style="border-left:4px solid ${c.disc&&DK[c.disc]?DK[c.disc].cor:"var(--line)"}">
+        <div style="flex:1;min-width:0"><div class="fc-li-f">${esc(c.frente)}</div><div class="fc-li-v muted">${esc(c.verso)}</div></div>
+        <span class="chip">${{perguntas:"Perguntas",ia:"IA",sel:"anotação",manual:"manual"}[c.origem]||""}${c.est.v?" · caixa "+(c.est.cx||0):" · novo"}</span>
+        ${c.fonte==="fc"?`<button class="btn sm" data-fceditar="${c.id}">Editar</button><button class="btn sm" data-fcapagar="${c.id}" title="Apagar">✕</button>`:`<button class="btn sm" data-go="disciplinas" data-disc="${c.disc}" title="Este cartão vem da aba Perguntas da disciplina">Perguntas</button>`}</div>`).join("")}</div></details>`:"";
+  return (sessao||"")+filtros+criar+resumo+lista+(todos.length?"":`<p class="empty">Ainda não há flashcards. Crie o primeiro, escreva pares na aba Perguntas de uma disciplina ou gere a partir de um material.</p>`);
+}
+/* janela para criar/editar um cartão (usada pela página Estudar, pela barra de formatação e pelo material) */
+function abrirFlashDlg(o){
+  document.getElementById("fc-dlg")?.remove();
+  const ed=o.id&&S.docs[o.id], d=document.createElement("div"); d.id="fc-dlg"; d.className="fc-dlg-fundo";
+  d.innerHTML=`<form class="fc-dlg" role="dialog" aria-label="${ed?"Editar flashcard":"Novo flashcard"}">
+    <div class="row" style="justify-content:space-between"><h3>${ed?"Editar flashcard":"Novo flashcard"}</h3><button type="button" class="btn sm" data-fcfechar aria-label="Fechar">✕</button></div>
+    <label class="lb" for="fc-d">Disciplina</label><select id="fc-d"><option value="">Geral</option>${DISC.map(x=>`<option value="${x.k}" ${(ed?ed.disc:o.disc)===x.k?"selected":""}>${esc(nomeDisc(x.k))}</option>`).join("")}</select>
+    <label class="lb" for="fc-f" style="margin-top:8px">Frente <span class="muted" style="font-weight:400">(pergunta, termo ou situação)</span></label><textarea id="fc-f" rows="2" required>${esc(ed?ed.frente:o.frente||"")}</textarea>
+    <label class="lb" for="fc-v" style="margin-top:8px">Verso <span class="muted" style="font-weight:400">(resposta curta)</span></label><textarea id="fc-v" rows="3" required>${esc(ed?ed.verso:o.verso||"")}</textarea>
+    <div class="row" style="justify-content:space-between;margin-top:10px"><span class="muted" style="font-size:12.5px">Ctrl+Enter salva</span>
+      <div class="row" style="gap:6px">${ed?"":`<label class="row" style="gap:4px;font-size:13px"><input type="checkbox" id="fc-mais" ${o.mais?"checked":""}> criar outro</label>`}<button class="btn pri">${ed?"Salvar":"Adicionar"}</button></div></div>
+  </form>`;
+  document.body.appendChild(d);
+  const f=d.querySelector("form"), fe=d.querySelector("#fc-f"), ve=d.querySelector("#fc-v");
+  const fechar=()=>{ d.remove(); if(o.volta&&o.volta.isConnected) try{ o.volta.focus(); }catch(e){} };
+  d.addEventListener("mousedown",e=>{ if(e.target===d) fechar(); });
+  d.querySelector("[data-fcfechar]").onclick=fechar;
+  d.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.stopPropagation(); fechar(); } if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); f.requestSubmit(); } });
+  f.onsubmit=e=>{ e.preventDefault(); const fr=fe.value.trim(), vs=ve.value.trim(), disc=d.querySelector("#fc-d").value; if(!fr||!vs){ (fr?ve:fe).focus(); return; }
+    if(ed){ salvarDoc(o.id,{...S.docs[o.id],frente:fr,verso:vs,disc},50); toast("Flashcard salvo."); fechar(); }
+    else { novoFlash(disc,fr,vs,o.origem||"manual",o.mat); toast("Flashcard criado."+(VIEW==="estudar"?"":" Revise em Estudar → Flashcards."));
+      if(d.querySelector("#fc-mais")?.checked){ fe.value=""; ve.value=""; fe.focus(); } else fechar(); }
+    renderNav(); if(VIEW==="estudar"&&!editando()) render(); };
+  (o.frente&&!o.verso?ve:fe).focus();
+}
+// botão "Flashcard" da barra de formatação: o trecho selecionado vira a frente (ou frente: verso, se tiver ":" ou "—")
+window.FORMATO_FLASH=(ta,sel)=>{
+  let k=window.FORMATO_PROJ?FORMATO_PROJ.disc(ta):""; sel=String(sel||"").replace(/\s+/g," ").trim();
+  let fr=sel, vs=""; const m=sel.match(/^(.{2,90}?)\s*(?::|—|–| - |=)\s+(.{2,})$/); if(m){ fr=m[1]; vs=m[2]; }
+  abrirFlashDlg({disc:k||"",frente:fr,verso:vs,origem:"sel"});
+};
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-fcnovo],[data-fccomecar],[data-fcsair],[data-fcvirar],[data-fcnota],[data-fceditar],[data-fcapagar],[data-fcdisc],[data-estaba],[data-fcmat]"); if(!b||b.disabled) return; const d=b.dataset;
+  if(d.estaba){ EST_ABA=d.estaba; try{ localStorage.setItem("caderno-qgis-aesp:estudar-aba",EST_ABA); }catch(x){} render(); return; }
+  if(d.fcnovo!==undefined){ abrirFlashDlg({disc:FF.disc,volta:b}); return; }
+  if(d.fceditar){ abrirFlashDlg({id:d.fceditar,volta:b}); return; }
+  if(d.fcapagar){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Apagar?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="✕"; } },3000); return; } apagarDoc(d.fcapagar); render(); return; }
+  if(d.fccomecar!==undefined){ iniciarFlash(); render(); document.querySelector("main").scrollTop=0; return; }
+  if(d.fcdisc){ FF.disc=d.fcdisc; FF.quais="devidos"; iniciarFlash(); render(); document.querySelector("main").scrollTop=0; return; }
+  if(d.fcmat){ PANE=null; document.getElementById("paneHost").innerHTML=""; EST_ABA="flash"; FF.disc=""; iniciarFlash(c=>c.mat===d.fcmat); ir("estudar"); return; }
+  if(d.fcsair!==undefined){ FLASH=null; render(); return; }
+  if(d.fcvirar!==undefined){ if(FLASH&&!FLASH.virado){ FLASH.virado=true; render(); } return; }
+  if(d.fcnota!==undefined){ avaliarFlash(+d.fcnota); return; }
+});
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-fcnovomat]"); if(!b) return; const m=S.docs[b.dataset.fcnovomat]; abrirFlashDlg({disc:m&&m.disc||"",origem:"manual",mat:b.dataset.fcnovomat,volta:b}); });
+function avaliarFlash(n){
+  if(!FLASH||!FLASH.virado) return; const c=flashcards().find(x=>x.id===FLASH.fila[FLASH.i]); if(!c) return;
+  const {ms,...est}=proxEst(c.est,n); salvarEstFc(c,est); FLASH.feitos++; if(n>=2) FLASH.certos++;
+  if(n===0&&!FLASH.repetidos.has(c.id)){ FLASH.repetidos.add(c.id); FLASH.fila.push(c.id); } // errou: volta no fim desta rodada
+  FLASH.i++; FLASH.virado=false; render();
+}
+document.addEventListener("keydown",e=>{
+  if(VIEW!=="estudar"||EST_ABA!=="flash"||!FLASH||FLASH.i>=FLASH.fila.length||document.getElementById("fc-dlg")) return;
+  const t=e.target; if(t.closest&&t.closest("input,textarea,select,[contenteditable=true]")) return;
+  if((e.key===" "||e.key==="Enter")&&!FLASH.virado){ e.preventDefault(); FLASH.virado=true; render(); return; }
+  if(FLASH.virado&&/^[1-4]$/.test(e.key)){ e.preventDefault(); avaliarFlash(+e.key-1); }
+});
+document.addEventListener("change",e=>{ if(e.target.id==="ff-d"){ FF.disc=e.target.value; render(); } else if(e.target.id==="ff-q"){ FF.quais=e.target.value; render(); } });
+
 function vEstudar(){
+  const dev=flashcards().filter(c=>fcDevido(c)).length;
+  return `<div><h2>Estudar ${info("estudar")}</h2><p class="sub">${EST_ABA==="flash"?"Flashcards com revisão espaçada: o app mostra cada cartão de novo na hora certa.":"Responda as questões geradas dos materiais. O app guarda acertos e erros."}</p></div>
+    <div class="est-abas" role="tablist"><button role="tab" aria-selected="${EST_ABA!=="flash"}" class="${EST_ABA!=="flash"?"on":""}" data-estaba="questoes">Questões</button><button role="tab" aria-selected="${EST_ABA==="flash"}" class="${EST_ABA==="flash"?"on":""}" data-estaba="flash">Flashcards${dev?` <span class="est-n">${dev}</span>`:""}</button></div>
+    ${EST_ABA==="flash"?vFlash():vQuestoes()}`;
+}
+function vQuestoes(){
   const banco=bancoQuestoes();
   const porDisc=DISC.map(d=>{ const xs=banco.filter(x=>x.disc===d.k); const f=xs.filter(x=>x.r); return {d,tot:xs.length,f:f.length,a:f.filter(x=>x.r.ok).length}; }).filter(x=>x.tot);
   const filtros=`<div class="card row" style="align-items:end">
@@ -1507,7 +1689,7 @@ function vEstudar(){
       const n=ESTUDO.fila.length; sessao=`<div class="card"><h3>Fim da rodada</h3><p style="font:800 30px var(--display);margin:8px 0">${ESTUDO.acertos}/${n} <span class="muted" style="font-size:16px">${Math.round(ESTUDO.acertos/n*100)}%</span></p><div class="row"><button class="btn pri" data-ecomecar>Nova rodada</button><button class="btn" data-eerradas>Refazer as que errei</button></div></div>`;
     } else {
       const it=ESTUDO.fila[ESTUDO.i]; const m=S.docs[it.mid]; const q=m&&(m.questoes||[]).find(q=>q.id===it.qid);
-      if(!q){ ESTUDO.i++; return vEstudar(); }
+      if(!q){ ESTUDO.i++; return vQuestoes(); }
       const e=ESTUDO.escolha;
       sessao=`<div class="card estudo" style="border-left:6px solid ${m.disc&&DK[m.disc]?DK[m.disc].cor:"var(--accent)"}">
         <div class="row" style="justify-content:space-between"><span class="mono muted" style="font-size:12.5px">Questão ${ESTUDO.i+1} de ${ESTUDO.fila.length} · ${ESTUDO.acertos} acerto(s)</span><button class="btn sm" data-mat="${it.mid}">${esc(m.titulo)}</button></div>
@@ -1517,8 +1699,7 @@ function vEstudar(){
       </div>`;
     }
   }
-  return `<div><h2>Estudar ${info("estudar")}</h2><p class="sub">Responda as questões geradas dos materiais. O app guarda acertos e erros.</p></div>
-    ${porDisc.length?`<div class="card"><h3 style="margin-bottom:8px">Desempenho ${info("desemp")}</h3>${porDisc.map(x=>`<div class="row" style="gap:8px;margin:4px 0"><span style="flex:0 0 min(46%,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">${sw(x.d.k)} ${esc(nomeDisc(x.d.k))}</span><div class="bar" style="flex:1"><i style="width:${x.f?x.a/x.f*100:0}%;background:${x.d.cor}"></i></div><span class="mono" style="font-size:12.5px">${x.a}/${x.f} · ${x.tot}</span></div>`).join("")}<p class="muted" style="font-size:12px;margin:6px 0 0">acertos / respondidas · total de questões</p></div>`:""}
+  return `    ${porDisc.length?`<div class="card"><h3 style="margin-bottom:8px">Desempenho ${info("desemp")}</h3>${porDisc.map(x=>`<div class="row" style="gap:8px;margin:4px 0"><span style="flex:0 0 min(46%,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">${sw(x.d.k)} ${esc(nomeDisc(x.d.k))}</span><div class="bar" style="flex:1"><i style="width:${x.f?x.a/x.f*100:0}%;background:${x.d.cor}"></i></div><span class="mono" style="font-size:12.5px">${x.a}/${x.f} · ${x.tot}</span></div>`).join("")}<p class="muted" style="font-size:12px;margin:6px 0 0">acertos / respondidas · total de questões</p></div>`:""}
     ${banco.length?filtros+sessao:'<p class="empty">Ainda não há questões. Abra um material em “Materiais” e gere as questões.</p>'}`;
 }
 
@@ -1530,14 +1711,15 @@ document.addEventListener("click",async e=>{
   if(d.amaba!==undefined){ PANE.aba=d.amaba; PANE.disc=document.getElementById("am-d").value; const ti=document.getElementById("am-ti").value; renderPane(); document.getElementById("am-ti").value=ti; return; }
   if(d.mat!==undefined){ flushTudo(); abrirMat(d.mat); return; }
   if(d.mabrir!==undefined){ abrirArquivo(d.mabrir); return; }
-  if(d.mgerar!==undefined){ PANE.n=+document.getElementById("mt-n").value; gerar(PANE.id,d.mgerar); return; }
-  if(d.mcopiar!==undefined){ PANE.n=+document.getElementById("mt-n").value; const m=S.docs[PANE.id]; const nImg=(m.arquivos||[]).filter(a=>a.mime.startsWith("image/")).length+(mtx(PANE.id).imgs||[]).length;
+  if(d.mgerar!==undefined){ PANE.n=+document.getElementById("mt-n").value; PANE.nf=+document.getElementById("mt-nf").value; gerar(PANE.id,d.mgerar); return; }
+  if(d.mcopiar!==undefined){ PANE.n=+document.getElementById("mt-n").value; PANE.nf=+document.getElementById("mt-nf").value; const m=S.docs[PANE.id]; const nImg=(m.arquivos||[]).filter(a=>a.mime.startsWith("image/")).length+(mtx(PANE.id).imgs||[]).length;
     await copiar(pedido(PANE.id,d.mcopiar), nImg?"Pedido copiado. Cole no Claude e anexe as fotos antes de enviar.":"Pedido copiado. Cole no app do Claude e depois traga a resposta.");
     PANE.colar=d.mcopiar; renderPane(); return; }
   if(d.mcolar!==undefined){ PANE.colar=d.mcolar; renderPane(); if(d.mcolar) document.getElementById("mc-"+d.mcolar).focus(); return; }
   if(d.msalvacolar!==undefined){
     const k=d.msalvacolar, v=document.getElementById("mc-"+k).value.trim(); if(!v) return;
     if(k==="resumo"){ salvarDoc(PANE.id,{...S.docs[PANE.id],resumo:v},50); toast("Resumo salvo."); }
+    else if(k==="flashcards"){ const fs=PROMPTS.lerFlashcards(v); if(!fs.length){ toast("Não achei flashcards no texto. Cole a resposta inteira, com o JSON."); return; } toast(addFlashMat(PANE.id,fs)+" flashcards adicionados."); }
     else { const qs=PROMPTS.lerQuestoes(v); if(!qs.length){ toast("Não achei questões no texto. Cole a resposta inteira, com o JSON."); return; } toast(addQuestoes(PANE.id,qs)+" questões adicionadas."); }
     PANE.colar=""; renderPane(); render(); return;
   }
@@ -1575,6 +1757,9 @@ document.addEventListener("toggle",e=>{ if(e.target.id==="mt-det"&&PANE) PANE.ve
 
 /* ============ AJUDA (ícones "i") ============ */
 const AJUDA={
+  fccria:{t:"Onde nascem os flashcards",o:"1) + Novo flashcard aqui; 2) cada par da aba Perguntas de uma disciplina vira um cartão sozinho; 3) selecione um trecho nas anotações e clique em Flashcard na barra (\"termo: explicação\" já separa frente e verso); 4) dentro de um material, Gerar flashcards (IA) ou Copiar pedido / Colar resposta.",c:"Cartões da aba Perguntas são editados lá; os outros, aqui em Ver e editar cartões."},
+  fcrev:{t:"Revisão espaçada",o:"Leia a frente, pense na resposta, vire (Espaço) e diga como foi: Errei, Difícil, Bom ou Fácil (teclas 1 a 4).",c:"Errei volta em 10 minutos e repete no fim da rodada; Bom e Fácil empurram o cartão para 1, 2, 4, 8 ou 16 dias. “Para revisar agora” mostra só o que venceu. O número no menu Estudar é quantos estão vencidos."},
+  matfc:{t:"Flashcards do material",o:"Cria cartões de memorização a partir do texto e das fotos deste material.",c:"Com a chave da IA configurada, Gerar flashcards faz direto. Sem ela: Copiar pedido, colar no app do Claude e trazer a resposta em Colar resposta. Repetidos (mesma frente) são ignorados."},
   projetos:{t:"Projetos",o:"Página para desenvolver o projeto do curso: planejamento, etapas, parte de cada disciplina, ligações entre disciplinas, texto principal e referências.",c:"Cada disciplina escreve a parte dela na aba Projetos (ao lado de Anotações e Perguntas). “Usar modelo” cria o Diagnóstico Territorial com etapas já divididas pelas disciplinas."},
   pjprincipal:{t:"Projeto principal",o:"É o projeto que aparece na aba Projetos de cada disciplina.",c:"Só um pode ser o principal. Na aba da disciplina dá para trocar de projeto quando houver mais de um."},
   pjia:{t:"Pedido para o Claude",o:"Copia o projeto inteiro com um pedido de revisão: lacunas, ordem das etapas, ligações sugeridas e roteiro do relatório.",c:"Cole no app do Claude e traga as sugestões de volta para cá."},
@@ -1609,7 +1794,7 @@ const AJUDA={
   matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo no QGIS, aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
   matq:{t:"Questões",o:"Questões de múltipla escolha geradas do material, com gabarito e explicação.",c:"Escolha a quantidade e clique em Gerar (automático) ou use Copiar pedido / Colar resposta (cole a resposta inteira do Claude; o app acha o JSON). “Gerar mais” acrescenta sem repetir. Clique numa questão para ver o gabarito, ou use “Estudar estas questões”."},
   mattx:{t:"Texto do material",o:"O texto que o app extraiu do PDF, link ou que você colou. É ele que vai para a IA.",c:"Corrija erros, apague partes irrelevantes ou cole conteúdo extra (por exemplo, a transcrição de um vídeo). PDF escaneado vem sem texto: use fotos ou cole o conteúdo."},
-  estudar:{t:"Estudar",o:"Treino com as questões de todos os materiais.",c:"Escolha filtros e clique em Começar. Toque na alternativa: verde é a correta, vermelho a sua se errou, e aparece a explicação. Cada resposta fica guardada."},
+  estudar:{t:"Estudar",o:"Duas abas: Questões (múltipla escolha geradas dos materiais) e Flashcards (cartões com revisão espaçada).",c:"Escolha filtros e clique em Começar. Toque na alternativa: verde é a correta, vermelho a sua se errou, e aparece a explicação. Cada resposta fica guardada."},
   desemp:{t:"Desempenho",o:"Acertos sobre questões respondidas em cada disciplina, e o total de questões disponíveis.",c:"Considera a última resposta de cada questão. Use “Que errei” para revisar os pontos fracos."},
   efiltro:{t:"Filtros do estudo",o:"Define quais questões entram na rodada.",c:"Disciplina e Material restringem o conteúdo. Quais: Todas, Não respondidas ou Que errei. Clique em Começar/Recomeçar para aplicar; a ordem é embaralhada."},
   caderno:{t:"Caderno",o:"Notas livres que não pertencem a uma aula específica.",c:"Nova nota → título, disciplina (opcional) e texto. Salva sozinho. Ideias: passo a passo de ferramentas, dúvidas para o instrutor, resumo da semana."},

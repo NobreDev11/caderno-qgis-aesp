@@ -25,6 +25,7 @@
     ["img",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3.5" width="16" height="13" rx="2"/><circle cx="7" cy="8" r="1.6"/><path d="M2.5 15l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5"/></svg><span class="fmt-tx">Imagem</span>',"Inserir imagem neste ponto do texto (também dá para colar com Ctrl+V ou arrastar a imagem para a caixa)"],
     ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
     ["tab",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="1.5"/><path d="M2 7.5h16M2 12h16M8 3v14M13 3v14"/></svg><span class="fmt-tx">Tabela</span>',"Inserir tabela neste ponto (com o cursor numa tabela: adicionar/remover linhas e colunas). Tab passa para a próxima célula."],
+    ["fla",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5.5" y="2.5" width="12" height="9" rx="1.5"/><rect x="2.5" y="7.5" width="12" height="9" rx="1.5" fill="var(--surface,#fff)"/><path d="M6 12h5"/></svg><span class="fmt-tx">Flashcard</span>',"Flashcard: o trecho selecionado vira um cartão de revisão (\"termo: explicação\" já separa frente e verso)"],
     ["rev",'<span class="fmt-rev">Aa✓</span>',"Revisão: correção ortográfica (automática ou não) e sugestão de palavras por Tab"],
   ];
   const CSS=`
@@ -185,7 +186,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function barra(doc,ta){
     const pip=doc!==document, semDest=pip||!window.FORMATO_DESTACAR||!ta||ta.id==="fl-txt"||ta.dataset.rich;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){
@@ -749,6 +750,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(k==="img") return escolherImagem(ta);
     if(k==="tab") return popTabela(ed,BT_ULT);
     if(k==="rev") return popRev(BT_ULT);
+    if(k==="fla"){ const s=getSelection(); let t=""; if(s.rangeCount&&ed.contains(s.anchorNode)) t=s.toString(); else if(ed._range&&ed.contains(ed._range.startContainer)) t=ed._range.toString(); if(window.FORMATO_FLASH) window.FORMATO_FLASH(ta,t); return; }
     if(k==="dest"){ if(document.querySelector(".fmt-cheia")) sairCheia(); if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); return; }
     if(k==="sub"){ if(!dentroDe(ed,"LI")){ cmd("insertUnorderedList"); sincronizar(ed); return; } return recuar(ed); }
     if(k==="sob") return desrecuar(ed);
@@ -997,7 +999,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
   function aplicar(ta,k){
-    ({rev:()=>{}, dest:()=>{ if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); },
+    ({rev:()=>{}, fla:()=>{ if(window.FORMATO_FLASH) window.FORMATO_FLASH(ta, ta.value.slice(ta.selectionStart,ta.selectionEnd)); }, dest:()=>{ if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); },
       tab:()=>{ const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":""; trocar(ta,a,ta.selectionEnd,antes+"| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n"); },
       sub:()=>recuoTa(ta,true), sob:()=>recuoTa(ta,false), neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
@@ -1115,5 +1117,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     carregar("/fluxo.js").then(()=>carregar("/formato.js")).then(()=>{ if(!w.FORMATO){ // sem script na janela: volta à caixa simples
       const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); ligarRev(doc); } });
   }
-  window.FORMATO={listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
+  window.FORMATO={lerPergs, listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();

@@ -54,6 +54,43 @@
     );
   }
 
+  function pedidoFlashcards(meta, texto, nImg) {
+    const n = meta.n || 12;
+    return (
+      cab(meta) +
+      "\nCrie " + n + " flashcards (cartões de memorização) sobre o material abaixo, para revisão espaçada.\n" +
+      "Regras: um conceito por cartão; frente curta (pergunta direta, termo ou situação prática); verso com a resposta " +
+      "em até 2 frases, sem repetir a pergunta; cubra definições, passos no QGIS, siglas e aplicações em segurança pública; " +
+      "não invente nada que não esteja no material.\n" +
+      "Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato:\n" +
+      '[{"frente":"...","verso":"..."}]' +
+      corpo(texto, nImg)
+    );
+  }
+  // Aceita JSON [{frente,verso}] ou linhas "Frente: … / Verso: …" (também "P: … / R: …").
+  function lerFlashcards(txt) {
+    const s = String(txt || "");
+    const ini = s.indexOf("["), fim = s.lastIndexOf("]");
+    if (ini >= 0 && fim > ini) {
+      try {
+        const arr = JSON.parse(s.slice(ini, fim + 1));
+        if (Array.isArray(arr)) {
+          const out = arr.map((c) => ({ frente: String((c && (c.frente || c.f || c.pergunta || c.front)) || "").trim(), verso: String((c && (c.verso || c.v || c.resposta || c.back)) || "").trim() })).filter((c) => c.frente && c.verso);
+          if (out.length) return out;
+        }
+      } catch (e) {}
+    }
+    const out = []; let cur = null;
+    for (const l of s.split("\n")) {
+      let m = l.match(/^\s*(?:\d+[.)]\s*)?(?:\*\*)?(?:frente|f|p|pergunta)\s*:(?:\*\*)?\s*(.+)$/i);
+      if (m) { cur = { frente: m[1].trim(), verso: "" }; out.push(cur); continue; }
+      m = l.match(/^\s*(?:\*\*)?(?:verso|v|r|resposta)\s*:(?:\*\*)?\s*(.*)$/i);
+      if (m && cur) { cur.verso = m[1].trim(); continue; }
+      if (cur && cur.verso && l.trim()) cur.verso += " " + l.trim();
+    }
+    return out.filter((c) => c.frente && c.verso);
+  }
+
   // Aceita a resposta da IA (com ou sem ```json) e devolve questões válidas.
   function lerQuestoes(txt) {
     let s = String(txt || "");
@@ -72,5 +109,5 @@
       .filter((q) => q.pergunta && q.alternativas.length >= 2 && q.correta >= 0 && q.correta < q.alternativas.length);
   }
 
-  return { SISTEMA, pedidoResumo, pedidoQuestoes, lerQuestoes };
+  return { SISTEMA, pedidoResumo, pedidoQuestoes, lerQuestoes, pedidoFlashcards, lerFlashcards };
 });

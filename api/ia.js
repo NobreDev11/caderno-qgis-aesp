@@ -1,4 +1,4 @@
-// Gera resumo ou questões com a API do Claude. Exige login (admin) e a variável ANTHROPIC_API_KEY na Vercel.
+// Gera resumo, questões ou flashcards com a API do Claude. Exige login (admin) e a variável ANTHROPIC_API_KEY na Vercel.
 const { verificar, lerCorpo, responder } = require("./_auth");
 const PROMPTS_QGIS = require("./_prompts");
 const PROMPTS_DIO = require("./_prompts_dio");
@@ -13,14 +13,16 @@ module.exports = async (req, res) => {
     await verificar(req);
     const b = await lerCorpo(req);
     // curso: "dio" usa os pedidos da trilha DIO; qualquer outro valor (ou nenhum) mantém os do caderno QGIS.
-    const { pedidoResumo, pedidoQuestoes, lerQuestoes, SISTEMA } = b.curso === "dio" ? PROMPTS_DIO : PROMPTS_QGIS;
-    const modo = b.modo === "questoes" ? "questoes" : "resumo";
+    const P = b.curso === "dio" ? PROMPTS_DIO : PROMPTS_QGIS;
+    const { pedidoResumo, pedidoQuestoes, lerQuestoes, SISTEMA } = P;
+    const pedidoFlashcards = P.pedidoFlashcards || PROMPTS_QGIS.pedidoFlashcards, lerFlashcards = P.lerFlashcards || PROMPTS_QGIS.lerFlashcards;
+    const modo = b.modo === "questoes" ? "questoes" : b.modo === "flashcards" ? "flashcards" : "resumo";
     const texto = String(b.texto || "").slice(0, MAX_TEXTO);
     const imagens = Array.isArray(b.imagens) ? b.imagens.slice(0, 8) : [];
     if (texto.trim().length < 40 && !imagens.length) return responder(res, 400, { erro: "Material sem texto. Cole o conteúdo ou envie fotos legíveis." });
     const n = Math.min(20, Math.max(3, parseInt(b.n, 10) || 8));
     const meta = { titulo: String(b.titulo || "").slice(0, 200), disciplina: String(b.disciplina || "").slice(0, 200), n };
-    const pedido = modo === "resumo" ? pedidoResumo(meta, texto, imagens.length) : pedidoQuestoes(meta, texto, imagens.length);
+    const pedido = modo === "resumo" ? pedidoResumo(meta, texto, imagens.length) : modo === "flashcards" ? pedidoFlashcards(meta, texto, imagens.length) : pedidoQuestoes(meta, texto, imagens.length);
 
     const content = [];
     for (const img of imagens) {
@@ -43,6 +45,11 @@ module.exports = async (req, res) => {
     if (!r.ok) return responder(res, 502, { erro: "A IA recusou o pedido: " + (j.error && j.error.message ? j.error.message : "HTTP " + r.status) });
     const saida = (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
     if (modo === "resumo") return responder(res, 200, { resumo: saida, cortado: (b.texto || "").length > MAX_TEXTO });
+    if (modo === "flashcards") {
+      const flashcards = lerFlashcards(saida);
+      if (!flashcards.length) return responder(res, 502, { erro: "A IA não devolveu flashcards no formato esperado. Tente de novo." });
+      return responder(res, 200, { flashcards, cortado: (b.texto || "").length > MAX_TEXTO });
+    }
     const questoes = lerQuestoes(saida);
     if (!questoes.length) return responder(res, 502, { erro: "A IA não devolveu questões no formato esperado. Tente de novo." });
     return responder(res, 200, { questoes, cortado: (b.texto || "").length > MAX_TEXTO });
