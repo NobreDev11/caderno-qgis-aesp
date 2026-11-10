@@ -2293,8 +2293,112 @@ function sequenciaMermaid(bs){
   if(ok.length) o+=`  classDef ok fill:#d5f5e3,stroke:#1e8449\n  class ${ok.join(",")} ok\n`;
   return o;
 }
-const PRT_SEQ={}; // sequência aberta por prática
-function salvarPrt(id,mud,atraso){ salvarDoc(id,{...S.docs[id],tipo:"prt",...mud},atraso); }
+/* ---- "Ver sequência": janela própria com os blocos em colunas e as ligações desenhadas como setas ---- */
+const SEQ_WIN={};
+const SEQ_CORES=["#2e86c1","#d35400","#16a085","#8e44ad","#c0392b","#b7950b","#2c3e50","#ca6f1e"];
+function dadosSeq(id){ const p=S.docs[id]; if(!p) return null; const bs=blocosDe(p), R=rotulosPassos(bs);
+  return {id, titulo:p.titulo||"Prática", objetivo:p.objetivo||"", disc:p.disc&&DK[p.disc]?nomeDisc(p.disc):"",
+    blocos:bs.map((b,i)=>({id:b.id, n:i+1, titulo:b.titulo||"Bloco "+(i+1), cor:SEQ_CORES[i%SEQ_CORES.length], liga:(b.liga||[]).filter(d=>R[d]&&R[d].bloco),
+      passos:(b.passos||[]).map(x=>({id:x.id, n:R[x.id].n, t:x.t||"", feito:!!x.feito, liga:(x.liga||[]).filter(d=>R[d]&&!R[d].bloco)}))}))}; }
+window.__seqMarcar=(id,pid)=>{ const p=S.docs[id]; if(!p) return; const bs=JSON.parse(JSON.stringify(blocosDe(p))); bs.forEach(b=>(b.passos||[]).forEach(x=>{ if(x.id===pid) x.feito=!x.feito; })); salvarBlocos(id,bs); redesenharPrats(p.disc); };
+function atualizarSeq(id){ const w=SEQ_WIN[id]; if(w&&!w.closed&&w.desenhar){ try{ w.desenhar(dadosSeq(id)); }catch(e){} } }
+function abrirSequencia(id){
+  const d=dadosSeq(id); if(!d) return;
+  let w=SEQ_WIN[id]; if(w&&!w.closed){ w.focus(); atualizarSeq(id); return; }
+  w=window.open("","seq_"+id.replace(/\W/g,""),"width=1180,height=780"); if(!w){ toast("O navegador bloqueou a janela. Permita pop-ups para este site."); return; }
+  SEQ_WIN[id]=w;
+  const cs=getComputedStyle(document.documentElement), v=n=>cs.getPropertyValue(n).trim();
+  const vars=["--bg","--surface","--ink","--muted","--line","--accent","--accent-soft","--accent-ink","--display","--body","--mono"].map(n=>`${n}:${v(n)}`).join(";");
+  w.document.open(); w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Sequência · ${esc(d.titulo)}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{${vars}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.45 var(--body)}
+header{position:sticky;top:0;z-index:5;display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;padding:18px 26px 14px;background:var(--surface);border-bottom:1px solid var(--line)}
+h1{margin:0;font:800 22px var(--display);letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13.5px;margin-top:3px;max-width:720px}
+.prog{display:flex;align-items:center;gap:10px;font:600 13px var(--mono);color:var(--muted)}
+.barra{width:180px;height:8px;border-radius:99px;background:var(--line);overflow:hidden}.barra i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.acoes{display:flex;gap:8px}
+.acoes button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 12px;font:600 13px var(--body);cursor:pointer}
+.acoes button:hover{border-color:var(--accent);color:var(--accent)}
+.legenda{display:flex;gap:18px;flex-wrap:wrap;padding:10px 26px 0;color:var(--muted);font-size:12.5px}
+.legenda span{display:inline-flex;align-items:center;gap:6px}
+.palco{position:relative;padding:26px 26px 60px;overflow:auto;min-height:calc(100vh - 120px)}
+.colunas{position:relative;display:flex;gap:130px;align-items:flex-start;width:max-content;z-index:1}
+.bloco{width:290px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 6px 22px rgb(0 0 0 / .07);overflow:hidden}
+.bh{display:flex;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--c) 9%,var(--surface))}
+.num{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--c);color:#fff;font:800 15px var(--display)}
+.bt{flex:1;min-width:0}.bt b{display:block;font:700 15px var(--display);overflow-wrap:anywhere}
+.bt small{color:var(--muted);font:500 12px var(--mono)}
+.mini{height:4px;background:var(--line)}.mini i{display:block;height:100%;background:var(--c)}
+ol{list-style:none;margin:0;padding:10px 12px 14px;display:flex;flex-direction:column;gap:0}
+li{position:relative;display:flex;gap:10px;align-items:flex-start;padding:7px 8px 7px 6px;border-radius:10px;cursor:pointer}
+li:hover{background:color-mix(in srgb,var(--c) 8%,transparent)}
+li:not(:last-child)::after{content:"";position:absolute;left:16px;top:31px;bottom:-9px;width:2px;background:color-mix(in srgb,var(--c) 35%,var(--line))}
+.ck{position:relative;z-index:1;flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--c);background:var(--surface);display:grid;place-items:center;font-size:12px;color:#fff;margin-top:1px}
+li.ok .ck{background:var(--c)}
+li.ok .tx{color:var(--muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--muted) 60%,transparent)}
+.pn{font:600 11.5px var(--mono);color:var(--muted);margin-right:4px}
+.tx{overflow-wrap:anywhere}
+.vazio{padding:14px;color:var(--muted);font-size:13px}
+svg.fios{position:absolute;left:0;top:0;pointer-events:none;z-index:2;overflow:visible}
+.fio{fill:none;stroke-width:2.2;opacity:.85}
+.fio.bl{stroke-width:3.4;opacity:.55}
+.alvo{outline:2px solid var(--c);outline-offset:2px}
+@media print{header{position:static}.acoes{display:none}.palco{overflow:visible}}
+</style></head><body>
+<header><div><h1 id="ti"></h1><div class="sub" id="sub"></div></div>
+<div class="prog"><span id="pt"></span><div class="barra"><i id="pb"></i></div></div>
+<div class="acoes"><button id="bimp" title="Imprimir ou salvar em PDF">Imprimir / PDF</button><button id="bfec">Fechar</button></div></header>
+<div class="legenda"><span><svg width="34" height="10"><path d="M2 5h26" stroke="currentColor" stroke-width="3.4" opacity=".55"/><path d="M26 1l6 4-6 4" fill="currentColor" opacity=".55"/></svg>bloco leva a outro bloco</span>
+<span><svg width="34" height="10"><path d="M2 5h26" stroke="currentColor" stroke-width="2.2" stroke-dasharray="5 4"/><path d="M26 1l6 4-6 4" fill="currentColor"/></svg>passo leva a outro passo</span>
+<span>● clique num passo para marcar feito</span></div>
+<div class="palco" id="palco"><div class="colunas" id="col"></div><svg class="fios" id="fios"></svg></div>
+<script>
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let D=null;
+function desenhar(d){ D=d; if(!d) return;
+  document.title="Sequência · "+d.titulo; document.getElementById("ti").textContent=d.titulo;
+  document.getElementById("sub").textContent=[d.disc,d.objetivo].filter(Boolean).join(" · ");
+  const ps=d.blocos.flatMap(b=>b.passos), f=ps.filter(x=>x.feito).length, pct=ps.length?Math.round(f/ps.length*100):0;
+  document.getElementById("pt").textContent=f+"/"+ps.length+" passos · "+pct+"%"; document.getElementById("pb").style.width=pct+"%";
+  document.getElementById("col").innerHTML=d.blocos.map(b=>{ const bf=b.passos.filter(x=>x.feito).length, bp=b.passos.length?Math.round(bf/b.passos.length*100):0;
+    return '<section class="bloco" id="B'+b.id+'" style="--c:'+b.cor+'"><div class="bh"><span class="num">'+b.n+'</span><div class="bt"><b>'+esc(b.titulo)+'</b><small>'+bf+'/'+b.passos.length+' passos</small></div></div><div class="mini"><i style="width:'+bp+'%"></i></div>'+
+      (b.passos.length?'<ol>'+b.passos.map(x=>'<li id="P'+x.id+'" class="'+(x.feito?"ok":"")+'" data-p="'+x.id+'" title="Clique para marcar/desmarcar"><span class="ck">'+(x.feito?"✓":"")+'</span><span class="tx"><span class="pn">'+x.n+'</span>'+esc(x.t)+'</span></li>').join("")+'</ol>':'<div class="vazio">Sem passos ainda.</div>')+'</section>'; }).join("");
+  requestAnimationFrame(fios);
+}
+function fios(){ if(!D) return; const pal=document.getElementById("palco"), svg=document.getElementById("fios"), base=pal.getBoundingClientRect();
+  const W=pal.scrollWidth, H=pal.scrollHeight; svg.setAttribute("width",W); svg.setAttribute("height",H);
+  const pos=el=>{ const r=el.getBoundingClientRect(); return {l:r.left-base.left+pal.scrollLeft, r:r.right-base.left+pal.scrollLeft, t:r.top-base.top+pal.scrollTop, b:r.bottom-base.top+pal.scrollTop}; };
+  const cor={}; D.blocos.forEach(b=>{ cor["B"+b.id]=b.cor; b.passos.forEach(x=>cor["P"+x.id]=b.cor); });
+  let defs="", paths="", volta=0; const fundo=Math.max(0,...[...document.querySelectorAll(".bloco")].map(el=>pos(el).b));
+  const fio=(de,para,cls)=>{ const a=document.getElementById(de), z=document.getElementById(para); if(!a||!z) return;
+    const ca=pos(a.closest(".bloco")||a), cz=pos(z.closest(".bloco")||z), A0=pos(a), Z0=pos(z);
+    const A={l:ca.l,r:ca.r,t:A0.t,b:A0.b}, Z={l:cz.l,r:cz.r,t:Z0.t,b:Z0.b}, c=cor[de]||"#888", idm="m"+c.replace("#","");
+    if(!defs.includes(idm)) defs+='<marker id="'+idm+'" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="'+c+'"/></marker>';
+    const y1=cls==="bl"?A.t+28:(A.t+A.b)/2, y2=cls==="bl"?Z.t+28:(Z.t+Z.b)/2; let x1,x2,c1,c2;
+    if(Z.l>=A.r-4){ x1=A.r; x2=Z.l-2; const dx=Math.max(40,(x2-x1)/2); c1=x1+dx; c2=x2-dx; }
+    else if(Z.r<=A.l+4){ // volta para trás: passa por baixo dos blocos para não cruzar o texto
+      const yb=fundo+26+(volta++)*14, xa=A.l, xz=Z.r+2;
+      paths+='<path class="fio '+cls+'" stroke="'+c+'" '+(cls==="ps"?'stroke-dasharray="6 5" ':'')+'marker-end="url(#'+idm+')" d="M'+xa+' '+y1+' C'+(xa-55)+' '+y1+' '+(xa-55)+' '+yb+' '+(xa-95)+' '+yb+' L'+(xz+95)+' '+yb+' C'+(xz+55)+' '+yb+' '+(xz+55)+' '+y2+' '+xz+' '+y2+'"/>'; return; }
+    else { x1=A.r; x2=Z.r+2; c1=x1+70; c2=x2+70; } // mesma coluna: contorna pela direita
+    paths+='<path class="fio '+cls+'" stroke="'+c+'" '+(cls==="ps"?'stroke-dasharray="6 5" ':'')+'marker-end="url(#'+idm+')" d="M'+x1+' '+y1+' C'+c1+' '+y1+' '+c2+' '+y2+' '+x2+' '+y2+'"/>'; };
+  D.blocos.forEach(b=>{ b.liga.forEach(t=>fio("B"+b.id,"B"+t,"bl")); b.passos.forEach(x=>x.liga.forEach(t=>fio("P"+x.id,"P"+t,"ps"))); });
+  svg.innerHTML="<defs>"+defs+"</defs>"+paths;
+}
+addEventListener("resize",()=>requestAnimationFrame(fios));
+document.addEventListener("click",e=>{ const li=e.target.closest("li[data-p]"); if(li&&opener&&!opener.closed&&opener.__seqMarcar){ opener.__seqMarcar(D.id,li.dataset.p); } });
+document.addEventListener("mouseover",e=>{ const li=e.target.closest("li[data-p]"); document.querySelectorAll(".alvo").forEach(x=>x.classList.remove("alvo")); if(!li||!D) return;
+  const x=D.blocos.flatMap(b=>b.passos).find(p=>p.id===li.dataset.p); (x&&x.liga||[]).forEach(t=>{ const z=document.getElementById("P"+t); if(z){ z.classList.add("alvo"); z.style.setProperty("--c",getComputedStyle(li).getPropertyValue("--c")); } }); });
+document.getElementById("bimp").onclick=()=>print(); document.getElementById("bfec").onclick=()=>close();
+<\/script></body></html>`);
+  w.document.close();
+  const ini=()=>{ if(w.desenhar) w.desenhar(d); else setTimeout(ini,30); }; ini();
+}
+
+function salvarPrt(id,mud,atraso){ salvarDoc(id,{...S.docs[id],tipo:"prt",...mud},atraso); if(typeof SEQ_WIN==="object"&&SEQ_WIN[id]){ clearTimeout(SEQ_WIN["_t"+id]); SEQ_WIN["_t"+id]=setTimeout(()=>atualizarSeq(id),150); } }
 function aulaAtualDe(k){ const t=Date.now(), as=AULAS.filter(a=>a.k===k); const a=as.find(a=>statusAula(a)==="cur")||as.find(a=>msDe(a.data,a.ini)>t)||as[as.length-1]; return a?a.id:""; }
 function pratAbaHTML(k){
   const ps=praticas(k), ab=ps.find(p=>p.id===PRT_ABERTA[k]);
@@ -2311,9 +2415,8 @@ function pratAbaHTML(k){
         <label class="row" style="gap:4px;font-size:13px;white-space:nowrap;cursor:pointer"><input type="checkbox" data-prc="feita" ${ab.feita?"checked":""}> Concluída</label></div>
       <label class="lb" style="margin-top:8px">Objetivo</label><textarea class="pj-auto" data-prc="objetivo" rows="2" placeholder="O que esta prática faz ou entrega. Ex.: gerar um mapa de densidade (kernel) dos CVLI de 2025 no bairro X.">${esc(ab.objetivo||"")}</textarea>
       <div class="row" style="justify-content:space-between;margin-top:10px;gap:6px"><span class="lb" style="margin:0">Passo a passo ${pa.length?`<span class="mono muted">${f}/${pa.length}</span>`:""}</span>
-        <span class="row" style="gap:6px">${bs.length?`<button type="button" class="btn sm${PRT_SEQ[ab.id]?" on":""}" data-prx="seq" title="Mostra blocos, passos e ligações num fluxograma">${PRT_SEQ[ab.id]?"Esconder sequência":"Ver sequência"}</button>`:""}${pa.length?"":`<button type="button" class="btn sm" data-prx="modelo" title="Cria um bloco com os passos típicos de uma prática no QGIS">Sugerir passos do QGIS</button>`}${info("prblocos")}</span></div>
+        <span class="row" style="gap:6px">${bs.length?`<button type="button" class="btn sm" data-prx="seq" title="Abre numa janela os blocos em colunas com as ligações desenhadas">Ver sequência ↗</button>`:""}${pa.length?"":`<button type="button" class="btn sm" data-prx="modelo" title="Cria um bloco com os passos típicos de uma prática no QGIS">Sugerir passos do QGIS</button>`}${info("prblocos")}</span></div>
       ${pa.length?`<div class="pj-barra" style="margin:4px 0 6px"><i style="width:${pct}%"></i></div>`:""}
-      ${PRT_SEQ[ab.id]&&bs.length?`<div class="pr-seq"><div class="fx-svg" data-src="${encodeURIComponent(sequenciaMermaid(bs))}"><p class="muted">Desenhando sequência…</p></div></div>`:""}
       <div class="pr-blocos">${bs.map((b,bi)=>{ const bp=b.passos||[], bf=bp.filter(x=>x.feito).length;
         return `<div class="pr-bl${b.rec?" rec":""}" data-bid="${b.id}">
           <div class="pr-bh"><button type="button" class="pr-tog" data-prx="dobrarbloco" aria-expanded="${!b.rec}" title="${b.rec?"Mostrar passos":"Recolher passos"}"><span class="pr-seta">${b.rec?"▸":"▾"}</span><span class="mono">${bi+1}</span></button>
@@ -2365,7 +2468,7 @@ function ligarAbaPrat(doc){
     const bs=JSON.parse(JSON.stringify(blocosDe(p))), bel=b.closest(".pr-bl"), bid=bel&&bel.dataset.bid, bi=bs.findIndex(x=>x.id===bid);
     const av=t=>{ const f=c.pr.ownerDocument===document?toast:(c.pr.ownerDocument.defaultView.toast||toast); f(t); };
     if(op==="modelo"){ bs.push({id:novoId(),titulo:"Prática no QGIS",rec:false,liga:[],passos:PASSOS_QGIS.map(t=>({id:novoId(),t,feito:false,liga:[]}))}); salvarBlocos(id,bs); redesenharPrats(k); return; }
-    if(op==="seq"){ PRT_SEQ[id]=!PRT_SEQ[id]; redesenharPrats(k); return; }
+    if(op==="seq"){ abrirSequencia(id); return; }
     if(op==="bloco"){ const nb={id:novoId(),titulo:"",rec:false,liga:[],passos:[]}; bs.push(nb); salvarBlocos(id,bs); redesenharPrats(k); setTimeout(()=>c.pr.querySelector(`.pr-bl[data-bid="${nb.id}"] [data-prbl=titulo]`)?.focus(),30); return; }
     if(op==="dobrarbloco"&&bi>=0){ bs[bi].rec=!bs[bi].rec; salvarBlocos(id,bs); redesenharPrats(k); return; }
     if((op==="blsobe"||op==="bldesce")&&bi>=0){ const j=op==="blsobe"?bi-1:bi+1; if(j<0||j>=bs.length) return; [bs[bi],bs[j]]=[bs[j],bs[bi]]; salvarBlocos(id,bs); redesenharPrats(k); return; }
