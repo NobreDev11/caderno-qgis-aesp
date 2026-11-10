@@ -247,11 +247,13 @@ const css=`
 #fx-cod{min-height:260px;font:13px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;flex:1}
 @media (max-width:820px){
   .fx-ed{inset:0;border-radius:0}
-  .fx-body{grid-template-columns:1fr;grid-template-rows:auto auto;overflow:auto}
-  .fx-col{overflow:visible}
-  .fx-prev{border-left:0;border-top:1px solid var(--line);min-height:240px}
-  .fx-no{grid-template-columns:18px 1fr auto auto auto;}
-  .fx-no input{grid-column:2 / -1}
+  /* tela estreita (celular, janela por cima): prévia em cima com altura fixa, opções rolam embaixo */
+  .fx-body{display:flex;flex-direction:column;min-height:0}
+  .fx-prev{order:-1;flex:none;height:min(36vh,300px);border-left:0;border-bottom:1px solid var(--line);padding:8px 12px}
+  .fx-col:not(.fx-prev){flex:1;min-height:0;overflow:auto}
+  .fx-no{grid-template-columns:18px minmax(0,1fr) auto auto auto;}
+  .fx-no select{grid-column:2 / -1}
+  .fx-no input{grid-column:2 / 3}
   .fx-lig{grid-template-columns:1fr auto 1fr;}
   .fx-lig input{grid-column:1 / 3}
 }`;
