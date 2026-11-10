@@ -1280,6 +1280,7 @@ try{ Object.assign(FL,JSON.parse(localStorage.getItem(LS_FL)||"{}")); }catch(e){
 let PIP=null, _flRO=null, _flT=null;
 const PIP_OK = "documentPictureInPicture" in window;
 function salvarFL(){ try{ localStorage.setItem(LS_FL,JSON.stringify(FL)); }catch(e){} }
+window.FORMATO_DESTACAR=ta=>{ const id=ta.dataset.qitem||(ta.id==="pnota"&&PANE&&PANE.tipo==="item"&&PANE.id)||null; flushTudo(); abrirFlutuante(ITENS.some(x=>x.id===id)?id:null); };
 function abrirFlutuante(id){
   FL.aberto=true; FL.min=false; FL.id=id||FL.id||(atual()||ITENS[0]).id; salvarFL();
   if(PANE&&PANE.tipo==="item"){ flushTudo(); PANE=null; document.getElementById("paneHost").innerHTML=""; render(); }

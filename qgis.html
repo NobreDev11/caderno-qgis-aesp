@@ -1955,6 +1955,12 @@ function desenharAbaProj(pj,k){ if(!pj) return; pj._k=k; pj.innerHTML=projAbaHTM
 function redesenharAbasProj(){ document.querySelectorAll(".projs").forEach(pj=>{ if(pj.hidden||pj.contains(document.activeElement)&&document.activeElement.tagName==="TEXTAREA") return; desenharAbaProj(pj,pj._k); }); atualizarRotulosProj(); }
 function rotuloProj(k){ const p=projPrincipal(); if(!p) return ""; const n=ligados(p.id,k).length; return n?"↔ "+n:""; }
 function atualizarRotulosProj(){ document.querySelectorAll(".fmt-abas").forEach(ab=>{ const ta=ab._ta, s=ab.querySelector(".fa-j"); if(ta&&ta._pjk&&s) s.textContent=rotuloProj(ta._pjk); }); }
+// botão "Destacar" da barra de formatação: abre a anotação no bloco flutuante (por cima da tela)
+window.FORMATO_DESTACAR=ta=>{ let id=null;
+  if(ta.id==="pnota"&&PANE&&PANE.tipo==="aula") id=PANE.id;
+  else if(ta.dataset.qaula) id=ta.dataset.qaula;
+  else { const k=ta.dataset.dnota; if(k){ const t=Date.now(), as=AULAS.filter(a=>a.k===k); const a=as.find(a=>statusAula(a)==="cur")||as.find(a=>msDe(a.data,a.ini)>t)||as[as.length-1]; id=a&&a.id; } }
+  flushTudo(); abrirFlutuante(id); };
 window.FORMATO_PROJ={
   disc(ta){ if(ta.dataset.dnota) return ta.dataset.dnota; const id=ta.id==="pnota"&&PANE&&PANE.tipo==="aula"?PANE.id:ta.dataset.qaula; const a=id&&AULAS.find(x=>x.id===id); return a?a.k:null; },
   desenhar(pj,k){ desenharAbaProj(pj,k); },

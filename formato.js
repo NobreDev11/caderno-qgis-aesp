@@ -8,6 +8,7 @@
   const ALVOS='#qnota,#pnota,#ntxt,#fl-txt,textarea[data-dnota],textarea[data-rich]';
   const BOTOES=[
     ["cheia",'<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5"/></svg><span class="fmt-tx">Tela cheia</span>',"Escrever em tela cheia (Esc para sair)"],
+    ["dest",'<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2.5" y="4" width="11" height="9" rx="1.5"/><rect x="8.5" y="9" width="9" height="7" rx="1.5" fill="var(--surface,#fff)"/></svg><span class="fmt-tx">Destacar</span>',"Destacar: abre esta anotação num bloco por cima da tela (no bloco, ⧉ deixa por cima de outras janelas)"],
     ["neg","<b>N</b>","Negrito (Ctrl+B)"],
     ["ita","<i>I</i>","Itálico (Ctrl+I)"],
     ["mar",'<span class="fmt-mk">M</span>',"Marca-texto"],
@@ -181,10 +182,10 @@ textarea.fx-seg:last-child{flex:1 0 auto!important;min-height:3.2em!important}
 textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   const st=document.createElement("style"); st.id="fmt-css"; st.textContent=CSS; document.head.appendChild(st);
 
-  function barra(doc){
-    const pip=doc!==document;
+  function barra(doc,ta){
+    const pip=doc!==document, semDest=pip||!window.FORMATO_DESTACAR||!ta||ta.id==="fl-txt"||ta.dataset.rich;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){
@@ -192,7 +193,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     raiz.querySelectorAll(ALVOS).forEach(ta=>{
       if(ta.dataset.fmtOk) return; ta.dataset.fmtOk="1";
       const p=ta.previousElementSibling; if(p&&p.classList.contains("fmt")) return;
-      ta.parentNode.insertBefore(barra(ta.ownerDocument),ta);
+      ta.parentNode.insertBefore(barra(ta.ownerDocument,ta),ta);
       if(ta.ownerDocument===document){
         // blocos ```mermaid antigos viram linha curta + doc (o desenho aparece no lugar)
         if(window.FLUXO&&FLUXO.converter&&/```mermaid/.test(ta.value)){ const nv=FLUXO.converter(ta.value); if(nv!==ta.value){ ta.value=nv; ta.dispatchEvent(new Event("input",{bubbles:true})); } }
@@ -739,6 +740,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(k==="img") return escolherImagem(ta);
     if(k==="tab") return popTabela(ed,BT_ULT);
     if(k==="rev") return popRev(BT_ULT);
+    if(k==="dest"){ if(document.querySelector(".fmt-cheia")) sairCheia(); if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); return; }
     if(k==="sub"){ if(!dentroDe(ed,"LI")){ cmd("insertUnorderedList"); sincronizar(ed); return; } return recuar(ed); }
     if(k==="sob") return desrecuar(ed);
     if(/^(lis|num|tar|cit)$/.test(k)){ const bl=blocoAtual(ed); if(bl&&/^H[1-6]$/.test(bl.tagName)) cmd("formatBlock","div"); }
@@ -986,7 +988,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
   function aplicar(ta,k){
-    ({rev:()=>{},
+    ({rev:()=>{}, dest:()=>{ if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); },
       tab:()=>{ const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":""; trocar(ta,a,ta.selectionEnd,antes+"| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n"); },
       sub:()=>recuoTa(ta,true), sob:()=>recuoTa(ta,false), neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
