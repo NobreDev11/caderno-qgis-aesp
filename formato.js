@@ -47,6 +47,10 @@
 .mrc-pop button:hover{background:var(--accent-soft,#eef)}
 .mrc-pop button.pri{background:var(--accent,#2a7);border-color:var(--accent,#2a7);color:#fff}
 .mrc-pop button[hidden]{display:none}
+.mrc-mv{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:8px;padding-top:7px;border-top:1px dashed var(--line,#ccc)}
+.mrc-mv span{font-size:11.5px;font-weight:600;color:var(--muted,#777);margin-right:2px}
+.mrc-mv button{border:1px solid var(--line,#ccc);background:transparent;color:inherit;border-radius:7px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer}
+.mrc-mv button:hover{background:var(--accent-soft,#eef)}.mrc-mv button:disabled{opacity:.45;cursor:not-allowed}
 .fmt .fmt-sep{flex:none;width:1px;height:18px;background:var(--line);margin:0 3px}
 .fmt [data-fmt=flx],.fmt [data-fmt=tab],.fmt [data-fmt=img],.fmt [data-fmt=cheia],.fmt [data-fmt=dest],.fmt [data-fmt=fla]{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
 .fmt[hidden],.fmt-cheia textarea[hidden],.fc-prev[hidden]{display:none!important}
@@ -864,7 +868,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       mudouTermo:t=>{ if(!sp.isConnected||!t) return; sp.dataset.ex=t; sp.textContent=t; sincronizar(ed); },
       tirar:()=>{ if(!sp.isConnected) return; const tx=doc.createTextNode(sp.textContent); sp.replaceWith(tx); sincronizar(ed); },
       apagar:()=>{ if(!sp.isConnected) return; const z=sp.nextSibling; if(z&&z.nodeType===3&&z.nodeValue==="\u200b") z.remove(); sp.remove(); sincronizar(ed); },
-      atualizar:()=>{ if(sp.isConnected) sp.title=dicaExp(sp.dataset.ex); } });
+      atualizar:()=>{ if(sp.isConnected) sp.title=dicaExp(sp.dataset.ex); },
+      converter:tp=>{ if(sp.isConnected) converterMarca(sp,tp); }, mudarHTML:()=>mudarHTML("exp",sp.dataset.ex) });
   }
   document.addEventListener("click",e=>{
     const t=e.target.closest&&e.target.closest(".exm[data-ex]"); if(!t||!window.FORMATO_EXPLICA) return; e.preventDefault(); e.stopPropagation();
@@ -875,7 +880,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const s=getSelection(), rg=s.rangeCount&&ed.contains(s.anchorNode)?s.getRangeAt(0).cloneRange():null;
     const voltar=()=>{ try{ ed.focus(); if(rg){ const x=getSelection(); x.removeAllRanges(); x.addRange(rg); } }catch(e){} };
     const mudou=t=>{ if(!sp.isConnected||!t) return; sp.dataset.fc=t; sp.textContent=t; sincronizar(ed); };
-    window.FORMATO_FLASH_MARCA({texto:sp.dataset.fc, ta:ed._ta, el:sp, novo, voltar, mudou});
+    window.FORMATO_FLASH_MARCA({texto:sp.dataset.fc, ta:ed._ta, el:sp, novo, voltar, mudou, converter:tp=>{ if(sp.isConnected) converterMarca(sp,tp); }, mudarHTML:()=>mudarHTML("mrc",sp.dataset.fc)});
   }
   document.addEventListener("click",e=>{
     const t=e.target.closest&&e.target.closest(".wys .fcm[data-fc]"); if(!t||!window.FORMATO_FLASH_MARCA) return; e.preventDefault(); e.stopPropagation();
@@ -912,6 +917,20 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!t) return editarMarca(novo,true);
     if(fc) abrirMarca(ed,novo,true); else if(ex) abrirExp(ed,novo,true);
   }
+  // Trocar o tipo do marcador (pesquisa ⇄ flashcard ⇄ explicação), mantendo o texto.
+  const TIPOS_M={pq:{n:"&lt; &gt; Pesquisa",lim:80},mrc:{n:"{{ }} Flashcard",lim:200},exp:{n:"(( )) Explicação",lim:120}};
+  function mudarHTML(atual,txt){
+    const ok=k=>k!==atual&&(k==="pq"||(k==="mrc"&&window.FORMATO_FLASH_MARCA)||(k==="exp"&&window.FORMATO_EXPLICA));
+    const bs=Object.keys(TIPOS_M).filter(ok).map(k=>{ const longo=String(txt||"").length>TIPOS_M[k].lim; return `<button type="button" data-m="para-${k}" ${longo?`disabled title="Texto longo demais para ${k==="pq"?"pesquisa":"explicação"} (máx. ${TIPOS_M[k].lim} letras)"`:`title="Transformar em ${k==="pq"?"termo de pesquisa":k==="mrc"?"pergunta de flashcard":"termo com explicação"}"`}>${TIPOS_M[k].n}</button>`; });
+    return bs.length?`<div class="mrc-mv"><span>Mudar para</span>${bs.join("")}</div>`:"";
+  }
+  function converterMarca(sp,tp){
+    const ed=sp.closest(".wys"); if(!ed||!TIPOS_M[tp]) return;
+    let t=String(sp.dataset.fc||sp.dataset.ex||sp.dataset.q||sp.textContent).replace(/\u200b/g,"").replace(/\s+/g," ").trim();
+    t=t.replace(tp==="mrc"?/[{}]/g:tp==="exp"?/[()]/g:/[<>]/g,"").trim().slice(0,TIPOS_M[tp].lim).trim(); if(!t) return;
+    const n=novaMarca(tp,t); sp.replaceWith(n); sincronizar(ed);
+    if(tp==="mrc") abrirMarca(ed,n,true); else if(tp==="exp") abrirExp(ed,n,true); else editarMarca(n);
+  }
   function editarMarca(sp,vazio){
     const ed=sp.closest(".wys"); if(!ed) return; const doc=sp.ownerDocument, win=doc.defaultView||window, fc=sp.classList.contains("fcm"), ex=sp.classList.contains("exm");
     doc.querySelectorAll(".mrc-pop").forEach(x=>x._fechar?x._fechar():x.remove());
@@ -919,7 +938,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const p=doc.createElement("div"); p.className="mrc-pop"; p.setAttribute("role","dialog"); p.setAttribute("aria-label",fc?"Editar marcador de flashcard":"Editar termo de pesquisa");
     p.innerHTML=`<div class="mrc-l"><span>${fc?"{{ }} Pergunta do flashcard":ex?"(( )) Termo a explicar":"&lt; &gt; Termo de pesquisa"}</span><span>Enter ${vazio?"confirma":"salva"} · Esc fecha</span></div>
       <input type="text" maxlength="${fc?200:ex?120:80}" value="${escH(vazio?"":atual)}" placeholder="${fc?"Escreva a pergunta":ex?"Palavra, termo ou frase":"Escreva o termo"}" aria-label="${fc?"Pergunta":"Termo"}">
-      <div class="mrc-b"><button type="button" class="pri" data-m="ir">${fc?(vazio?"Criar flashcard":"Ver flashcard"):ex?"Explicação":"↗ Pesquisar"}</button><button type="button" data-m="ok" hidden>Salvar</button>${vazio?"":`<button type="button" data-m="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button>`}<button type="button" data-m="apagar" title="Apagar o marcador e o texto">Apagar</button></div>`;
+      <div class="mrc-b"><button type="button" class="pri" data-m="ir">${fc?(vazio?"Criar flashcard":"Ver flashcard"):ex?"Explicação":"↗ Pesquisar"}</button><button type="button" data-m="ok" hidden>Salvar</button>${vazio?"":`<button type="button" data-m="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button>`}<button type="button" data-m="apagar" title="Apagar o marcador e o texto">Apagar</button></div>
+      ${vazio?"":mudarHTML(fc?"mrc":ex?"exp":"pq",atual)}`;
     doc.body.appendChild(p);
     const R=sp.getBoundingClientRect(), W=p.offsetWidth, H=p.offsetHeight;
     p.style.left=Math.max(8,Math.min(R.left,win.innerWidth-W-8))+"px";
@@ -945,7 +965,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(m==="tirar"){ const tx=doc.createTextNode(sp.textContent); sp.replaceWith(tx); sincronizar(ed); p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); try{ ed.focus(); const c=doc.createRange(); c.setStart(tx,tx.nodeValue.length); c.collapse(true); const x=win.getSelection(); x.removeAllRanges(); x.addRange(c); }catch(e){} return; }
       if(m==="apagar"){ const z=sp.nextSibling; if(z&&z.nodeType===3&&z.nodeValue==="\u200b") z.remove(); sp.remove(); sincronizar(ed); p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); try{ ed.focus(); }catch(e){} }
     }
-    p.addEventListener("click",e=>{ const b=e.target.closest("button[data-m]"); if(b) acao(b.dataset.m); });
+    p.addEventListener("click",e=>{ const b=e.target.closest("button[data-m]"); if(!b||b.disabled) return;
+      if(b.dataset.m.startsWith("para-")){ salvar(); p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); converterMarca(sp,b.dataset.m.slice(5)); return; }
+      acao(b.dataset.m); });
     inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); acao(vazio||limpo()===atual?"ir":"ok"); } });
     setTimeout(()=>{ doc.addEventListener("mousedown",fora,true); doc.addEventListener("keydown",tecla,true); },0);
     inp.focus(); inp.select();

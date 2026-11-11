@@ -1864,6 +1864,7 @@ function abrirFlashDlg(o){
     <label class="lb" for="fc-v" style="margin-top:8px">Verso <span class="muted" style="font-weight:400">(resposta curta)</span></label><textarea id="fc-v" rows="3" data-rich="1" data-sem-abas="1" data-leve="1" aria-label="Verso do flashcard">${esc(ed?ed.verso:o.verso||"")}</textarea>
     <div class="row" style="justify-content:space-between;margin-top:10px"><span class="muted" style="font-size:12.5px">Ctrl+Enter salva · Esc fecha</span>
       <div class="row" style="gap:6px">${ed||o.ancora?"":`<label class="row" style="gap:4px;font-size:13px"><input type="checkbox" id="fc-mais" ${o.mais?"checked":""}> criar outro</label>`}${o.ancora&&!ed?`<button type="button" class="btn sm" data-fcfechar>Agora não</button>`:""}<button class="btn pri">${ed?"Salvar":"Adicionar"}</button></div></div>
+    ${o.converter&&o.mudarHTML?o.mudarHTML():""}
   </form>`;
   doc.body.appendChild(d);
   { const F=(doc.defaultView&&doc.defaultView.FORMATO)||window.FORMATO; try{ if(F&&F.equipar) F.equipar(d); }catch(e){} }
@@ -1873,6 +1874,7 @@ function abrirFlashDlg(o){
   const fechar=()=>{ d.remove(); if(o.aoFechar) o.aoFechar(); else if(o.volta&&o.volta.isConnected) try{ o.volta.focus(); }catch(e){} };
   d.addEventListener("mousedown",e=>{ if(e.target===d) fechar(); });
   d.querySelectorAll("[data-fcfechar]").forEach(b=>b.onclick=fechar);
+  d.querySelectorAll("[data-m^='para-']").forEach(b=>b.onclick=ev=>{ ev.preventDefault(); if(b.disabled||!o.converter) return; d.remove(); o.converter(b.dataset.m.slice(5)); });
   d.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.stopPropagation(); e.preventDefault(); fechar(); } if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); f.requestSubmit(); } });
   f.onsubmit=e=>{ e.preventDefault(); const fr=fe.value.trim(), vs=ve.value.trim(), disc=d.querySelector("#fc-d").value; if(!fr||!vs){ const t=fr?ve:fe; (t._ed||t).focus(); aviso(fr?"Escreva o verso (resposta).":"Escreva a frente (pergunta)."); return; }
     if(ed){ salvarDoc(o.id,{...S.docs[o.id],frente:fr,verso:vs,disc},50); aviso("Flashcard salvo."); }
@@ -1892,15 +1894,17 @@ function verFlashDlg(c,o){
     <div class="fc-tx" style="margin:8px 0">${md(c.frente)}</div>
     <div class="fc-resp" hidden><div class="lb" style="margin:0 0 4px">Verso</div><div class="fc-tx" style="font-weight:500;font-size:15.5px">${md(c.verso)}</div></div>
     <div class="row" style="justify-content:flex-end;gap:6px;margin-top:10px">${c.fonte==="fc"?`<button type="button" class="btn sm" data-fcv="editar">Editar</button>`:`<span class="muted" style="font-size:12px;margin-right:auto">Vem da aba Perguntas</span>`}<button type="button" class="btn sm pri" data-fcv="ver">Mostrar resposta</button></div>
+    ${o.converter&&o.mudarHTML?o.mudarHTML():""}
   </div>`;
   doc.body.appendChild(d); posDlg(d,o);
   const fechar=()=>{ d.remove(); if(o.aoFechar) o.aoFechar(); };
   d.addEventListener("mousedown",e=>{ if(e.target===d) fechar(); });
   d.querySelector("[data-fcfechar]").onclick=fechar;
   d.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.stopPropagation(); e.preventDefault(); fechar(); } if(e.key===" "&&!e.target.closest("button")){ e.preventDefault(); d.querySelector('[data-fcv="ver"]')?.click(); } });
-  d.addEventListener("click",e=>{ const b=e.target.closest("[data-fcv]"); if(!b) return;
+  d.addEventListener("click",e=>{ const mv=e.target.closest("[data-m^='para-']"); if(mv&&!mv.disabled&&o.converter){ d.remove(); o.converter(mv.dataset.m.slice(5)); return; }
+    const b=e.target.closest("[data-fcv]"); if(!b) return;
     if(b.dataset.fcv==="ver"){ d.querySelector(".fc-resp").hidden=false; b.remove(); }
-    else if(b.dataset.fcv==="editar"){ d.remove(); abrirFlashDlg({id:c.id,doc,ancora:o.ancora,aoFechar:o.aoFechar,frente:c.frente,mudou:o.mudou}); } });
+    else if(b.dataset.fcv==="editar"){ d.remove(); abrirFlashDlg({id:c.id,doc,ancora:o.ancora,aoFechar:o.aoFechar,frente:c.frente,mudou:o.mudou,converter:o.converter,mudarHTML:o.mudarHTML}); } });
   d.querySelector(".fc-ver").focus();
 }
 // botão "Flashcard" da barra de formatação: o trecho selecionado vira a frente (ou frente: verso, se tiver ":" ou "—")
@@ -1913,7 +1917,7 @@ window.FORMATO_FLASH=(ta,sel)=>{
 window.FORMATO_FLASH_MARCA=o=>{
   const k=(o.ta&&window.FORMATO_PROJ&&FORMATO_PROJ.disc(o.ta))||"", txt=String(o.texto||"").trim(), low=txt.toLowerCase();
   const cs=flashcards().filter(c=>c.frente.trim().toLowerCase()===low), c=cs.find(x=>x.disc===k)||cs[0];
-  const base={doc:o.el?o.el.ownerDocument:document, ancora:o.el, aoFechar:o.voltar, mudou:o.mudou};
+  const base={doc:o.el?o.el.ownerDocument:document, ancora:o.el, aoFechar:o.voltar, mudou:o.mudou, converter:o.converter, mudarHTML:o.mudarHTML};
   if(c) verFlashDlg(c,base); else abrirFlashDlg({...base,disc:k,frente:txt,origem:"sel"});
 };
 /* ((termo)): explicação de palavra, termo ou frase. Docs exp-<id>: {tipo:"exp", termo, texto (Markdown), disc}.
@@ -1950,6 +1954,7 @@ function abrirExplica(o){
         ${o.tirar?`<span class="ex-sp"></span><button type="button" class="btn sm" data-ex="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button><button type="button" class="btn sm danger" data-ex="apagar" title="Apaga o termo do texto (a explicação continua guardada)">Apagar</button>`:""}
       </div>
       ${modo==="editar"?`<div class="muted" style="font-size:12px;margin-top:6px">Ctrl+Enter salva · Esc fecha · vale para este termo em todas as anotações</div>`:""}
+      ${modo==="ver"&&o.converter&&o.mudarHTML?o.mudarHTML():""}
     </div>`;
     if(modo==="editar"){ const F=(doc.defaultView&&doc.defaultView.FORMATO)||window.FORMATO; try{ if(F&&F.equipar) F.equipar(d); }catch(x){} }
     d.classList.remove("ancorado"); const f=d.firstElementChild; f.style.cssText="";
@@ -1976,8 +1981,9 @@ function abrirExplica(o){
     if(ev.key==="Escape"){ ev.stopPropagation(); ev.preventDefault(); if(modo==="ver") fechar(); else { rascunho=null; modo="ver"; desenhar(); } return; }
     if(ev.key==="Enter"&&(ev.ctrlKey||ev.metaKey)&&modo==="editar"){ ev.preventDefault(); salvarTexto(); return; }
     if(ev.key==="Enter"&&ev.target.id==="ex-t"){ ev.preventDefault(); trocarTermo(); } });
-  d.addEventListener("click",async ev=>{ const b=ev.target.closest("[data-ex]"); if(!b||b.disabled) return; const a=b.dataset.ex;
+  d.addEventListener("click",async ev=>{ const b=ev.target.closest("[data-ex],[data-m^='para-']"); if(!b||b.disabled) return; const a=b.dataset.ex;
     if(a==="fechar") return fechar();
+    if(b.dataset.m&&b.dataset.m.startsWith("para-")){ d.remove(); o.converter(b.dataset.m.slice(5)); return; }
     if(a==="editar"){ modo="editar"; return desenhar(); }
     if(a==="cancelar"){ rascunho=null; modo="ver"; return desenhar(); }
     if(a==="salvar") return salvarTexto();

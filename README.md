@@ -134,3 +134,4 @@ Página estática única (`qgis.html`).
 - Explicação escrita com o editor de formatação; ✨ Explicar com IA (`/api/ia` modo `explicar`, só com login e chave) ou "Copiar pedido p/ Claude"; ↗ Pesquisar ("o que é …" na Pesquisa da disciplina).
 - Guardada como glossário: docs `exp-<id>` `{tipo:"exp", termo, texto, disc}`; vale para o mesmo termo em todas as anotações (comparação sem acento/maiúsculas). Passar o mouse mostra o resumo; ✎ corrige o termo e leva a explicação junto.
 - Em leitura (Materiais, Visualizar) o clique só mostra/edita a explicação. Exportação ganha a seção "Glossário (explicações)".
+- **Mudar o tipo do marcador:** nas janelinhas de `<termo>`, `{{pergunta}}` e `((termo))` (só no editor) há "Mudar para" — troca entre Pesquisa, Flashcard e Explicação mantendo o texto (`converterMarca`). Cartões e explicações já criados continuam guardados.
