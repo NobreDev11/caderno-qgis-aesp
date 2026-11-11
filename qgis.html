@@ -358,6 +358,12 @@ details.mat-g>summary:hover{color:var(--ink)}
 .nm-it{display:inline-flex;gap:6px;align-items:center;max-width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:4px 12px;font:500 13px var(--body);cursor:pointer}
 .nm-it:hover{border-color:var(--accent)}.nm-it.on{border-color:var(--accent);background:var(--accent-soft)}
 .nm-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.dcol{display:flex;flex-direction:column;gap:12px}
+.dcol>.notes{display:flex;flex-direction:column;gap:8px}
+.pres-pop{position:relative}
+.pres-pop>summary{list-style:none;cursor:pointer;white-space:nowrap}.pres-pop>summary::-webkit-details-marker{display:none}
+.pres-pop[open]>summary{border-color:var(--accent);color:var(--accent)}
+.pres-cx{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:min(360px,86vw);max-height:60vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .18);padding:10px 12px}
 .mat-li{display:flex;gap:6px;align-items:stretch}.mat-li>.ni{flex:1;min-width:0}.mat-li>.btn{align-self:center}
 .mat-ver{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:6px 0 10px;overflow:hidden;display:flex;flex-direction:column}
 .mv-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
@@ -898,16 +904,18 @@ function vDisciplinas(){
         <div style="min-width:0;flex:1"><h3 data-nome="${x.k}">${esc(nomeDisc(x.k))}${dd.concluida?' <span class="chip" style="color:var(--ok)">✓ concluída</span>':""}</h3>
         <div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
         <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
-        <div class="row"><button class="btn sm" data-editnome="${x.k}">Editar nome</button></div>
+        <div class="row" style="gap:6px;align-items:flex-start">
+          <details class="pres-pop" data-prespop="${x.k}" ${PRES_POP===x.k?"open":""}><summary class="btn sm" title="Marcar presença ou falta em cada aula">Presença ${anot.length}/${aulas.length} <span aria-hidden="true">▾</span></summary>
+            <div class="pres-cx"><div class="row" style="justify-content:space-between;gap:6px;margin-bottom:6px"><span class="lb" style="margin:0">Presença (${anot.length} de ${aulas.length})</span>${info("discaulas")}</div>
+            <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
+            </div></details>
+          <button class="btn sm" data-editnome="${x.k}">Editar nome</button></div>
       </div>
       <div style="margin:10px 0 4px">${barraMarcos(aulas,x.cor)}</div>
-      <div class="dbody" id="db-${x.k}" ${ab?"":"hidden"}><div class="grid2" style="margin-top:10px">
+      <div class="dbody" id="db-${x.k}" ${ab?"":"hidden"}><div class="dcol" style="margin-top:10px">
         <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
-          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea>${acoesNotaHTML(x.k)}${notaMatsHTML(x.k,"c:"+x.k)}</div>
+          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea>${acoesNotaHTML(x.k)}</div>
         <div class="notes">
-          <details class="sec" data-sec="pres-${x.k}" ${secAberta("pres-"+x.k)?"open":""}><summary><span class="lb" style="margin:0">Presença (${anot.length} de ${aulas.length})</span>${info("discaulas")}</summary>
-          <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
-          </details>
           ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
           <details class="sec" data-sec="mat-${x.k}" ${secAberta("mat-"+x.k)?"open":""}><summary><span class="lb" style="margin:0" data-matcont="${x.k}">Materiais (${mats().filter(m=>m.disc===x.k).length})</span></summary>
             <div data-matsec="${x.k}">${matSecHTML(x.k)}</div>
@@ -920,6 +928,10 @@ function vDisciplinas(){
   }).join("")}`;
 }
 
+let PRES_POP=null; // presença aberta continua aberta quando a tela redesenha (marcar várias aulas seguidas)
+document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.prespop) return; if(d.open) PRES_POP=d.dataset.prespop; else if(PRES_POP===d.dataset.prespop) PRES_POP=null; },true);
+document.addEventListener("click",e=>{ document.querySelectorAll("details.pres-pop[open]").forEach(d=>{ if(!d.contains(e.target)&&e.target.isConnected) d.open=false; }); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") document.querySelectorAll("details.pres-pop[open]").forEach(d=>{ d.open=false; d.querySelector("summary").focus(); }); });
 // Seções recolhíveis dos cartões (lembradas neste aparelho)
 let SECOES={}; try{ SECOES=JSON.parse(localStorage.getItem("caderno-qgis:secoes")||"{}")||{}; }catch(e){}
 const secAberta = id => SECOES[id]!==false;
@@ -2111,6 +2123,7 @@ function htmlFlutuante(){
     <select id="fl-item" aria-label="Aula">${grupos}</select>
     ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
     ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: o QGIS ou os slides)" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
+    ${PIP?`<button type="button" class="btn sm" data-flmax title="Aumentar a janela até o máximo que o navegador permite" aria-label="Aumentar janela">↕</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
    ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações da disciplina" placeholder="Anote aqui durante a aula. Uma anotação para a disciplina toda; salva sozinho.">${esc(notaDaAula(a.id))}</textarea>
    <div class="fl-p"><span class="mono" title="${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}">${fmtData(a.data)} ${a.ini}–${a.fim} · salva sozinho</span><button type="button" class="btn sm pri" data-flsalvar title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button></div>
@@ -2133,7 +2146,7 @@ function flAbrirMat(id,doc){
   flushTudo(); MV_BLOB["fl:sel"]=0; if(FL.mat===id){ flFecharMat(); return; } FL.mat=id; FL.matsAberto=false;
   // fica confortável: o bloco cresce enquanto o material estiver aberto (e volta ao tamanho de antes)
   if(!FL.tamAntes) FL.tamAntes={w:FL.w,h:FL.h};
-  if(PIP&&!PIP.closed){ try{ PIP.resizeTo(Math.max(PIP.outerWidth,Math.min(900,screen.availWidth-40)),Math.max(PIP.outerHeight,Math.min(860,screen.availHeight-60))); }catch(e){} }
+  if(PIP&&!PIP.closed){ try{ PIP.resizeTo(Math.max(PIP.outerWidth,Math.min(900,screen.availWidth)),screen.availHeight); }catch(e){} }
   else { FL.w=Math.max(FL.w,Math.min(820,innerWidth-32)); FL.h=Math.max(FL.h,Math.min(Math.round(innerHeight*0.86),900)); }
   renderFlutuante();
 }
@@ -2184,6 +2197,7 @@ async function destacarFlutuante(){
 }
 function ligarFlutuante(doc){
   doc.addEventListener("click",e=>{
+    const mx=e.target.closest("[data-flmax]"); if(mx&&PIP&&!PIP.closed){ try{ const alto=PIP.outerHeight>=screen.availHeight*0.75; PIP.resizeTo(PIP.outerWidth, alto?Math.round(screen.availHeight*0.5):screen.availHeight); }catch(x){} return; }
     const fm=e.target.closest("[data-flmats],[data-flmat],[data-flvoltar],.fl-ver [data-mvx],.fl-ver [data-mvpdf],.fl-ver [data-mvlink],.fl-ver [data-mat]");
     if(fm){ e.preventDefault(); e.stopPropagation(); const d=fm.dataset, dc=fm.ownerDocument;
       if(d.flmats!==undefined){ FL.matsAberto=!FL.matsAberto; renderFlutuante(); return; }
