@@ -260,7 +260,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const d=typeof S==="object"&&S&&S.docs?S.docs["fx-"+id]:null, ok=d&&!d.apagado, rec=ok&&d.recolhido;
     return `<div class="fx-bloco${rec?" recolhido":""}" contenteditable="false" data-linha="${escH(linha)}" data-fxid="${id}">`+
       `<div class="fx-bloco-h"><button type="button" class="fx-dobra" data-fxb="dobrar" aria-expanded="${!rec}" title="${rec?"Mostrar":"Recolher"} fluxograma"><span class="chev"></span></button><button type="button" class="fx-tema" data-fxb="nome" title="Renomear o tema do fluxograma">${escH(temaFx(d))}</button><span class="fx-sp"></span><button type="button" data-fxb="editar">Editar</button><button type="button" class="fx-rm" data-fxb="tirar">Remover</button></div>`+
-      (ok?`<div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted" style="margin:0;font-size:13px">Desenhando fluxograma…</p></div>`:'<p class="muted" style="margin:0;font-size:13px">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>')+
+      (ok?(window.FLUXO&&FLUXO.extras?FLUXO.extras(d).desc:"")+`<div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted" style="margin:0;font-size:13px">Desenhando fluxograma…</p></div>`+(window.FLUXO&&FLUXO.extras?FLUXO.extras(d).lista:""):'<p class="muted" style="margin:0;font-size:13px">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>')+
       `</div>`;
   }
   // Linhas de lista (com recuo) → listas aninhadas. wys=true: editor; false: Visualizar (inl = conversor da página).
@@ -381,6 +381,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   const pergsMd = l => l.filter(x=>x.p.trim()||x.r.trim()).map(x=>`**P:** ${x.p.replace(/\s*\n\s*/g," ").trim()}\n**R:** ${x.r.replace(/\n{2,}/g,"\n").trim()}`).join("\n\n");
   function sincronizar(ed){ const ta=ed._ta, n=htmlParaMd(ed), v=juntar(n, separar(ta.value).pergs); ed.classList.toggle("vazio",!n.trim()&&!ed.querySelector("img,hr,.fx-bloco,li")); if(v!==ta.value) escrever(ta,v); }
+  // fluxograma editado: redesenha os blocos dele (título, descrição e desenho)
+  document.addEventListener("caderno:fx",e=>{ const id=e.detail&&e.detail.id; if(!id) return; const docs=[document]; try{ if(typeof PIP!=="undefined"&&PIP&&!PIP.closed) docs.push(PIP.document); }catch(x){}
+    docs.forEach(dc=>dc.querySelectorAll(`.fx-bloco[data-fxid="${id}"]`).forEach(b=>{ const t=dc.createElement("div"); t.innerHTML=fxHtml(id,b.dataset.linha||""); const n=t.firstElementChild; if(n) b.replaceWith(n); })); });
   function focarNovo(ed){ const id=window.__fxNovo; if(!id) return; if(!ed.querySelector(`.fx-bloco[data-fxid="${id}"]`)) return; window.__fxNovo=null;
     setTimeout(()=>{ const b=ed.querySelector(`.fx-bloco[data-fxid="${id}"]`); if(!b) return;
       let n=b.nextElementSibling; if(!n||n.classList.contains("fx-bloco")){ n=document.createElement("div"); n.dataset.aux="1"; n.innerHTML="<br>"; b.after(n); }
@@ -968,7 +971,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(b.dataset.fxb==="dobrar"){ const rec=!bloco.classList.contains("recolhido"); bloco.classList.toggle("recolhido",rec); b.setAttribute("aria-expanded",String(!rec)); b.title=(rec?"Mostrar":"Recolher")+" fluxograma";
       if(d&&!d.apagado) salvarDoc("fx-"+id,{...d,recolhido:rec},300); return; }
     if(b.dataset.fxb==="nome"){ const n=prompt("Tema do fluxograma:", temaFx(d)); if(n==null) return; const t=n.trim().slice(0,80);
-      if(d&&!d.apagado) salvarDoc("fx-"+id,{...d,titulo:t},50); b.textContent=t||temaFx({...d,titulo:""}); return; }
+      if(d&&!d.apagado) salvarDoc("fx-"+id,{...d,titulo:t,...(d.modelo?{modelo:{...d.modelo,titulo:t}}:{})},50); b.textContent=t||temaFx({...d,titulo:""}); return; }
     if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="Remover"; } },3000); return; }
     bloco.remove(); if(id&&typeof salvarDoc==="function") salvarDoc("fx-"+id,{tipo:"fx",apagado:true},50);
     sincronizar(ed);

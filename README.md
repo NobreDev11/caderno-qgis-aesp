@@ -112,3 +112,8 @@ Página estática única (`qgis.html`).
 - Clique no marcador abre uma janelinha: editar o texto (Enter salva), ↗ Pesquisar / Ver flashcard, Tirar marcação (fica só o texto) ou Apagar.
 - Mudar a pergunta de um `{{…}}` atualiza a frente do flashcard correspondente (`FORMATO_FLASH_RENOMEAR`).
 - Barra de formatação: botões `<>` e `{{}}` transformam o trecho selecionado em marcador; com o cursor num marcador, abrem a edição; sem seleção, pedem o texto.
+
+### Fluxograma: título e descrições
+- Editor: campos Título e Descrição do fluxograma; cada etapa (Início/Fim, Etapa, Decisão, Comando…) tem descrição opcional.
+- "descrição dentro das formas" (padrão): a descrição aparece em letra menor dentro da forma; desmarcado, vira lista "Descrição das etapas" abaixo do desenho.
+- Título e descrição aparecem no bloco da anotação, no Visualizar e no Markdown exportado. Dados: `fx-<id>.titulo`, `.desc`, `modelo.nos[].desc`, `modelo.descNo`.

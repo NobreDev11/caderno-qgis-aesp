@@ -721,7 +721,8 @@ function md(src){
     // linha ![..](fx:id): fluxograma guardado no doc fx-<id> (fluxo.js)
     const fxl=l.match(/^\s*!\[[^\]]*\]\(fx:([A-Za-z0-9_-]+)\)\s*$/);
     if(fxl){ fechar(); const d=S.docs["fx-"+fxl[1]];
-      out+= d&&!d.apagado ? `<div class="fx"><div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted">Desenhando fluxograma…</p></div><div class="row"><button class="btn sm" data-fxeditar="${nfx}">Editar fluxograma</button></div></div>` : `<p class="muted">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>`;
+      const xx=d&&!d.apagado&&window.FLUXO&&FLUXO.extras?FLUXO.extras(d):{desc:"",lista:""};
+      out+= d&&!d.apagado ? `<div class="fx">${d.titulo?`<h4 class="fx-tit">${esc(d.titulo)}</h4>`:""}${xx.desc}<div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted">Desenhando fluxograma…</p></div>${xx.lista}<div class="row"><button class="btn sm" data-fxeditar="${nfx}">Editar fluxograma</button></div></div>` : `<p class="muted">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>`;
       nfx++; continue; }
     // bloco de código; ```mermaid vira fluxograma desenhado (fluxo.js)
     const cerca=l.match(/^```\s*([\w-]*)\s*$/);
