@@ -99,3 +99,7 @@ Página estática única (`qgis.html`).
 
 ## Rodar no computador
 `npx serve .` (abrir os arquivos direto no navegador não funciona para o login e os caminhos `/qgis` e `/dio`).
+
+### Links do Google Drive
+- Materiais com link do Drive/Docs/Slides/Sheets abrem dentro do caderno (prévia `/preview`), no cartão e no bloco sobreposto, com botão "Abrir no Drive".
+- Convidado (`?c=`) pode importar links: `/api/link` aceita o cabeçalho `X-Convite`; o texto fica salvo para resumo, questões e flashcards. Compartilhe o arquivo como "Qualquer pessoa com o link".
