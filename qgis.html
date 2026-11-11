@@ -1885,6 +1885,12 @@ window.FORMATO_FLASH_MARCA=o=>{
   const base={doc:o.el?o.el.ownerDocument:document, ancora:o.el, aoFechar:o.voltar, mudou:o.mudou};
   if(c) verFlashDlg(c,base); else abrirFlashDlg({...base,disc:k,frente:txt,origem:"sel"});
 };
+/* marcador {{…}} editado no texto: o cartão com a mesma frente acompanha a mudança */
+window.FORMATO_FLASH_RENOMEAR=(velho,novo,ta)=>{
+  const k=(ta&&window.FORMATO_PROJ&&FORMATO_PROJ.disc(ta))||"", low=String(velho||"").trim().toLowerCase(); if(!low||!novo) return;
+  const cs=flashcards().filter(c=>c.fonte==="fc"&&c.frente.trim().toLowerCase()===low), c=cs.find(x=>x.disc===k)||cs[0];
+  if(c&&S.docs[c.id]){ salvarDoc(c.id,{...S.docs[c.id],frente:novo},50); renderNav(); }
+};
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("button.fcm[data-fc]"); if(!b) return; e.preventDefault(); window.FORMATO_FLASH_MARCA({texto:b.dataset.fc,el:b}); });
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-fcnovo],[data-fccomecar],[data-fcsair],[data-fcvirar],[data-fcnota],[data-fceditar],[data-fcapagar],[data-fcdisc],[data-estaba],[data-fcmat]"); if(!b||b.disabled) return; const d=b.dataset;

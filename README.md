@@ -107,3 +107,8 @@ Página estática única (`qgis.html`).
 ### Altura do bloco de anotações
 - Bloco na página: botão ↕ ocupa a altura toda da tela (clique de novo para voltar).
 - Janela por cima (PiP): o Chrome limita a ~80% da tela; ↕ vai até esse máximo e avisa. O botão ⬍ reabre o bloco numa janela comum com a altura total (essa não fica por cima das outras).
+
+### Editar `<termo>` e `{{pergunta}}`
+- Clique no marcador abre uma janelinha: editar o texto (Enter salva), ↗ Pesquisar / Ver flashcard, Tirar marcação (fica só o texto) ou Apagar.
+- Mudar a pergunta de um `{{…}}` atualiza a frente do flashcard correspondente (`FORMATO_FLASH_RENOMEAR`).
+- Barra de formatação: botões `<>` e `{{}}` transformam o trecho selecionado em marcador; com o cursor num marcador, abrem a edição; sem seleção, pedem o texto.
