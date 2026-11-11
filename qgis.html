@@ -334,6 +334,10 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5)}
 .pr-lb button{position:fixed;top:14px;right:16px;border:0;border-radius:50%;width:36px;height:36px;background:rgb(255 255 255 / .9);font-size:16px;cursor:pointer}
 .pr-bl.dz-on,.pr-ps.dz-on{outline:2px dashed var(--accent);outline-offset:2px;background:var(--accent-soft)}
+details.mat-g{margin-top:6px}details.mat-g>summary{cursor:pointer;margin:6px 0 4px;list-style:none;display:flex;gap:6px;align-items:center}
+details.mat-g>summary::-webkit-details-marker{display:none}
+details.mat-g>summary::before{content:"▸";color:var(--muted);width:10px}details.mat-g[open]>summary::before{content:"▾"}
+details.mat-g>summary:hover{color:var(--ink)}
 .mat-li{display:flex;gap:6px;align-items:stretch}.mat-li>.ni{flex:1;min-width:0}.mat-li>.btn{align-self:center}
 .mat-ver{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:6px 0 10px;overflow:hidden;display:flex;flex-direction:column}
 .mv-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
@@ -902,6 +906,9 @@ const secAberta = id => SECOES[id]!==false;
 document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.sec) return; SECOES[d.dataset.sec]=d.open; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(x){} if(d.open&&d.dataset.sec.startsWith("nav-")) montarNavs(); },true);
 /* "Abrir" um material dentro do cartão da disciplina (como a Pesquisa): PDF, fotos, texto/nota; link abre na Pesquisa */
 const MAT_VER={}, MV_BLOB={};
+// grupos "Arquivos e links" / "Notas salvas" recolhidos (lembrado neste aparelho)
+const MAT_GREC=(()=>{ try{ return JSON.parse(localStorage.getItem("caderno-qgis-aesp:matgrupos")||"{}"); }catch(e){ return {}; } })();
+document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.matg) return; if(d.open) delete MAT_GREC[d.dataset.matg]; else MAT_GREC[d.dataset.matg]=1; try{ localStorage.setItem("caderno-qgis-aesp:matgrupos",JSON.stringify(MAT_GREC)); }catch(x){} },true);
 function verMatHTML(k){
   const id=MAT_VER[k], m=id&&S.docs[id]; if(!m||m.apagado) return "";
   const t=mtx(id), arqs=m.arquivos||[], pdfs=arqs.filter(a=>a.mime==="application/pdf"), fotos=arqs.filter(a=>(a.mime||"").startsWith("image/"));
@@ -947,8 +954,8 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ const c=document.querySelector(".mat-ver.cheio"); if(c){ c.classList.remove("cheio"); document.body.style.overflow=""; const b=c.querySelector('[data-mvx="cheio"]'); if(b) b.textContent="⛶ Expandir"; } } });
 function matSecHTML(k){ const ms=mats().filter(m=>m.disc===k), ns=ms.filter(m=>m.origem==="nota"), as=ms.filter(m=>m.origem!=="nota");
   const linha=m=>`<div class="mat-li">${matItem(m)}<button type="button" class="btn sm${MAT_VER[k]===m.id?" pri":""}" data-matver="${m.id}" data-k="${k}" title="${m.origem==="link"&&!(m.arquivos||[]).length?"Abre o link na Pesquisa desta disciplina":"Abre o material aqui dentro do cartão"}">${MAT_VER[k]===m.id?"Aberto":"Abrir"}</button></div>`;
-  const grupo=(t,xs)=>xs.length?`<div class="mat-g"><span class="lb" style="margin:6px 0 4px">${t} (${xs.length})</span>${xs.map(linha).join("")}</div>`:"";
-  return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div><div data-mvslot="${k}">${verMatHTML(k)}</div>`+(ms.length?grupo("Arquivos e links",as)+grupo("Notas salvas",ns):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
+  const grupo=(t,xs,g)=>xs.length?`<details class="mat-g" data-matg="${k}:${g}"${MAT_GREC[k+":"+g]?"":" open"}><summary class="lb">${t} <span class="mono muted">${xs.length}</span></summary>${xs.map(linha).join("")}</details>`:"";
+  return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div><div data-mvslot="${k}">${verMatHTML(k)}</div>`+(ms.length?grupo("Arquivos e links",as,"a")+grupo("Notas salvas",ns,"n"):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
 function atualizarMatSec(k){ const el=document.querySelector(`[data-matsec="${k}"]`); if(el){ el.innerHTML=matSecHTML(k); const v=el.querySelector(".mat-ver"); if(v) carregarPdfVer(v); } const c=document.querySelector(`[data-matcont="${k}"]`); if(c) c.textContent=`Materiais (${mats().filter(m=>m.disc===k).length})`; }
 
 /* ---- Mininavegador de pesquisa (por disciplina) ----
