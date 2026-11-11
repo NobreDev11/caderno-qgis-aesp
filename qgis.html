@@ -146,6 +146,8 @@ h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 .pop p{margin:8px 0 0}.pop pre{margin:4px 0 0;padding:8px;background:var(--bg);border-radius:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
 .pres-lista{display:flex;flex-direction:column;gap:4px;margin-top:6px}
 .nota-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.anx-dz{display:flex;align-items:center;gap:10px;border:2px dashed var(--line);border-radius:12px;padding:12px 14px;color:var(--muted);background:var(--bg);margin-top:8px;font-size:13.5px}
+.anx-dz .dz-ic{font-size:20px;color:var(--accent)}
 .anx-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.anx-form[hidden]{display:none}
 .anx-form input{flex:1;min-width:160px}
 .anx-lista{display:flex;flex-direction:column;gap:4px;margin-top:8px}
@@ -331,6 +333,7 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-lb{position:fixed;inset:0;z-index:90;background:rgb(0 0 0 / .82);display:grid;place-items:center;cursor:zoom-out}
 .pr-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5)}
 .pr-lb button{position:fixed;top:14px;right:16px;border:0;border-radius:50%;width:36px;height:36px;background:rgb(255 255 255 / .9);font-size:16px;cursor:pointer}
+.pr-bl.dz-on,.pr-ps.dz-on{outline:2px dashed var(--accent);outline-offset:2px;background:var(--accent-soft)}
 .mat-li{display:flex;gap:6px;align-items:stretch}.mat-li>.ni{flex:1;min-width:0}.mat-li>.btn{align-self:center}
 .mat-ver{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:6px 0 10px;overflow:hidden;display:flex;flex-direction:column}
 .mv-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
@@ -1450,6 +1453,7 @@ function anexosHTML(m){
       <div class="row"><button type="button" class="btn sm" data-anx="link">+ Link</button><button type="button" class="btn sm" data-anx="arquivo">+ PDF/arquivo</button><button type="button" class="btn sm" data-anx="fotos">+ Fotos</button></div></div>
     <form class="anx-form" hidden><input type="text" class="anx-u" inputmode="url" placeholder="https://…" aria-label="Endereço do link"><input type="text" class="anx-n" placeholder="Título (opcional)" aria-label="Título do link"><button type="submit" class="btn sm pri">Adicionar</button></form>
     <input type="file" class="anx-f" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden><input type="file" class="anx-i" accept="image/*" multiple hidden>
+    <div class="dz anx-dz" data-dz-para=".anx-f,.anx-i" data-dz-escopo=".card"><span class="dz-ic" aria-hidden="true">⤓</span><span class="dz-tx">Arraste e solte aqui PDFs, textos (.txt/.md) ou fotos para anexar</span></div>
     <p class="anx-st muted" style="margin:6px 0 0;font-size:13px" hidden></p>
     <div class="anx-lista">${itens.length?itens.join(""):'<p class="empty" style="padding:6px 0 0">Nenhum anexo. Junte aqui o link, o PDF ou as fotos que explicam esta nota.</p>'}</div></div>`;
 }
@@ -2615,8 +2619,9 @@ function ligarAbaPrat(doc){
   });
   doc.addEventListener("click",e=>{ const im=e.target.closest&&e.target.closest(".pr-im img:not([src])"); if(im) toast("Imagem ainda carregando…"); });
   // arrastar imagens para um bloco ou passo
-  doc.addEventListener("dragover",e=>{ if(e.target.closest&&e.target.closest(".prats .pr-bl")&&[...(e.dataTransfer&&e.dataTransfer.items||[])].some(i=>i.kind==="file")) e.preventDefault(); });
-  doc.addEventListener("drop",e=>{ const alvo=e.target.closest&&(e.target.closest(".prats .pr-ps")||e.target.closest(".prats .pr-bl")); if(!alvo) return; const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])].filter(f=>/^image\//.test(f.type)); if(!fs.length) return; e.preventDefault();
+  doc.addEventListener("dragover",e=>{ const z=e.target.closest&&(e.target.closest(".prats .pr-ps")||e.target.closest(".prats .pr-bl")); if(z&&[...(e.dataTransfer&&e.dataTransfer.items||[])].some(i=>i.kind==="file")){ e.preventDefault(); doc.querySelectorAll(".prats .dz-on").forEach(x=>{ if(x!==z) x.classList.remove("dz-on"); }); z.classList.add("dz-on"); } });
+  doc.addEventListener("dragleave",e=>{ const z=e.target.closest&&(e.target.closest(".prats .pr-ps")||e.target.closest(".prats .pr-bl")); if(z&&!z.contains(e.relatedTarget)) z.classList.remove("dz-on"); });
+  doc.addEventListener("drop",e=>{ doc.querySelectorAll(".prats .dz-on").forEach(x=>x.classList.remove("dz-on")); const alvo=e.target.closest&&(e.target.closest(".prats .pr-ps")||e.target.closest(".prats .pr-bl")); if(!alvo) return; const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])].filter(f=>/^image\//.test(f.type)); if(!fs.length) return; e.preventDefault();
     const c=ctx(alvo); if(c&&c.id) enviarImgsPrat(c.id, alvo.dataset.pid||alvo.dataset.bid, fs, doc); });
   // clicar numa parte vazia do cabeçalho do bloco também recolhe/expande
   doc.addEventListener("click",e=>{ const h=e.target.closest&&e.target.closest(".pr-bh"); if(!h||e.target.closest("input,select,button")) return; h.querySelector('[data-prx="dobrarbloco"]')?.click(); });

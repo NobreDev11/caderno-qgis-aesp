@@ -74,6 +74,11 @@
 .img-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5);background:#fff}
 .img-lb button{position:fixed;top:14px;right:16px;border:0;border-radius:50%;width:36px;height:36px;background:rgb(255 255 255 / .92);color:#222;font-size:16px;cursor:pointer}
 .md img.md-img,.pr-im img{cursor:zoom-in}
+label.dz{display:flex;align-items:center;gap:10px;border:2px dashed var(--line);border-radius:12px;padding:16px 14px;cursor:pointer;color:var(--muted);background:var(--bg);transition:border-color .15s,background .15s;font-size:14px;position:relative}
+label.dz:hover,label.dz.dz-on,[data-dz-para].dz-on{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+label.dz .dz-ic{font-size:22px;line-height:1;color:var(--accent)}
+label.dz .dz-inp{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+label.dz:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .pesq:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .wys{position:relative;display:block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:120px;max-height:min(60vh,560px);overflow-y:auto;overflow-x:hidden;resize:vertical;line-height:1.6;outline:none;cursor:text;overflow-wrap:anywhere;max-width:none;color:var(--ink,inherit)}
 .wys:focus{outline:2px solid var(--accent);outline-offset:-1px}
@@ -201,6 +206,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   function equipar(raiz){
     if(typeof aplicarRev==="function") aplicarRev(raiz);
+    equiparZonas(raiz); ligarZonas(raiz.ownerDocument||raiz);
     raiz.querySelectorAll(ALVOS).forEach(ta=>{
       if(ta.dataset.fmtOk) return; ta.dataset.fmtOk="1";
       const p=ta.previousElementSibling; if(p&&p.classList.contains("fmt")) return;
@@ -1037,6 +1043,35 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(!temConta()){ falhou("entre na conta para ver"); return; }
       urlAssinada(img.dataset.sb).then(u=>{ img.src=u; }).catch(()=>falhou("não encontrada"));
     });
+  }
+  /* Áreas de arrastar e soltar: todo <input type=file> visível vira uma zona "arraste aqui ou clique";
+     elementos com [data-dz-para] repassam o que for solto para os inputs indicados (ex.: anexos, que têm inputs escondidos). */
+  function aceita(inp,f){ const ac=(inp.accept||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean); if(!ac.length) return true;
+    const n=(f.name||"").toLowerCase(), t=(f.type||"").toLowerCase();
+    return ac.some(a=>a.startsWith(".")?n.endsWith(a):a.endsWith("/*")?t.startsWith(a.slice(0,-1)):t===a); }
+  function entregar(inp,files){ let fs=[...files].filter(f=>aceita(inp,f)); if(!fs.length) return 0; if(!inp.multiple) fs=fs.slice(0,1);
+    try{ const dt=new DataTransfer(); fs.forEach(f=>dt.items.add(f)); inp.files=dt.files; inp.dispatchEvent(new Event("change",{bubbles:true})); return fs.length; }catch(e){ return 0; } }
+  function zonaTexto(inp){ const n=inp.files&&inp.files.length; return n?(n===1?"📎 "+inp.files[0].name:"📎 "+n+" arquivos escolhidos")+" · clique ou arraste para trocar":(inp.multiple?"Arraste e solte os arquivos aqui ou clique para escolher":"Arraste e solte o arquivo aqui ou clique para escolher"); }
+  function equiparZonas(raiz){
+    raiz.querySelectorAll('input[type=file]:not([hidden]):not([data-dz])').forEach(inp=>{
+      inp.dataset.dz="1"; const z=inp.ownerDocument.createElement("label"); z.className="dz"; if(inp.id) z.htmlFor=inp.id;
+      z.innerHTML=`<span class="dz-ic" aria-hidden="true">⤓</span><span class="dz-tx"></span>`; z.querySelector(".dz-tx").textContent=zonaTexto(inp);
+      inp.before(z); z.appendChild(inp); inp.classList.add("dz-inp");
+      inp.addEventListener("change",()=>{ z.querySelector(".dz-tx").textContent=zonaTexto(inp); });
+    });
+  }
+  function ligarZonas(doc){
+    if(doc._dz) return; doc._dz=1;
+    const alvo=e=>e.target.closest&&(e.target.closest("label.dz")||e.target.closest("[data-dz-para]"));
+    const temArq=e=>e.dataTransfer&&[...e.dataTransfer.types].includes("Files");
+    doc.addEventListener("dragover",e=>{ const z=alvo(e); if(!z||!temArq(e)) return; e.preventDefault(); e.dataTransfer.dropEffect="copy"; z.classList.add("dz-on"); });
+    doc.addEventListener("dragleave",e=>{ const z=alvo(e); if(z&&!z.contains(e.relatedTarget)) z.classList.remove("dz-on"); });
+    doc.addEventListener("drop",e=>{ const z=alvo(e); if(!z||!temArq(e)) return; e.preventDefault(); e.stopPropagation(); z.classList.remove("dz-on");
+      const fs=e.dataTransfer.files; let n=0;
+      if(z.matches("label.dz")){ const inp=z.querySelector("input[type=file]"); n=entregar(inp,fs); }
+      else { const box=z.closest(z.dataset.dzEscopo||"body")||doc.body; for(const sel of z.dataset.dzPara.split(",")){ const inp=box.querySelector(sel.trim()); if(inp) n+=entregar(inp,fs); } }
+      if(!n){ const t=z.querySelector(".dz-tx")||z; const v=t.textContent; t.textContent="Tipo de arquivo não aceito aqui."; setTimeout(()=>{ t.textContent=v; },2200); }
+    },true);
   }
   function ampliar(img){
     const doc=img.ownerDocument; doc.querySelector(".img-lb")?.remove();
