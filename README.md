@@ -118,3 +118,9 @@ Página estática única (`qgis.html`).
 - "descrição dentro das formas" (padrão): a descrição aparece em letra menor dentro da forma; desmarcado, vira lista "Descrição das etapas" abaixo do desenho.
 - Título e descrição aparecem no bloco da anotação, no Visualizar e no Markdown exportado. Dados: `fx-<id>.titulo`, `.desc`, `modelo.nos[].desc`, `modelo.descNo`.
 - `{{…}}` e `<…>` digitados: o trecho antes do cursor é lido no bloco inteiro (`trechoAntes`), mesmo partido em vários pedaços pela correção, pela sugestão por Tab ou pelo navegador; também funciona com teclado de celular (fim de composição).
+
+### Aviso de presença (fim de cada aula)
+- Aparece quando a aula de hoje termina e ainda não tem presença marcada. "Depois" pergunta de novo em 10 min (antes escondia de vez).
+- Guardado por caderno (`LS_MARCOS`: dono e convidado separados no mesmo navegador).
+- Aparece também dentro da janela por cima / janela comum; responder em uma some nas duas.
+- Opcional: 🔔 aviso do sistema (Notification) quando o caderno está em segundo plano.

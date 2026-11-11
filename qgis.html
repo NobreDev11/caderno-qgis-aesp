@@ -168,6 +168,8 @@ details.sec{border-top:1px solid var(--line);padding:8px 0 2px}
 .dbody[hidden]{display:none}
 .marco{position:fixed;right:16px;bottom:16px;z-index:45;width:min(320px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--c,var(--accent));border-radius:12px;box-shadow:0 12px 32px rgb(0 0 0 / .22);padding:12px 14px;font-size:14px}
 .marco .pres-p{border-color:var(--ok);color:var(--ok)}.marco .pres-f{border-color:var(--bad);color:var(--bad)}
+.flut.pip~.marco{top:8px;bottom:auto;left:8px;right:8px;width:auto;max-width:none}
+.marco-so{display:block;margin-top:8px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;padding:0;text-align:left;text-decoration:underline dotted}.marco-so:hover{color:var(--ink)}
 .marco-fim{display:flex;gap:6px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted);cursor:pointer}
 details.sec:first-child{border-top:0;padding-top:0}
 details.sec>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:2px 0}
@@ -1131,34 +1133,49 @@ document.addEventListener("click",e=>{
 });
 
 /* ---- Aviso de marco: ao terminar cada aula, uma janelinha pergunta presença (e, na última aula, se a disciplina terminou) ---- */
-let PERGUNTADAS={}; try{ PERGUNTADAS=JSON.parse(localStorage.getItem(LS+":marcos")||"{}")||{}; }catch(e){}
-function guardarMarcos(){ try{ localStorage.setItem(LS+":marcos",JSON.stringify(PERGUNTADAS)); }catch(e){} }
+// Guardado por caderno (dono ou convidado), para um não esconder o aviso do outro no mesmo navegador.
+// Guarda só o "Depois" (hora a partir da qual pergunta de novo); quem responde já fica com a presença marcada.
+const LS_MARCOS=LS+":marcos"+(typeof CONVITE!=="undefined"&&CONVITE?":c"+CONVITE.slice(0,8):"");
+let PERGUNTADAS={}; try{ PERGUNTADAS=JSON.parse(localStorage.getItem(LS_MARCOS)||"{}")||{}; }catch(e){}
+function guardarMarcos(){ try{ localStorage.setItem(LS_MARCOS,JSON.stringify(PERGUNTADAS)); }catch(e){} }
+const DEPOIS_MIN=10;
+let AVISADO_SO={};
+function docsMarco(){ const l=[document]; try{ if(PIP&&!PIP.closed) l.push(PIP.document); }catch(e){} return l; }
 function checarMarcos(){
-  if(document.getElementById("marco")) return;
   const t=Date.now(), hoje=agoraFor().data;
-  // aulas de hoje que já terminaram, sem presença marcada e ainda não perguntadas
-  const a=AULAS.filter(x=>x.data===hoje&&msDe(x.data,x.fim)<=t&&!aulaD(x.id).pres&&!PERGUNTADAS[x.id]).pop();
-  if(!a) return;
+  // aulas de hoje que já terminaram, sem presença marcada e ainda não respondidas (ou com "Depois" vencido)
+  const a=AULAS.filter(x=>x.data===hoje&&msDe(x.data,x.fim)<=t&&!aulaD(x.id).pres&&!(PERGUNTADAS[x.id]>t)).pop();
+  if(!a){ docsMarco().forEach(d=>d.getElementById("marco")?.remove()); return; }
+  docsMarco().forEach(dc=>{ const ex=dc.getElementById("marco"); if(ex&&ex.dataset.aula!==a.id) ex.remove(); if(!dc.getElementById("marco")) dc.body.appendChild(marcoEl(dc,a)); });
+  // aviso do sistema quando o caderno está escondido (outra aba, QGIS na frente…)
+  if(!AVISADO_SO[a.id]&&"Notification" in window&&Notification.permission==="granted"&&(document.hidden||!document.hasFocus())){ AVISADO_SO[a.id]=1;
+    try{ const n=new Notification("Aula "+a.n+"/"+a.tot+" terminou · "+nomeDisc(a.k),{body:"Você esteve presente? Toque para marcar.",tag:"pres-"+a.id,icon:"/icons/icon-192.png"}); n.onclick=()=>{ try{ window.focus(); }catch(e){} n.close(); }; }catch(e){} }
+}
+function marcoEl(doc,a){
   const ultima=a.n===a.tot, dd=discD(a.k);
-  const el=document.createElement("div"); el.id="marco"; el.className="marco"; el.setAttribute("role","dialog"); el.setAttribute("aria-label","Confirmar presença");
+  const el=doc.createElement("div"); el.id="marco"; el.className="marco"; el.setAttribute("role","dialog"); el.setAttribute("aria-label","Confirmar presença");
   el.style.setProperty("--c",DK[a.k].cor);
   el.innerHTML=`<div class="mono muted" style="font-size:12px">Aula ${a.n}/${a.tot} terminou · ${a.ini}–${a.fim}</div>
     <div style="font-weight:700;margin:2px 0 8px">${esc(nomeDisc(a.k))}</div>
     <div>Você esteve presente?</div>
     <div class="row" style="margin-top:8px"><button type="button" class="btn sm pres-p" data-mc="p">Presente</button><button type="button" class="btn sm pres-f" data-mc="f">Falta</button><button type="button" class="btn sm" data-mc="depois">Depois</button></div>
-    ${ultima&&!dd.concluida?`<label class="marco-fim"><input type="checkbox" id="mc-fim" checked> Última aula: marcar a disciplina como concluída</label>`:""}`;
-  el.dataset.aula=a.id; document.body.appendChild(el);
+    ${ultima&&!dd.concluida?`<label class="marco-fim"><input type="checkbox" id="mc-fim" checked> Última aula: marcar a disciplina como concluída</label>`:""}
+    ${"Notification" in window&&Notification.permission==="default"?`<button type="button" class="marco-so" data-mc="so">🔔 Avisar também quando o caderno estiver em segundo plano</button>`:""}`;
+  el.dataset.aula=a.id; return el;
 }
-document.addEventListener("click",e=>{
+function responderMarco(e){
   const b=e.target.closest&&e.target.closest("#marco [data-mc]"); if(!b) return;
-  const el=document.getElementById("marco"), id=el.dataset.aula, a=AK[id], v=b.dataset.mc;
+  const el=b.closest("#marco"), id=el.dataset.aula, a=AK[id], v=b.dataset.mc;
+  if(v==="so"){ try{ Notification.requestPermission().then(r=>{ b.remove(); if(r==="granted") toast("Pronto: o aviso de presença aparece mesmo com o caderno em segundo plano."); }); }catch(x){} return; }
   if(v!=="depois"){ salvarDoc("aula-"+id,{...aulaD(id),tipo:"aula",pres:v},50);
-    const fim=document.getElementById("mc-fim"); if(fim&&fim.checked) salvarDoc("disc-"+a.k,{...discD(a.k),tipo:"disc",concluida:true},50);
+    const fim=el.querySelector("#mc-fim"); if(fim&&fim.checked) salvarDoc("disc-"+a.k,{...discD(a.k),tipo:"disc",concluida:true},50);
     toast(v==="p"?"Presença marcada.":"Falta marcada."); }
-  PERGUNTADAS[id]=1; guardarMarcos(); el.remove();
+  PERGUNTADAS[id]= v==="depois" ? Date.now()+DEPOIS_MIN*60e3 : 1; guardarMarcos(); docsMarco().forEach(d=>d.getElementById("marco")?.remove());
+  if(v==="depois") toast("Pergunto de novo em "+DEPOIS_MIN+" minutos.");
   if(!editando()&&VIEW!=="disciplinas") render(); else { renderNav(); if(VIEW==="disciplinas"){ const c=document.getElementById("d-"+a.k); if(c) c.querySelectorAll(`[data-dpres="${id}"]`).forEach(x=>x.classList.toggle("on",x.dataset.v===v)); } }
   setTimeout(checarMarcos,400);
-});
+}
+document.addEventListener("click",responderMarco);
 
 // Termos <assim> nas anotações: ao clicar, pesquisa no mininavegador da disciplina daquela anotação.
 function discDoContexto(el){
@@ -2220,7 +2237,8 @@ async function destacarFlutuante(comum){
   w.document.body.innerHTML='<section class="flut pip" id="pipbox" aria-label="Bloco de anotações"></section>';
   ligarFlutuante(w.document);
   w.addEventListener("pagehide",()=>{ if(PIP===w){ flushTudo(); PIP=null; PIP_COMUM=false; renderFlutuante(); } });
-  PIP=w; PIP_COMUM=!!comum; FL.min=false; renderFlutuante();
+  w.document.addEventListener("click",responderMarco);
+  PIP=w; PIP_COMUM=!!comum; FL.min=false; renderFlutuante(); setTimeout(checarMarcos,300);
   const ta=w.document.getElementById("fl-txt"); if(ta) ta.focus();
 }
 function ligarFlutuante(doc){
