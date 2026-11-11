@@ -938,7 +938,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const p=doc.createElement("div"); p.className="mrc-pop"; p.setAttribute("role","dialog"); p.setAttribute("aria-label",fc?"Editar marcador de flashcard":"Editar termo de pesquisa");
     p.innerHTML=`<div class="mrc-l"><span>${fc?"{{ }} Pergunta do flashcard":ex?"(( )) Termo a explicar":"&lt; &gt; Termo de pesquisa"}</span><span>Enter ${vazio?"confirma":"salva"} · Esc fecha</span></div>
       <input type="text" maxlength="${fc?200:ex?120:80}" value="${escH(vazio?"":atual)}" placeholder="${fc?"Escreva a pergunta":ex?"Palavra, termo ou frase":"Escreva o termo"}" aria-label="${fc?"Pergunta":"Termo"}">
-      <div class="mrc-b"><button type="button" class="pri" data-m="ir">${fc?(vazio?"Criar flashcard":"Ver flashcard"):ex?"Explicação":"↗ Pesquisar"}</button><button type="button" data-m="ok" hidden>Salvar</button>${vazio?"":`<button type="button" data-m="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button>`}<button type="button" data-m="apagar" title="Apagar o marcador e o texto">Apagar</button></div>
+      <div class="mrc-b"><button type="button" class="pri" data-m="ir">${fc?(vazio?"Criar flashcard":"Ver flashcard"):ex?"Explicação":"↗ Pesquisar"}</button><button type="button" data-m="ok" hidden>Salvar</button>${!fc&&!ex&&window.FORMATO_RAPIDO?`<button type="button" data-m="rapido" title="Mostra aqui um trecho conceitual (Wikipédia), sem sair da anotação">⚡ Rápida</button>`:""}${vazio?"":`<button type="button" data-m="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button>`}<button type="button" data-m="apagar" title="Apagar o marcador e o texto">Apagar</button></div>
       ${vazio?"":mudarHTML(fc?"mrc":ex?"exp":"pq",atual)}`;
     doc.body.appendChild(p);
     const R=sp.getBoundingClientRect(), W=p.offsetWidth, H=p.offsetHeight;
@@ -961,6 +961,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       sp.textContent=t; atual=t; sincronizar(ed); return true; }
     function acao(m){
       if(m==="ok"){ if(salvar()) fechar(true); else inp.focus(); return; }
+      if(m==="rapido"){ if(!salvar()){ inp.focus(); return; } fechar(false); const win2=doc.defaultView||window, s2=win2.getSelection(), rg2=null;
+        window.FORMATO_RAPIDO({termo:sp.dataset.q, el:sp, voltar:()=>{ try{ ed.focus(); const c=doc.createRange(); c.setStartAfter(sp); c.collapse(true); s2.removeAllRanges(); s2.addRange(c); }catch(e){} void rg2; }, paraExp:()=>{ if(sp.isConnected) converterMarca(sp,"exp"); }}); return; }
       if(m==="ir"){ if(!salvar()){ inp.focus(); return; } fechar(!fc&&!ex); if(fc) abrirMarca(ed,sp,!!vazio); else if(ex) abrirExp(ed,sp,!!vazio); else pesquisarTermo(sp); return; }
       if(m==="tirar"){ const tx=doc.createTextNode(sp.textContent); sp.replaceWith(tx); sincronizar(ed); p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); try{ ed.focus(); const c=doc.createRange(); c.setStart(tx,tx.nodeValue.length); c.collapse(true); const x=win.getSelection(); x.removeAllRanges(); x.addRange(c); }catch(e){} return; }
       if(m==="apagar"){ const z=sp.nextSibling; if(z&&z.nodeType===3&&z.nodeValue==="\u200b") z.remove(); sp.remove(); sincronizar(ed); p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); try{ ed.focus(); }catch(e){} }
@@ -1359,7 +1361,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(typeof S==="object") def("S",()=>S);
     if(typeof CONVITE!=="undefined") def("CONVITE",()=>CONVITE);
     ["salvarDoc","apagarDoc","logado"].forEach(n=>{ try{ const f=(0,eval)(n); if(typeof f==="function") w[n]=f; }catch(e){} });
-    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_FLASH_RENOMEAR","FORMATO_EXPLICA","FORMATO_PROJ","FORMATO_PRAT"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
+    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_FLASH_RENOMEAR","FORMATO_EXPLICA","FORMATO_RAPIDO","FORMATO_PROJ","FORMATO_PRAT"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
     if(typeof window.ligarAbaProj==="function") window.ligarAbaProj(doc);
     if(typeof window.ligarAbaPrat==="function") window.ligarAbaPrat(doc);
     w.toast=t=>{ try{ const d=doc.createElement("div"); d.className="toast"; d.textContent=t; doc.body.appendChild(d); setTimeout(()=>d.remove(),3500); }catch(e){} };

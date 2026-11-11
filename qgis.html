@@ -417,6 +417,17 @@ details.mat-g>summary:hover{color:var(--ink)}
 .fc-dlg.livre .ex-tx{flex:1 1 auto;max-height:none}
 .fc-dlg.livre .fc-tx{overflow-wrap:anywhere}
 .dlg-arrasta{cursor:move;user-select:none}
+.rp-box{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:10px 12px}
+.rp-box[hidden]{display:none}
+.fc-dlg.livre .rp-box{flex:1 1 auto;overflow:auto}
+.rp-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-weight:700;font-size:13.5px}.rp-h a{font-weight:500;font-size:12.5px;color:var(--accent);white-space:nowrap}
+.rp-tx{margin:6px 0 8px;font-size:14.5px;line-height:1.55;min-height:2.6em;cursor:text;white-space:pre-wrap}
+.rp-ac{display:flex;gap:6px;flex-wrap:wrap}
+.rp-fonte{font-size:11.5px;color:var(--muted);margin-top:6px}
+.rp-st{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--muted);margin:2px 0}
+.rp-pulso{width:9px;height:9px;border-radius:50%;background:#b7791f;animation:rpP 1s ease-in-out infinite}
+@keyframes rpP{50%{opacity:.25;transform:scale(.7)}}
+.rp-dlg{border-top:4px solid var(--accent)}
 .dlg-arrasta h3,.dlg-arrasta .ex-termo{cursor:move}
 .ex-termo{font-weight:700;font-size:16.5px;margin-top:2px;word-break:break-word}
 .ex-lapis{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px}.ex-lapis:hover{color:var(--ink)}
@@ -1960,14 +1971,79 @@ function pedidoExplica(termo,k,ctx){
   return `Explique de forma curta e didática, em português do Brasil, o termo abaixo, no contexto do curso "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE)${k&&DK[k]?`, disciplina "${nomeDisc(k)}"`:""}.\n\nTermo: "${termo}"\n${ctx&&normT(ctx)!==normT(termo)?`Trecho da anotação onde aparece: "${ctx}"\n`:""}\nResponda em 2 a 5 frases: o que é; se for sigla, o significado; e um exemplo prático de uso no QGIS ou na segurança pública. Sem introdução e sem títulos.`;
 }
 window.FORMATO_EXPLICA={ dica:dicaExplica, abrir:o=>abrirExplica(o) };
+/* Pesquisa/explicação rápida: trecho conceitual da Wikipédia em português (API aberta, com fonte e link),
+   escolhendo o resultado mais ligado ao curso (cartografia, geoprocessamento, segurança). */
+const RAP_CACHE={};
+const RAP_DOM=/cartogra|geod[eé]s|geogr[aá]f|mapa|georrefer|coordenad|proje[cç][aã]o|\bsig\b|geoprocess|sat[eé]lit|sensoriament|vetor|raster|camada|software|seguran[cç]a|crim|pol[ií]cia|estat[ií]stic|dados|topogra|gps|altitude|latitude|longitude/i;
+async function rapCandidatos(termo){
+  const n=normT(termo); if(RAP_CACHE[n]) return RAP_CACHE[n];
+  const r=await fetch("https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch="+encodeURIComponent(termo)+"&srlimit=8&srprop=snippet&format=json&origin=*");
+  if(!r.ok) throw new Error("A busca rápida não respondeu (HTTP "+r.status+").");
+  const j=await r.json(), rs=(j.query&&j.query.search)||[];
+  const l=rs.map((x,i)=>{ const sn=String(x.snippet||"").replace(/<[^>]+>/g,""); let p=8-i; if(normT(x.title)===n) p+=4; if(RAP_DOM.test(x.title+" "+sn)) p+=3; if(/desambigua/i.test(x.title)) p-=10; return {t:x.title,p}; }).sort((a,b)=>b.p-a.p).map(x=>x.t);
+  return (RAP_CACHE[n]=l);
+}
+async function rapResumo(titulo){
+  const r=await fetch("https://pt.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(titulo.replace(/ /g,"_"))); if(!r.ok) return null;
+  const j=await r.json(); if(!j||j.type==="disambiguation"||!(j.extract||"").trim()) return null;
+  return {titulo:j.title, texto:j.extract.trim(), url:(j.content_urls&&j.content_urls.desktop&&j.content_urls.desktop.page)||("https://pt.wikipedia.org/wiki/"+encodeURIComponent(titulo))};
+}
+async function rapBuscar(termo,desde){ const l=await rapCandidatos(termo); for(let i=desde||0;i<l.length;i++){ const x=await rapResumo(l[i]).catch(()=>null); if(x) return {...x,i,total:l.length}; } return null; }
+// Mostra o resultado numa caixa, "digitando". opc: {usar(texto,res), rotuloUsar, extra(res)=>html, aoMudar()}
+function caixaRapida(box,termo,opc){
+  const doc=box.ownerDocument; let i=0, tm=null, res=null;
+  const parar=()=>{ if(tm){ clearInterval(tm); tm=null; } };
+  async function ir(desde){
+    parar(); box.hidden=false; box.innerHTML=`<div class="rp-st"><span class="rp-pulso"></span> Buscando um trecho sobre “${esc(termo)}”…</div>`; opc.aoMudar&&opc.aoMudar();
+    try{ res=await rapBuscar(termo,desde); }catch(e){ res=null; box.innerHTML=`<p class="muted rp-st">${esc(e.message||"Sem conexão.")} Use ↗ Pesquisar.</p>`; return; }
+    if(!box.isConnected) return;
+    if(!res){ box.innerHTML=`<p class="muted rp-st">${desde?"Não há outro resultado.":"Nada encontrado na busca rápida."} Use ↗ Pesquisar para ver mais.</p>${desde?`<div class="rp-ac"><button type="button" class="btn sm" data-rp="primeiro">Voltar ao primeiro</button></div>`:""}`; return; }
+    i=res.i;
+    box.innerHTML=`<div class="rp-h"><span>⚡ ${esc(res.titulo)}</span><a href="${esc(res.url)}" target="_blank" rel="noopener" title="Abrir o artigo da Wikipédia">Wikipédia ↗</a></div><p class="rp-tx" title="Clique para mostrar tudo"></p>
+      <div class="rp-ac"><button type="button" class="btn sm pri" data-rp="usar">${opc.rotuloUsar||"Usar como explicação"}</button>${res.i+1<res.total?`<button type="button" class="btn sm" data-rp="outro" title="Pode ser outro significado">Outro resultado</button>`:""}${opc.extra?opc.extra(res):""}</div>
+      <div class="rp-fonte">Trecho da Wikipédia (CC BY-SA). Confira antes de usar.</div>`;
+    const p=box.querySelector(".rp-tx"), t=res.texto, rapido=(doc.defaultView||window).matchMedia&&(doc.defaultView||window).matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(rapido){ p.textContent=t; } else { let n=0; const passo=Math.max(2,Math.ceil(t.length/90)); tm=setInterval(()=>{ n+=passo; p.textContent=t.slice(0,n); if(n>=t.length){ p.textContent=t; parar(); } },16); }
+    p.onclick=()=>{ parar(); p.textContent=t; };
+    opc.aoMudar&&opc.aoMudar();
+  }
+  box.onclick=e=>{ const b=e.target.closest("[data-rp]"); if(!b) return; e.stopPropagation();
+    if(b.dataset.rp==="outro") return ir(i+1);
+    if(b.dataset.rp==="primeiro") return ir(0);
+    if(b.dataset.rp==="usar"&&res){ parar(); opc.usar(res.texto+"\n\n_Fonte: ["+res.titulo+" — Wikipédia]("+res.url+")_", res); } };
+  ir(0);
+  return {parar};
+}
+// pesquisa rápida a partir de um <termo> no editor (popover do marcador)
+window.FORMATO_RAPIDO=o=>{
+  const doc=(o.el&&o.el.ownerDocument)||document; fecharFlashDlg(doc); fecharFlashDlg(document);
+  const k=o.el?discDoContexto(o.el):"", termo=String(o.termo||"").trim();
+  const d=doc.createElement("div"); d.id="fc-dlg"; d.className="fc-dlg-fundo";
+  d.innerHTML=`<div class="fc-dlg rp-dlg" role="dialog" aria-label="Pesquisa rápida" tabindex="-1">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:nowrap"><div style="min-width:0;flex:1"><span class="mono muted" style="font-size:12px">⚡ Pesquisa rápida</span><div class="ex-termo">${esc(termo)}</div></div><button type="button" class="btn sm" data-x aria-label="Fechar">✕</button></div>
+    <div class="rp-box"></div>
+    <div class="ex-acoes"><button type="button" class="btn sm" data-pc>↗ Pesquisa completa</button></div></div>`;
+  doc.body.appendChild(d);
+  const fechar=()=>{ cx&&cx.parar(); d.remove(); if(o.voltar) o.voltar(); };
+  posDlg(d,{ancora:o.el&&o.el.isConnected?o.el:null}); dlgMovel(d,"rp");
+  const cx=caixaRapida(d.querySelector(".rp-box"),termo,{rotuloUsar:o.paraExp?"Salvar como explicação (( ))":"Salvar como explicação",
+    usar:(texto)=>{ const e=acharExp(termo,k); if(e&&S.docs[e.id]&&(e.texto||"").trim()&&!confirm("Este termo já tem explicação. Trocar pela da Wikipédia?")) return;
+      if(e&&S.docs[e.id]) salvarDoc(e.id,{...S.docs[e.id],termo,texto},50); else salvarDoc("exp-"+novoId(),{tipo:"exp",termo,texto,disc:k||"",criado:Date.now()},50);
+      d.remove(); if(o.paraExp) o.paraExp(); else toast("Explicação salva."); }});
+  d.addEventListener("mousedown",e=>{ if(e.target===d) fechar(); });
+  d.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); fechar(); } });
+  d.querySelector("[data-x]").onclick=fechar;
+  d.querySelector("[data-pc]").onclick=()=>{ cx.parar(); d.remove(); if(doc===document) abrirPesquisa(termo,k); else (doc.defaultView||window).open("https://www.google.com/search?hl=pt-BR&q="+encodeURIComponent(termo),"_blank","noopener"); };
+};
 function abrirExplica(o){
   const doc=(o.el&&o.el.ownerDocument)||document; fecharFlashDlg(doc); fecharFlashDlg(document);
   const k=o.el?discDoContexto(o.el):"", podeIA=IA_OK&&logado();
-  let termo=String(o.termo||"").trim(), e=acharExp(termo,k), modo=(o.novo&&!(e&&(e.texto||"").trim()))?"editar":"ver", rascunho=null, ocupado=false;
+  let termo=String(o.termo||"").trim(), e=acharExp(termo,k), modo=(o.novo&&!(e&&(e.texto||"").trim()))?"editar":"ver", rascunho=null, ocupado=false, rapCx=null;
   const d=doc.createElement("div"); d.id="fc-dlg"; d.className="fc-dlg-fundo";
   const aviso=t=>{ if(doc===document) toast(t); else if(doc.defaultView&&doc.defaultView.toast) doc.defaultView.toast(t); };
   const fechar=()=>{ d.remove(); if(o.atualizar) o.atualizar(); if(o.voltar) o.voltar(); };
   function desenhar(){
+    if(rapCx){ rapCx.parar(); rapCx=null; }
     const tx=e&&(e.texto||"").trim();
     d.innerHTML=`<div class="fc-dlg ex-dlg" role="dialog" aria-label="Explicação de ${esc(termo)}" tabindex="-1">
       <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:nowrap"><div style="min-width:0;flex:1">
@@ -1976,10 +2052,12 @@ function abrirExplica(o){
           :`<div class="ex-termo">${esc(termo)}${o.mudouTermo?` <button type="button" class="ex-lapis" data-ex="termo" title="Corrigir o termo marcado" aria-label="Corrigir o termo">✎</button>`:""}</div>`}
       </div><button type="button" class="btn sm" data-ex="fechar" aria-label="Fechar">✕</button></div>
       ${modo==="editar"?`<label class="lb" for="ex-x" style="margin-top:8px">Explicação</label><textarea id="ex-x" rows="4" data-rich="1" data-sem-abas="1" data-leve="1" aria-label="Explicação" placeholder="O que é, para que serve, um exemplo…">${esc(rascunho!=null?rascunho:(tx||""))}</textarea>`
-        :(tx?`<div class="fc-tx ex-tx md">${md(tx)}</div>`:`<p class="muted" style="margin:10px 0">Ainda sem explicação para este termo. Escreva a sua, ${podeIA?"peça para a IA":"copie o pedido para o Claude"} ou pesquise.</p>`)}
+        :(tx?`<div class="fc-tx ex-tx md">${md(tx)}</div>`:`<p class="muted" style="margin:10px 0">Ainda sem explicação para este termo. Escreva a sua, use a ⚡ explicação rápida, ${podeIA?"peça para a IA":"copie o pedido para o Claude"} ou pesquise.</p>`)}
+      ${modo!=="editar"?`<div class="rp-box" hidden></div>`:""}
       <div class="ex-acoes">
         ${modo==="editar"?`<button type="button" class="btn sm" data-ex="cancelar">Cancelar</button><button type="button" class="btn sm pri" data-ex="salvar">Salvar</button>`:`<button type="button" class="btn sm pri" data-ex="editar">${tx?"Editar explicação":"Escrever explicação"}</button>`}
         ${podeIA?`<button type="button" class="btn sm" data-ex="ia" ${ocupado?"disabled":""}>${ocupado?"Gerando…":"✨ Explicar com IA"}</button>`:`<button type="button" class="btn sm" data-ex="pedido" title="Copia um pedido pronto: cole no app do Claude e traga a resposta em Escrever explicação">Copiar pedido p/ Claude</button>`}
+        ${modo!=="editar"?`<button type="button" class="btn sm" data-ex="rapida" title="Busca um trecho conceitual (Wikipédia) e mostra aqui">⚡ Explicação rápida</button>`:""}
         <button type="button" class="btn sm" data-ex="pesq">↗ Pesquisar</button>
         ${o.tirar?`<span class="ex-sp"></span><button type="button" class="btn sm" data-ex="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button><button type="button" class="btn sm danger" data-ex="apagar" title="Apaga o termo do texto (a explicação continua guardada)">Apagar</button>`:""}
       </div>
@@ -2020,6 +2098,8 @@ function abrirExplica(o){
     if(a==="termo"){ modo="termo"; return desenhar(); }
     if(a==="okt") return trocarTermo();
     if(a==="pedido"){ copiar(pedidoExplica(termo,k,o.contexto),"Pedido copiado: cole no app do Claude e traga a resposta em Escrever explicação."); return; }
+    if(a==="rapida"){ const box=d.querySelector(".rp-box"); if(!box) return; b.disabled=true;
+      rapCx=caixaRapida(box,termo,{rotuloUsar:(e&&(e.texto||"").trim())?"Usar no lugar da atual":"Usar como explicação", usar:(texto)=>{ rascunho=texto; modo="editar"; desenhar(); aviso("Revise e salve a explicação."); }}); return; }
     if(a==="pesq"){ d.remove(); if(doc===document&&typeof abrirPesquisa==="function") abrirPesquisa("o que é "+termo, k); else (doc.defaultView||window).open("https://www.google.com/search?hl=pt-BR&q="+encodeURIComponent("o que é "+termo),"_blank","noopener"); if(o.atualizar) o.atualizar(); return; }
     if(a==="tirar"){ o.tirar(); d.remove(); if(o.voltar) o.voltar(); return; }
     if(a==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar"; return; } o.apagar(); d.remove(); if(o.voltar) o.voltar(); return; }

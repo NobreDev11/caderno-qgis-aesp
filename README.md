@@ -136,3 +136,8 @@ Página estática única (`qgis.html`).
 - Em leitura (Materiais, Visualizar) o clique só mostra/edita a explicação. Exportação ganha a seção "Glossário (explicações)".
 - **Mudar o tipo do marcador:** nas janelinhas de `<termo>`, `{{pergunta}}` e `((termo))` (só no editor) há "Mudar para" — troca entre Pesquisa, Flashcard e Explicação mantendo o texto (`converterMarca`). Cartões e explicações já criados continuam guardados.
 - **Janelinhas de flashcard e explicação móveis (`dlgMovel`):** arrastar pelo cabeçalho; redimensionar pelo canto inferior direito (as áreas de texto crescem junto). O tamanho fica lembrado por tipo (`caderno-qgis:dlg:fc|fcv|ex`); a posição vale enquanto a janelinha estiver aberta.
+
+### ⚡ Pesquisa / explicação rápida
+- Na janelinha de `((termo))`: **⚡ Explicação rápida**; no marcador `<termo>` (editor): **⚡ Rápida**. Busca um trecho conceitual na Wikipédia em português (API aberta `w/api.php` + `rest_v1/page/summary`, sem chave), mostra "digitando" com título, link e aviso de fonte (CC BY-SA).
+- Escolhe o resultado mais ligado ao curso (`RAP_DOM`: cartografia, geodésia, coordenadas, SIG, segurança…), pula desambiguação; "Outro resultado" passa para o próximo significado.
+- "Usar como explicação" leva o trecho (com a fonte) para a edição da explicação; na pesquisa rápida, "Salvar como explicação (( ))" salva e transforma o `<termo>` em `((termo))`.
