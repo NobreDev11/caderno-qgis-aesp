@@ -259,8 +259,8 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
 .flut .fl-mlist button{display:flex;gap:8px;align-items:center;text-align:left;border:1px solid transparent;background:transparent;color:var(--ink);border-radius:7px;padding:5px 6px;font:500 13px var(--body);cursor:pointer}
 .flut .fl-mlist button:hover{background:var(--accent-soft);border-color:var(--line)}
 .flut .fl-mt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.flut .fl-vh{flex:none;padding:6px 8px 0}
-.flut .fl-ver{flex:1 1 0;min-height:0;margin:6px 8px 8px}
+.flut .fl-ver{flex:1.5 1 0;min-height:160px;margin:4px 8px 8px}
+.flut .fl-mlist button.on{background:var(--accent-soft);border-color:var(--accent)}
 .flut .fl-ver [data-mvx="cheio"]{display:none}
 .flut .fl-ver .mv-corpo{flex:1 1 0;min-height:0;max-height:none;display:flex;flex-direction:column;padding:6px}
 .flut .fl-ver .mv-pdf{flex:1 1 0;min-height:240px;display:flex}
@@ -352,6 +352,12 @@ details.mat-g{margin-top:6px}details.mat-g>summary{cursor:pointer;margin:6px 0 4
 details.mat-g>summary::-webkit-details-marker{display:none}
 details.mat-g>summary::before{content:"▸";color:var(--muted);width:10px}details.mat-g[open]>summary::before{content:"▾"}
 details.mat-g>summary:hover{color:var(--ink)}
+.nota-mats{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+.nm-tog{border:0;background:transparent;color:var(--muted);font:600 13px var(--body);cursor:pointer;padding:2px 0;display:flex;gap:6px;align-items:center}.nm-tog:hover{color:var(--ink)}
+.nm-list{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.nm-it{display:inline-flex;gap:6px;align-items:center;max-width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:4px 12px;font:500 13px var(--body);cursor:pointer}
+.nm-it:hover{border-color:var(--accent)}.nm-it.on{border-color:var(--accent);background:var(--accent-soft)}
+.nm-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
 .mat-li{display:flex;gap:6px;align-items:stretch}.mat-li>.ni{flex:1;min-width:0}.mat-li>.btn{align-self:center}
 .mat-ver{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:6px 0 10px;overflow:hidden;display:flex;flex-direction:column}
 .mv-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
@@ -841,7 +847,7 @@ function vHoje(){
       <div class="d">${esc(nomeDisc(foco.k))}</div>
       <div class="muted">${DK[foco.k].inst.map(esc).join(" · ")}</div>
       <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida desta aula</label>${info("rapida")}</div>
-      <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. É uma anotação só para toda a disciplina; salva sozinho.">${esc(notaDaAula(foco.id))}</textarea>${acoesNotaHTML(foco.k, foco.id)}</div>
+      <textarea id="qnota" data-qaula="${foco.id}" placeholder="Digite enquanto o instrutor explica. É uma anotação só para toda a disciplina; salva sozinho.">${esc(notaDaAula(foco.id))}</textarea>${acoesNotaHTML(foco.k, foco.id)}${notaMatsHTML(foco.k,"q:"+foco.k)}</div>
       <div class="row" style="margin-top:8px"><button class="btn sm" data-aula="${foco.id}">Abrir aula</button><button class="btn sm" data-go="disciplinas" data-disc="${foco.k}">Ver disciplina</button><button class="btn sm" data-flabrir="${foco.id}">Bloco flutuante</button> ${info("flutuante")}<button class="btn sm" data-tmabrir>⏱ Temporizador</button></div>
     </div>` : `<div class="card"><p class="muted" style="margin:0">Nenhuma aula pela frente.</p></div>`;
 
@@ -897,7 +903,7 @@ function vDisciplinas(){
       <div style="margin:10px 0 4px">${barraMarcos(aulas,x.cor)}</div>
       <div class="dbody" id="db-${x.k}" ${ab?"":"hidden"}><div class="grid2" style="margin-top:10px">
         <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
-          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea>${acoesNotaHTML(x.k)}</div>
+          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea>${acoesNotaHTML(x.k)}${notaMatsHTML(x.k,"c:"+x.k)}</div>
         <div class="notes">
           <details class="sec" data-sec="pres-${x.k}" ${secAberta("pres-"+x.k)?"open":""}><summary><span class="lb" style="margin:0">Presença (${anot.length} de ${aulas.length})</span>${info("discaulas")}</summary>
           <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
@@ -949,17 +955,27 @@ async function carregarPdfVer(el){
     if(box.isConnected) box.innerHTML=`<iframe src="${url}#view=FitH" title="PDF"></iframe>`; }
   catch(e){ box.innerHTML=`<p class="muted" style="margin:10px">Não consegui abrir o PDF aqui (${esc(e.message||"erro")}). Use “Abrir no navegador”.</p>`; }
 }
-function mostrarVerMat(k){ const slot=document.querySelector(`[data-mvslot="${k}"]`); if(!slot) return; slot.innerHTML=verMatHTML(k); const el=slot.firstElementChild; if(el){ carregarPdfVer(el); } }
+/* Materiais logo abaixo da área de anotação (cartão da disciplina, Hoje e painel da aula): lista recolhível + visualizador */
+const NM_AB={};
+function notaMatsHTML(k,slot){
+  const ms=mats().filter(m=>m.disc===k);
+  return `<div class="nota-mats" data-nm="${slot}" data-nmk="${k}"><button type="button" class="nm-tog" data-nmtog="${slot}" aria-expanded="${!!NM_AB[slot]}"><span>${NM_AB[slot]?"▾":"▸"}</span> Materiais da disciplina <span class="mono muted">${ms.length}</span></button>
+    ${NM_AB[slot]?`<div class="nm-list">${ms.length?ms.map(m=>`<button type="button" class="nm-it${MAT_VER[slot]===m.id?" on":""}" data-matver="${m.id}" data-k="${slot}" title="${m.origem==="link"&&!(m.arquivos||[]).length?"Abre o link na Pesquisa da disciplina":"Abre aqui embaixo da anotação"}"><span aria-hidden="true">${icoMat(m)}</span><span class="nm-t">${esc(m.titulo||"Material")}</span></button>`).join(""):`<span class="muted" style="font-size:12.5px">Nenhum material desta disciplina ainda.</span>`}</div>`:""}
+    <div data-mvslot="${slot}">${verMatHTML(slot)}</div></div>`;
+}
+function redesenharNM(slot){ document.querySelectorAll(`[data-nm="${slot}"]`).forEach(el=>{ el.outerHTML=notaMatsHTML(el.dataset.nmk,slot); }); document.querySelectorAll(`[data-nm="${slot}"] .mat-ver`).forEach(carregarPdfVer); }
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-nmtog]"); if(!b) return; const sl=b.dataset.nmtog; NM_AB[sl]=!NM_AB[sl]; redesenharNM(sl); });
+function mostrarVerMat(k){ if(document.querySelector(`[data-nm="${k}"]`)){ redesenharNM(k); return; } const slot=document.querySelector(`[data-mvslot="${k}"]`); if(!slot) return; slot.innerHTML=verMatHTML(k); const el=slot.firstElementChild; if(el){ carregarPdfVer(el); } }
 document.addEventListener("click",e=>{
   const ab=e.target.closest&&e.target.closest("[data-matver]");
   if(ab){ const id=ab.dataset.matver, m=S.docs[id], k=ab.dataset.k;
-    if(m&&m.origem==="link"&&m.url&&!(m.arquivos||[]).length){ abrirPesquisa(m.url,k); return; } // link: abre na Pesquisa da disciplina
+    if(m&&m.origem==="link"&&m.url&&!(m.arquivos||[]).length){ abrirPesquisa(m.url,m.disc||k); return; } // link: abre na Pesquisa da disciplina
     MAT_VER[k]=MAT_VER[k]===id?null:id; MV_BLOB[k+":sel"]=0; mostrarVerMat(k); document.querySelector(`[data-mvslot="${k}"]`)?.scrollIntoView({behavior:"smooth",block:"nearest"}); return; }
   const mv=e.target.closest&&e.target.closest(".mat-ver:not(.fl-ver)"); if(!mv) return; const k=mv.dataset.mv;
   const b=e.target.closest("[data-mvx],[data-mvpdf],[data-mvlink]");
   if(!b){ const im=e.target.closest(".mv-fotos img[src]"); if(im&&window.FORMATO) FORMATO.ampliar(im); return; }
   if(b.dataset.mvpdf!==undefined){ MV_BLOB[k+":sel"]=+b.dataset.mvpdf; mostrarVerMat(k); return; }
-  if(b.dataset.mvlink){ abrirPesquisa(b.dataset.mvlink,k); return; }
+  if(b.dataset.mvlink){ abrirPesquisa(b.dataset.mvlink,(mv.closest("[data-nmk]")||{dataset:{}}).dataset.nmk||k); return; }
   const op=b.dataset.mvx;
   if(op==="fechar"){ if(mv.classList.contains("cheio")){ mv.classList.remove("cheio"); document.body.style.overflow=""; } MAT_VER[k]=null; mostrarVerMat(k); return; }
   if(op==="cheio"){ const on=mv.classList.toggle("cheio"); document.body.style.overflow=on?"hidden":""; b.textContent=on?"⤡ Reduzir":"⛶ Expandir"; return; }
@@ -1265,7 +1281,7 @@ function renderPane(){
           <button class="btn sm" data-fxnovo title="Inserir um fluxograma na anotação">Fluxograma</button>
           <button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button>
         </div>
-        ${PANE.prev? `<div class="md">${md(notaDaAula(a.id))}</div>` : `<div class="row" style="gap:6px"><label class="lb" for="pnota" style="margin:0">Anotações de ${esc(nomeDisc(a.k))} (uma para todas as aulas do tema)</label>${info("markdown")}</div><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(notaDaAula(a.id))}</textarea>${acoesNotaHTML(a.k, a.id)}`}
+        ${PANE.prev? `<div class="md">${md(notaDaAula(a.id))}</div>` : `<div class="row" style="gap:6px"><label class="lb" for="pnota" style="margin:0">Anotações de ${esc(nomeDisc(a.k))} (uma para todas as aulas do tema)</label>${info("markdown")}</div><textarea id="pnota" placeholder="O que foi visto, comandos, atalhos, camadas usadas, dúvidas…">${esc(notaDaAula(a.id))}</textarea>${acoesNotaHTML(a.k, a.id)}${notaMatsHTML(a.k,"p:"+a.k)}`}
         <div class="row" style="justify-content:space-between">
           <button class="btn sm" ${i>0?`data-aula="${AULAS[i-1].id}"`:"disabled"}>← Aula anterior</button>
           <button class="btn sm" ${i<79?`data-aula="${AULAS[i+1].id}"`:"disabled"}>Próxima aula →</button>
@@ -2096,25 +2112,25 @@ function htmlFlutuante(){
     ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
     ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: o QGIS ou os slides)" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
-   ${FL.min?"":FL.mat&&S.docs[FL.mat]&&!S.docs[FL.mat].apagado?flVerHTML():`<textarea id="fl-txt" aria-label="Anotações da disciplina" placeholder="Anote aqui durante a aula. Uma anotação para a disciplina toda; salva sozinho.">${esc(notaDaAula(a.id))}</textarea>
+   ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações da disciplina" placeholder="Anote aqui durante a aula. Uma anotação para a disciplina toda; salva sozinho.">${esc(notaDaAula(a.id))}</textarea>
    <div class="fl-p"><span class="mono" title="${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}">${fmtData(a.data)} ${a.ini}–${a.fim} · salva sozinho</span><button type="button" class="btn sm pri" data-flsalvar title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button></div>
-   ${flMatsHTML(a.k)}`}`;
+   ${flMatsHTML(a.k)}${FL.mat&&S.docs[FL.mat]&&!S.docs[FL.mat].apagado?flVerHTML():""}`}`;
 }
 /* Materiais dentro do bloco de anotações (e da janela por cima): lista embaixo da nota; "abrir" troca a nota pelo material */
 const icoMat = m => ({arquivo:"📄",fotos:"🖼",link:"🔗",texto:"📝",nota:"🗒"}[m.origem]||"📄");
 function flMatsHTML(k){
   const ms=mats().filter(m=>m.disc===k);
   return `<div class="fl-mats"><button type="button" class="fl-mtog" data-flmats aria-expanded="${!!FL.matsAberto}"><span>${FL.matsAberto?"▾":"▸"}</span> Materiais da disciplina <span class="mono muted">${ms.length}</span></button>
-    ${FL.matsAberto?`<div class="fl-mlist">${ms.length?ms.map(m=>`<button type="button" data-flmat="${m.id}" title="${m.origem==="link"&&!(m.arquivos||[]).length?"Abre o link no navegador":"Abre aqui no bloco"}"><span aria-hidden="true">${icoMat(m)}</span><span class="fl-mt">${esc(m.titulo||"Material")}</span></button>`).join(""):`<span class="muted" style="font-size:12.5px;padding:4px 2px">Nenhum material desta disciplina ainda.</span>`}</div>`:""}</div>`;
+    ${FL.matsAberto?`<div class="fl-mlist">${ms.length?ms.map(m=>`<button type="button" data-flmat="${m.id}" class="${FL.mat===m.id?"on":""}" title="${m.origem==="link"&&!(m.arquivos||[]).length?"Abre o link no navegador":"Abre aqui embaixo da anotação"}"><span aria-hidden="true">${icoMat(m)}</span><span class="fl-mt">${esc(m.titulo||"Material")}</span></button>`).join(""):`<span class="muted" style="font-size:12.5px;padding:4px 2px">Nenhum material desta disciplina ainda.</span>`}</div>`:""}</div>`;
 }
 function flVerHTML(){
   MAT_VER.fl=FL.mat;
-  return `<div class="fl-vh"><button type="button" class="btn sm" data-flvoltar title="Voltar para as anotações">← Anotações</button></div>`+verMatHTML("fl").replace('class="mat-ver"','class="mat-ver fl-ver"');
+  return verMatHTML("fl").replace('class="mat-ver"','class="mat-ver fl-ver"');
 }
 function flAbrirMat(id,doc){
   const m=S.docs[id]; if(!m) return;
   if(m.origem==="link"&&m.url&&!(m.arquivos||[]).length){ (doc&&doc.defaultView||window).open(m.url,"_blank","noopener"); return; }
-  flushTudo(); MV_BLOB["fl:sel"]=0; FL.mat=id;
+  flushTudo(); MV_BLOB["fl:sel"]=0; if(FL.mat===id){ flFecharMat(); return; } FL.mat=id; FL.matsAberto=false;
   // fica confortável: o bloco cresce enquanto o material estiver aberto (e volta ao tamanho de antes)
   if(!FL.tamAntes) FL.tamAntes={w:FL.w,h:FL.h};
   if(PIP&&!PIP.closed){ try{ PIP.resizeTo(Math.max(PIP.outerWidth,Math.min(900,screen.availWidth-40)),Math.max(PIP.outerHeight,Math.min(860,screen.availHeight-60))); }catch(e){} }
@@ -2789,7 +2805,8 @@ function render(){
   const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,projetos:vProjetos,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_notas.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
-  if(VIEW==="disciplinas"){ montarNavs(); document.querySelectorAll(".mat-ver").forEach(carregarPdfVer); }
+  if(VIEW==="disciplinas") montarNavs();
+  document.querySelectorAll("main .mat-ver").forEach(carregarPdfVer);
   if(VIEW==="projetos") document.querySelectorAll(".pj-auto").forEach(autoAltura);
   sincronizarFlutuante();
 }
