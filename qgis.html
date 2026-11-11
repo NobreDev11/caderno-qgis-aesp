@@ -331,6 +331,17 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pr-lb{position:fixed;inset:0;z-index:90;background:rgb(0 0 0 / .82);display:grid;place-items:center;cursor:zoom-out}
 .pr-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5)}
 .pr-lb button{position:fixed;top:14px;right:16px;border:0;border-radius:50%;width:36px;height:36px;background:rgb(255 255 255 / .9);font-size:16px;cursor:pointer}
+.mat-li{display:flex;gap:6px;align-items:stretch}.mat-li>.ni{flex:1;min-width:0}.mat-li>.btn{align-self:center}
+.mat-ver{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:6px 0 10px;overflow:hidden;display:flex;flex-direction:column}
+.mv-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+.mv-bar strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mv-corpo{padding:10px;max-height:70vh;overflow:auto}
+.mv-pdf iframe{width:100%;height:62vh;border:0;border-radius:8px;background:#fff}
+.mv-fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px}
+.mv-fotos img{width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:var(--bg)}
+.mv-tx{font-size:15px}.mv-res{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.mat-ver.cheio{position:fixed;inset:12px;z-index:70;margin:0;box-shadow:0 20px 60px rgb(0 0 0 / .35)}
+.mat-ver.cheio .mv-corpo{max-height:none;flex:1}.mat-ver.cheio .mv-pdf iframe{height:calc(100vh - 120px)}
 .pr-comp{margin-top:12px;border:1px dashed var(--accent);border-radius:9px;padding:8px 10px;background:var(--accent-soft)}
 .pr-seq{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:8px;margin:6px 0;overflow:auto;max-height:520px}
 .pr-tog{border:0;background:transparent;padding:0;font:600 13px var(--body);color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}.pr-tog:hover{color:var(--ink)}.pr-seta{width:10px;display:inline-block}
@@ -886,10 +897,56 @@ function vDisciplinas(){
 let SECOES={}; try{ SECOES=JSON.parse(localStorage.getItem("caderno-qgis:secoes")||"{}")||{}; }catch(e){}
 const secAberta = id => SECOES[id]!==false;
 document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.sec) return; SECOES[d.dataset.sec]=d.open; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(x){} if(d.open&&d.dataset.sec.startsWith("nav-")) montarNavs(); },true);
+/* "Abrir" um material dentro do cartão da disciplina (como a Pesquisa): PDF, fotos, texto/nota; link abre na Pesquisa */
+const MAT_VER={}, MV_BLOB={};
+function verMatHTML(k){
+  const id=MAT_VER[k], m=id&&S.docs[id]; if(!m||m.apagado) return "";
+  const t=mtx(id), arqs=m.arquivos||[], pdfs=arqs.filter(a=>a.mime==="application/pdf"), fotos=arqs.filter(a=>(a.mime||"").startsWith("image/"));
+  const sel=Math.min(+(m._pdfSel||0),Math.max(0,pdfs.length-1));
+  let corpo="";
+  if(pdfs.length) corpo+=`${pdfs.length>1?`<div class="row" style="gap:6px;margin-bottom:6px">${pdfs.map((a,i)=>`<button type="button" class="btn sm${i===(MV_BLOB[k+":sel"]||0)?" pri":""}" data-mvpdf="${i}">${esc(a.nome||"PDF "+(i+1))}</button>`).join("")}</div>`:""}<div class="mv-pdf" data-mvpath="${esc(pdfs[MV_BLOB[k+":sel"]||0].path)}"><p class="muted" style="margin:10px">Abrindo o PDF…</p></div>`;
+  const imgs=[...fotos.map(a=>`<img class="md-img" data-sb="${esc(a.path)}" alt="${esc(a.nome||"foto")}">`),...(t.imgs||[]).map(u=>u.startsWith("sb:")?`<img class="md-img" data-sb="${esc(u.slice(3))}" alt="foto">`:`<img class="md-img" src="${esc(u)}" alt="foto">`)];
+  if(imgs.length) corpo+=`<div class="mv-fotos">${imgs.join("")}</div>`;
+  if(!pdfs.length&&(t.texto||"").trim()) corpo+=`<div class="md mv-tx">${md(t.texto)}</div>`;
+  if(m.resumo) corpo+=`<details class="mv-res"${pdfs.length||imgs.length||(t.texto||"").trim()?"":" open"}><summary><b>Resumo</b></summary><div class="md">${md(m.resumo)}</div></details>`;
+  if((m.links||[]).length) corpo+=`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${m.links.map(l=>`<button type="button" class="btn sm" data-mvlink="${esc(l.url)}">🔗 ${esc(l.titulo||l.url.replace(/^https?:\/\//,"").slice(0,40))}</button>`).join("")}</div>`;
+  if(!corpo) corpo=`<p class="muted" style="margin:10px">Este material não tem conteúdo para mostrar aqui. Use “Detalhes”.</p>`;
+  return `<div class="mat-ver" data-mv="${k}">
+    <div class="mv-bar"><strong>${esc(m.titulo||"Material")}</strong>
+      <span class="row" style="gap:6px">${pdfs.length?`<button type="button" class="btn sm" data-mvx="navegador" title="Abrir o PDF numa aba do navegador">Abrir no navegador</button>`:""}<button type="button" class="btn sm" data-mat="${id}" title="Resumo, questões, flashcards e anexos">Detalhes</button><button type="button" class="btn sm" data-mvx="cheio">⛶ Expandir</button><button type="button" class="btn sm" data-mvx="fechar" aria-label="Fechar">✕</button></span></div>
+    <div class="mv-corpo">${corpo}</div></div>`;
+}
+async function carregarPdfVer(el){
+  const box=el.querySelector(".mv-pdf"); if(!box||box.dataset.ok) return; box.dataset.ok="1"; const path=box.dataset.mvpath;
+  if(!logado()||!navigator.onLine){ box.innerHTML='<p class="muted" style="margin:10px">Para abrir o PDF aqui é preciso estar logado e com internet.</p>'; return; }
+  try{ let url=MV_BLOB[path];
+    if(!url){ const {data,error}=await S.sb.storage.from("caderno").createSignedUrl(path,3600); if(error) throw error; const r=await fetch(data.signedUrl); if(!r.ok) throw new Error("HTTP "+r.status);
+      url=MV_BLOB[path]=URL.createObjectURL(new Blob([await r.arrayBuffer()],{type:"application/pdf"})); }
+    if(box.isConnected) box.innerHTML=`<iframe src="${url}#view=FitH" title="PDF"></iframe>`; }
+  catch(e){ box.innerHTML=`<p class="muted" style="margin:10px">Não consegui abrir o PDF aqui (${esc(e.message||"erro")}). Use “Abrir no navegador”.</p>`; }
+}
+function mostrarVerMat(k){ const slot=document.querySelector(`[data-mvslot="${k}"]`); if(!slot) return; slot.innerHTML=verMatHTML(k); const el=slot.firstElementChild; if(el){ carregarPdfVer(el); } }
+document.addEventListener("click",e=>{
+  const ab=e.target.closest&&e.target.closest("[data-matver]");
+  if(ab){ const id=ab.dataset.matver, m=S.docs[id], k=ab.dataset.k;
+    if(m&&m.origem==="link"&&m.url&&!(m.arquivos||[]).length){ abrirPesquisa(m.url,k); return; } // link: abre na Pesquisa da disciplina
+    MAT_VER[k]=MAT_VER[k]===id?null:id; MV_BLOB[k+":sel"]=0; mostrarVerMat(k); document.querySelector(`[data-mvslot="${k}"]`)?.scrollIntoView({behavior:"smooth",block:"nearest"}); return; }
+  const mv=e.target.closest&&e.target.closest(".mat-ver"); if(!mv) return; const k=mv.dataset.mv;
+  const b=e.target.closest("[data-mvx],[data-mvpdf],[data-mvlink]");
+  if(!b){ const im=e.target.closest(".mv-fotos img[src]"); if(im&&window.FORMATO) FORMATO.ampliar(im); return; }
+  if(b.dataset.mvpdf!==undefined){ MV_BLOB[k+":sel"]=+b.dataset.mvpdf; mostrarVerMat(k); return; }
+  if(b.dataset.mvlink){ abrirPesquisa(b.dataset.mvlink,k); return; }
+  const op=b.dataset.mvx;
+  if(op==="fechar"){ if(mv.classList.contains("cheio")){ mv.classList.remove("cheio"); document.body.style.overflow=""; } MAT_VER[k]=null; mostrarVerMat(k); return; }
+  if(op==="cheio"){ const on=mv.classList.toggle("cheio"); document.body.style.overflow=on?"hidden":""; b.textContent=on?"⤡ Reduzir":"⛶ Expandir"; return; }
+  if(op==="navegador"){ const p=mv.querySelector(".mv-pdf"); if(p) abrirArquivo(p.dataset.mvpath); return; }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ const c=document.querySelector(".mat-ver.cheio"); if(c){ c.classList.remove("cheio"); document.body.style.overflow=""; const b=c.querySelector('[data-mvx="cheio"]'); if(b) b.textContent="⛶ Expandir"; } } });
 function matSecHTML(k){ const ms=mats().filter(m=>m.disc===k), ns=ms.filter(m=>m.origem==="nota"), as=ms.filter(m=>m.origem!=="nota");
-  const grupo=(t,xs)=>xs.length?`<div class="mat-g"><span class="lb" style="margin:6px 0 4px">${t} (${xs.length})</span>${xs.map(matItem).join("")}</div>`:"";
-  return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div>`+(ms.length?grupo("Arquivos e links",as)+grupo("Notas salvas",ns):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
-function atualizarMatSec(k){ const el=document.querySelector(`[data-matsec="${k}"]`); if(el) el.innerHTML=matSecHTML(k); const c=document.querySelector(`[data-matcont="${k}"]`); if(c) c.textContent=`Materiais (${mats().filter(m=>m.disc===k).length})`; }
+  const linha=m=>`<div class="mat-li">${matItem(m)}<button type="button" class="btn sm${MAT_VER[k]===m.id?" pri":""}" data-matver="${m.id}" data-k="${k}" title="${m.origem==="link"&&!(m.arquivos||[]).length?"Abre o link na Pesquisa desta disciplina":"Abre o material aqui dentro do cartão"}">${MAT_VER[k]===m.id?"Aberto":"Abrir"}</button></div>`;
+  const grupo=(t,xs)=>xs.length?`<div class="mat-g"><span class="lb" style="margin:6px 0 4px">${t} (${xs.length})</span>${xs.map(linha).join("")}</div>`:"";
+  return `<div class="row" style="justify-content:flex-end;margin:4px 0"><button class="btn sm" data-addmat="${k}">Adicionar</button></div><div data-mvslot="${k}">${verMatHTML(k)}</div>`+(ms.length?grupo("Arquivos e links",as)+grupo("Notas salvas",ns):'<p class="empty" style="padding:4px 0">Nenhum material desta disciplina.</p>'); }
+function atualizarMatSec(k){ const el=document.querySelector(`[data-matsec="${k}"]`); if(el){ el.innerHTML=matSecHTML(k); const v=el.querySelector(".mat-ver"); if(v) carregarPdfVer(v); } const c=document.querySelector(`[data-matcont="${k}"]`); if(c) c.textContent=`Materiais (${mats().filter(m=>m.disc===k).length})`; }
 
 /* ---- Mininavegador de pesquisa (por disciplina) ----
    Pesquisa no Google (modo que permite abrir dentro de página) ou abre um link. O elemento fica guardado
@@ -2632,7 +2689,7 @@ function render(){
   const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,projetos:vProjetos,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_notas.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
-  if(VIEW==="disciplinas") montarNavs();
+  if(VIEW==="disciplinas"){ montarNavs(); document.querySelectorAll(".mat-ver").forEach(carregarPdfVer); }
   if(VIEW==="projetos") document.querySelectorAll(".pj-auto").forEach(autoAltura);
   sincronizarFlutuante();
 }
