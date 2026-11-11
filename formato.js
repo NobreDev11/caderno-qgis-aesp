@@ -213,7 +213,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function barra(doc,ta){
     const pip=doc!==document, semDest=pip||!window.FORMATO_DESTACAR||!ta||ta.id==="fl-txt"||ta.dataset.rich;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)&&!(ta&&ta.dataset.leve&&/^(flx|cheia|dest|fla|mrc)$/.test(k))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){

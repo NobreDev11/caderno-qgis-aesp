@@ -124,3 +124,7 @@ Página estática única (`qgis.html`).
 - Guardado por caderno (`LS_MARCOS`: dono e convidado separados no mesmo navegador).
 - Aparece também dentro da janela por cima / janela comum; responder em uma some nas duas.
 - Opcional: 🔔 aviso do sistema (Notification) quando o caderno está em segundo plano.
+
+### Flashcard com formatação
+- Janela de novo/editar flashcard: Frente e Verso usam o mesmo editor das anotações (negrito, marca-texto, listas, sublistas, código, link, `<termo>`, imagem, tabela, revisão), via `data-rich data-sem-abas data-leve` (sem fluxograma, tela cheia, destacar e `{{}}`).
+- O cartão em Estudar e a janelinha do marcador mostram a formatação; a lista de cartões mostra texto simples (`mdPlano`).
