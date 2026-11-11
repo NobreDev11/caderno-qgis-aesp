@@ -84,7 +84,7 @@ try{ MARC=JSON.parse(localStorage.getItem(LS)||"{}"); REC=JSON.parse(localStorag
 const sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:"caderno-pratica-pub"}});
 function blocos(p){ if(Array.isArray(p.blocos)) return p.blocos; const pa=p.passos||[]; return pa.length?[{id:"b0",titulo:"Parte 1",passos:pa}]:[]; }
 // Markdown do caderno → HTML (mesmo conversor das anotações), sem fluxogramas nem marcadores
-function mdHtml(t){ t=String(t||"").replace(/^\s*!\[[^\]]*\]\(fx:[^)]+\)\s*$/gm,"_(fluxograma no caderno)_").replace(/\{\{([^{}\n]+)\}\}/g,"$1");
+function mdHtml(t){ t=String(t||"").replace(/^\s*!\[[^\]]*\]\(fx:[^)]+\)\s*$/gm,"_(fluxograma no caderno)_").replace(/\{\{([^{}\n]+)\}\}/g,"$1").replace(/\(\(([^()\n]+)\)\)/g,"$1");
   let h=window.FORMATO&&FORMATO.mdParaHtml?FORMATO.mdParaHtml(t):esc(t).replace(/\n/g,"<br>");
   return h.replace(/data-sb=/g,"data-pubsb=").replace(/contenteditable="false"/g,""); }
 const imgTag=u=>u.startsWith("sb:")?`<img data-pubsb="${esc(u.slice(3))}" alt="imagem">`:`<img src="${esc(u)}" alt="imagem">`;

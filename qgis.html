@@ -411,6 +411,11 @@ details.mat-g>summary:hover{color:var(--ink)}
 .fc-dlg{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgb(0 0 0 / .3);padding:16px;width:min(520px,100%);display:flex;flex-direction:column}
 .fc-dlg textarea{width:100%;resize:vertical}
 .fc-dlg{width:min(620px,100%)}
+.ex-dlg{border-top:4px solid #b7791f}
+.ex-termo{font-weight:700;font-size:16.5px;margin-top:2px;word-break:break-word}
+.ex-lapis{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px}.ex-lapis:hover{color:var(--ink)}
+.ex-tx{margin:8px 0 4px;max-height:min(40vh,320px);overflow:auto;font-size:15px}
+.ex-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}.ex-acoes .ex-sp{flex:1}
 .fc-dlg .wys{min-height:64px;max-height:min(32vh,260px);overflow:auto}
 .fc-dlg .fmt{margin-top:2px}
 .fc-dlg-fundo.ancorado{background:transparent;display:block;padding:0}
@@ -719,7 +724,7 @@ const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">
 function md(src){
   const linhas=String(src||"").split("\n"); let out="", lista=false, nfx=0;
   const fechar=()=>{ if(lista){ out+=`</${lista}>`; lista=false; } }, abrir=t=>{ if(lista!==t){ fechar(); out+=`<${t}>`; lista=t; } };
-  const inl=t=>esc(t).replace(/&lt;([^\s<>&](?:[^<>\n]{0,90}?[^\s<>])?)&gt;/g,(x,q)=>`<button type="button" class="pesq" data-q="${q}" title="Pesquisar">${q}</button>`).replace(/\{\{([^{}\n]{1,200}?)\}\}/g,(x,q)=>`<button type="button" class="fcm" data-fc="${q.trim()}" title="Flashcard">${q.trim()}</button>`).replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}" loading="lazy" referrerpolicy="no-referrer">`).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>").replace(/==([^=]+)==/g,"<mark>$1</mark>")
+  const inl=t=>esc(t).replace(/&lt;([^\s<>&](?:[^<>\n]{0,90}?[^\s<>])?)&gt;/g,(x,q)=>`<button type="button" class="pesq" data-q="${q}" title="Pesquisar">${q}</button>`).replace(/\{\{([^{}\n]{1,200}?)\}\}/g,(x,q)=>`<button type="button" class="fcm" data-fc="${q.trim()}" title="Flashcard">${q.trim()}</button>`).replace(/\(\(([^()\n]{1,120}?)\)\)/g,(x,q)=>`<button type="button" class="exm" data-ex="${q.trim()}" title="${esc(dicaExplica(q.trim())||"Explicação: clique para ver ou escrever")}">${q.trim()}</button>`).replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}" loading="lazy" referrerpolicy="no-referrer">`).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g,"$1<em>$2</em>").replace(/==([^=]+)==/g,"<mark>$1</mark>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
   for(let i=0;i<linhas.length;i++){ const l=linhas[i];
@@ -1265,6 +1270,7 @@ function exportarMD(){
   if(soltas.length){ o+=`## Notas gerais\n\n`; soltas.forEach(n=>{o+=`### ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;}); }
   projetos().forEach(p=>{ o+=projetoMD(p).replace(/^### /gm,"#### ").replace(/^## /gm,"### ").replace(/^# /,"## Projeto: ")+"\n"; });
   const prs=praticas(); if(prs.length){ o+=`## Práticas\n\n`; DISC.forEach(d=>{ const xs=prs.filter(p=>p.disc===d.k); if(xs.length) o+=`#### ${nomeDisc(d.k)}\n\n`+xs.map(p=>praticaMD(p).replace(/^### /,"##### ")).join("\n")+"\n"; }); }
+  const exs=explicacoes().filter(e=>(e.texto||"").trim()).sort((a,b)=>normT(a.termo).localeCompare(normT(b.termo))); if(exs.length){ o+=`## Glossário (explicações)\n`+exs.map(e=>`- **${e.termo}**${e.disc&&DK[e.disc]?" ("+curto(e.disc)+")":""}: ${mdPlano(e.texto)}`).join("\n")+"\n\n"; }
   const fcs=flashcards(); if(fcs.length){ o+=`## Flashcards\n`+fcs.map(c=>`- **${c.frente.replace(/\n/g," ")}** — ${c.verso.replace(/\n/g," ")}${c.disc&&DK[c.disc]?" ("+curto(c.disc)+")":""}`).join("\n")+"\n\n"; }
   const ts=tarefas(); if(ts.length){ o+=`## Tarefas\n`+ts.map(t=>`- [${t.feito?"x":" "}] ${t.texto}${t.prazo?" (até "+t.prazo.slice(8,10)+"/"+t.prazo.slice(5,7)+")":""}`).join("\n")+"\n"; }
   return window.FLUXO&&FLUXO.expandir ? FLUXO.expandir(o) : o;
@@ -1776,7 +1782,7 @@ function salvarEstFc(c,est){
   else { const k="fcr-"+c.disc, d=S.docs[k]||{tipo:"fcr",r:{}}; salvarDoc(k,{...d,tipo:"fcr",r:{...(d.r||{}),[c.h]:est}},300); }
 }
 // texto sem marcação (para listas curtas): **x** → x, - item → item, ![img](..) → [imagem]
-function mdPlano(t){ return String(t||"").replace(/!\[[^\]]*\]\([^)]*\)/g,"[imagem]").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*|==|`|(^|\s)\*(?=\S)|(?<=\S)\*(?=\s|$)/g,"$1").replace(/^\s*(?:[-*]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+|>\s?|#{1,3}\s+)/gm,"").replace(/\{\{([^{}]+)\}\}/g,"$1").replace(/\n+/g," · ").trim(); }
+function mdPlano(t){ return String(t||"").replace(/!\[[^\]]*\]\([^)]*\)/g,"[imagem]").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*|==|`|(^|\s)\*(?=\S)|(?<=\S)\*(?=\s|$)/g,"$1").replace(/^\s*(?:[-*]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+|>\s?|#{1,3}\s+)/gm,"").replace(/\{\{([^{}]+)\}\}/g,"$1").replace(/\(\(([^()]+)\)\)/g,"$1").replace(/\n+/g," · ").trim(); }
 function novoFlash(disc,frente,verso,origem,mat){ const id="fc-"+novoId(); salvarDoc(id,{tipo:"fc",disc:disc||"",frente,verso,origem:origem||"manual",mat:mat||"",criado:Date.now(),cx:0,prox:0,v:0,a:0},50); return id; }
 function addFlashMat(mid,lista){ const m=S.docs[mid]; const ja=new Set(flashcards().map(c=>c.frente.toLowerCase())); let n=0;
   lista.forEach(c=>{ if(ja.has(c.frente.toLowerCase())) return; ja.add(c.frente.toLowerCase()); novoFlash(m.disc,c.frente,c.verso,"ia",mid); n++; }); return n; }
@@ -1910,6 +1916,84 @@ window.FORMATO_FLASH_MARCA=o=>{
   const base={doc:o.el?o.el.ownerDocument:document, ancora:o.el, aoFechar:o.voltar, mudou:o.mudou};
   if(c) verFlashDlg(c,base); else abrirFlashDlg({...base,disc:k,frente:txt,origem:"sel"});
 };
+/* ((termo)): explicação de palavra, termo ou frase. Docs exp-<id>: {tipo:"exp", termo, texto (Markdown), disc}.
+   Um termo tem uma explicação (por disciplina, se houver; senão a de qualquer disciplina) e vale em todas as anotações. */
+const normT=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+function explicacoes(){ const o=[]; Object.entries(S.docs).forEach(([id,b])=>{ if(b&&b.tipo==="exp"&&!b.apagado) o.push({id,...b}); }); return o; }
+function acharExp(t,k){ const n=normT(t); if(!n) return null; const l=explicacoes().filter(e=>normT(e.termo)===n); return l.find(e=>e.disc===k&&(e.texto||"").trim())||l.find(e=>(e.texto||"").trim())||l[0]||null; }
+function dicaExplica(t){ const e=acharExp(t); const x=e?mdPlano(e.texto||""):""; return x?(x.length>220?x.slice(0,217)+"…":x):""; }
+function pedidoExplica(termo,k,ctx){
+  return `Explique de forma curta e didática, em português do Brasil, o termo abaixo, no contexto do curso "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE)${k&&DK[k]?`, disciplina "${nomeDisc(k)}"`:""}.\n\nTermo: "${termo}"\n${ctx&&normT(ctx)!==normT(termo)?`Trecho da anotação onde aparece: "${ctx}"\n`:""}\nResponda em 2 a 5 frases: o que é; se for sigla, o significado; e um exemplo prático de uso no QGIS ou na segurança pública. Sem introdução e sem títulos.`;
+}
+window.FORMATO_EXPLICA={ dica:dicaExplica, abrir:o=>abrirExplica(o) };
+function abrirExplica(o){
+  const doc=(o.el&&o.el.ownerDocument)||document; fecharFlashDlg(doc); fecharFlashDlg(document);
+  const k=o.el?discDoContexto(o.el):"", podeIA=IA_OK&&logado();
+  let termo=String(o.termo||"").trim(), e=acharExp(termo,k), modo=(o.novo&&!(e&&(e.texto||"").trim()))?"editar":"ver", rascunho=null, ocupado=false;
+  const d=doc.createElement("div"); d.id="fc-dlg"; d.className="fc-dlg-fundo";
+  const aviso=t=>{ if(doc===document) toast(t); else if(doc.defaultView&&doc.defaultView.toast) doc.defaultView.toast(t); };
+  const fechar=()=>{ d.remove(); if(o.atualizar) o.atualizar(); if(o.voltar) o.voltar(); };
+  function desenhar(){
+    const tx=e&&(e.texto||"").trim();
+    d.innerHTML=`<div class="fc-dlg ex-dlg" role="dialog" aria-label="Explicação de ${esc(termo)}" tabindex="-1">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:nowrap"><div style="min-width:0;flex:1">
+        <span class="mono muted" style="font-size:12px">(( )) Explicação${e&&e.disc&&DK[e.disc]?" · "+esc(curto(e.disc)):""}</span>
+        ${modo==="termo"?`<div class="row" style="gap:6px;margin-top:4px;flex-wrap:nowrap"><input type="text" id="ex-t" maxlength="120" value="${esc(termo)}" style="flex:1;min-width:0"><button type="button" class="btn sm pri" data-ex="okt">OK</button></div>`
+          :`<div class="ex-termo">${esc(termo)}${o.mudouTermo?` <button type="button" class="ex-lapis" data-ex="termo" title="Corrigir o termo marcado" aria-label="Corrigir o termo">✎</button>`:""}</div>`}
+      </div><button type="button" class="btn sm" data-ex="fechar" aria-label="Fechar">✕</button></div>
+      ${modo==="editar"?`<label class="lb" for="ex-x" style="margin-top:8px">Explicação</label><textarea id="ex-x" rows="4" data-rich="1" data-sem-abas="1" data-leve="1" aria-label="Explicação" placeholder="O que é, para que serve, um exemplo…">${esc(rascunho!=null?rascunho:(tx||""))}</textarea>`
+        :(tx?`<div class="fc-tx ex-tx md">${md(tx)}</div>`:`<p class="muted" style="margin:10px 0">Ainda sem explicação para este termo. Escreva a sua, ${podeIA?"peça para a IA":"copie o pedido para o Claude"} ou pesquise.</p>`)}
+      <div class="ex-acoes">
+        ${modo==="editar"?`<button type="button" class="btn sm" data-ex="cancelar">Cancelar</button><button type="button" class="btn sm pri" data-ex="salvar">Salvar</button>`:`<button type="button" class="btn sm pri" data-ex="editar">${tx?"Editar explicação":"Escrever explicação"}</button>`}
+        ${podeIA?`<button type="button" class="btn sm" data-ex="ia" ${ocupado?"disabled":""}>${ocupado?"Gerando…":"✨ Explicar com IA"}</button>`:`<button type="button" class="btn sm" data-ex="pedido" title="Copia um pedido pronto: cole no app do Claude e traga a resposta em Escrever explicação">Copiar pedido p/ Claude</button>`}
+        <button type="button" class="btn sm" data-ex="pesq">↗ Pesquisar</button>
+        ${o.tirar?`<span class="ex-sp"></span><button type="button" class="btn sm" data-ex="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button><button type="button" class="btn sm danger" data-ex="apagar" title="Apaga o termo do texto (a explicação continua guardada)">Apagar</button>`:""}
+      </div>
+      ${modo==="editar"?`<div class="muted" style="font-size:12px;margin-top:6px">Ctrl+Enter salva · Esc fecha · vale para este termo em todas as anotações</div>`:""}
+    </div>`;
+    if(modo==="editar"){ const F=(doc.defaultView&&doc.defaultView.FORMATO)||window.FORMATO; try{ if(F&&F.equipar) F.equipar(d); }catch(x){} }
+    d.classList.remove("ancorado"); const f=d.firstElementChild; f.style.cssText="";
+    posDlg(d,{ancora:o.el&&o.el.isConnected?o.el:null});
+    setTimeout(()=>{ try{ if(modo==="editar"){ const ta=d.querySelector("#ex-x"), ed=ta&&(ta._ed||ta); ed.focus(); if(ed!==ta){ const r=doc.createRange(); r.selectNodeContents(ed); r.collapse(false); const s=(doc.defaultView||window).getSelection(); s.removeAllRanges(); s.addRange(r); } }
+      else if(modo==="termo"){ const i=d.querySelector("#ex-t"); i.focus(); i.select(); } else f.focus(); }catch(x){} },0);
+  }
+  function salvarTexto(){
+    const ta=d.querySelector("#ex-x"); const t=(ta?ta.value:"").trim();
+    if(e&&S.docs[e.id]) salvarDoc(e.id,{...S.docs[e.id],termo,texto:t},50);
+    else if(t){ const id="exp-"+novoId(); salvarDoc(id,{tipo:"exp",termo,texto:t,disc:k||"",criado:Date.now()},50); }
+    e=acharExp(termo,k); rascunho=null; modo="ver"; desenhar(); aviso(t?"Explicação salva.":"Explicação removida."); renderNav();
+  }
+  function trocarTermo(){
+    const i=d.querySelector("#ex-t"), t=(i?i.value:"").replace(/\s+/g," ").replace(/[()]/g,"").trim().slice(0,120);
+    if(!t){ i&&i.focus(); return; }
+    if(t!==termo){ const velho=e; if(o.mudouTermo) o.mudouTermo(t); termo=t; e=acharExp(t,k);
+      // termo corrigido: leva a explicação junto (a do termo antigo continua para outras anotações)
+      if(!e&&velho&&(velho.texto||"").trim()){ const id="exp-"+novoId(); salvarDoc(id,{tipo:"exp",termo:t,texto:velho.texto,disc:velho.disc||k||"",criado:Date.now()},50); e=acharExp(t,k); } }
+    modo="ver"; desenhar();
+  }
+  d.addEventListener("mousedown",ev=>{ if(ev.target===d) fechar(); });
+  d.addEventListener("keydown",ev=>{
+    if(ev.key==="Escape"){ ev.stopPropagation(); ev.preventDefault(); if(modo==="ver") fechar(); else { rascunho=null; modo="ver"; desenhar(); } return; }
+    if(ev.key==="Enter"&&(ev.ctrlKey||ev.metaKey)&&modo==="editar"){ ev.preventDefault(); salvarTexto(); return; }
+    if(ev.key==="Enter"&&ev.target.id==="ex-t"){ ev.preventDefault(); trocarTermo(); } });
+  d.addEventListener("click",async ev=>{ const b=ev.target.closest("[data-ex]"); if(!b||b.disabled) return; const a=b.dataset.ex;
+    if(a==="fechar") return fechar();
+    if(a==="editar"){ modo="editar"; return desenhar(); }
+    if(a==="cancelar"){ rascunho=null; modo="ver"; return desenhar(); }
+    if(a==="salvar") return salvarTexto();
+    if(a==="termo"){ modo="termo"; return desenhar(); }
+    if(a==="okt") return trocarTermo();
+    if(a==="pedido"){ copiar(pedidoExplica(termo,k,o.contexto),"Pedido copiado: cole no app do Claude e traga a resposta em Escrever explicação."); return; }
+    if(a==="pesq"){ d.remove(); if(doc===document&&typeof abrirPesquisa==="function") abrirPesquisa("o que é "+termo, k); else (doc.defaultView||window).open("https://www.google.com/search?hl=pt-BR&q="+encodeURIComponent("o que é "+termo),"_blank","noopener"); if(o.atualizar) o.atualizar(); return; }
+    if(a==="tirar"){ o.tirar(); d.remove(); if(o.voltar) o.voltar(); return; }
+    if(a==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar"; return; } o.apagar(); d.remove(); if(o.voltar) o.voltar(); return; }
+    if(a==="ia"){ ocupado=true; desenhar();
+      try{ const j=await api("/api/ia",{modo:"explicar",texto:termo,contexto:o.contexto||"",disciplina:k?nomeDisc(k):""}); rascunho=String(j.explicacao||"").trim(); modo="editar"; aviso("Revise e salve a explicação."); }
+      catch(x){ aviso(x.message||"Não foi possível gerar agora."); }
+      ocupado=false; if(d.isConnected) desenhar(); return; }
+  });
+  doc.body.appendChild(d); desenhar();
+}
 /* marcador {{…}} editado no texto: o cartão com a mesma frente acompanha a mudança */
 window.FORMATO_FLASH_RENOMEAR=(velho,novo,ta)=>{
   const k=(ta&&window.FORMATO_PROJ&&FORMATO_PROJ.disc(ta))||"", low=String(velho||"").trim().toLowerCase(); if(!low||!novo) return;

@@ -23,6 +23,7 @@
     ["lnk","🔗","Link (Ctrl+K)"],
     ["pq",'<span class="fmt-cd">&lt;&gt;</span>',"Pesquisa: o trecho selecionado vira <termo> pesquisável. Com o cursor num termo, edita ele"],
     ["mrc",'<span class="fmt-cd">{{}}</span>',"Flashcard {{pergunta}}: o trecho selecionado vira pergunta de flashcard. Com o cursor num marcador, edita ele"],
+    ["exp",'<span class="fmt-cd">(( ))</span>',"Explicação ((termo)): o trecho selecionado vira termo com explicação (escrita por você, pela IA ou pesquisada). Com o cursor num termo, abre a explicação"],
     ["div","―","Linha divisória"],
     ["img",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3.5" width="16" height="13" rx="2"/><circle cx="7" cy="8" r="1.6"/><path d="M2.5 15l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5"/></svg><span class="fmt-tx">Imagem</span>',"Inserir imagem neste ponto do texto (também dá para colar com Ctrl+V ou arrastar a imagem para a caixa)"],
     ["flx",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="6" y="1.5" width="8" height="4.5" rx="1"/><path d="M10 6v3"/><path d="M10 9l3.5 3.2L10 15.4 6.5 12.2z"/><path d="M6.5 12.2H3v4.3h4"/><path d="M13.5 12.2H17v4.3h-4"/></svg><span class="fmt-tx">Fluxograma</span>',"Inserir fluxograma neste ponto do texto (com o cursor dentro de um fluxograma, edita ele)"],
@@ -81,6 +82,11 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fcm{color:#c39bd3}}
 :root[data-theme="dark"] .fcm{color:#c39bd3}
 .fcm::before{content:"";display:inline-block;width:.8em;height:.58em;border:1.5px solid currentColor;border-radius:2px;margin-right:4px;vertical-align:.02em;box-shadow:2px -2px 0 -0.5px var(--surface,#fff),2px -2px 0 1px currentColor}
+.exm{display:inline;background:color-mix(in srgb,#b7791f 13%,transparent);color:#9a6512;border-radius:4px;padding:0 4px;cursor:help;font:inherit;border:0;text-decoration:underline dotted;text-underline-offset:3px}
+.exm::after{content:"?";display:inline-block;font-size:.66em;font-weight:700;margin-left:2px;vertical-align:.45em;text-decoration:none}
+.exm:hover{background:color-mix(in srgb,#b7791f 24%,transparent)}
+:root[data-theme="dark"] .exm{color:#e0b062}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .exm{color:#e0b062}}
 .fcm:hover{background:color-mix(in srgb,#8e44ad 22%,transparent)}
 .img-lb{position:fixed;inset:0;z-index:95;background:rgb(0 0 0 / .84);display:grid;place-items:center;cursor:zoom-out}
 .img-lb img{max-width:94vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgb(0 0 0 / .5);background:#fff}
@@ -213,7 +219,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function barra(doc,ta){
     const pip=doc!==document, semDest=pip||!window.FORMATO_DESTACAR||!ta||ta.id==="fl-txt"||ta.dataset.rich;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)&&!(ta&&ta.dataset.leve&&/^(flx|cheia|dest|fla|mrc)$/.test(k))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)&&!(k==="exp"&&!window.FORMATO_EXPLICA)&&!(ta&&ta.dataset.leve&&/^(flx|cheia|dest|fla|mrc|exp)$/.test(k))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   function equipar(raiz){
@@ -240,11 +246,14 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   const RE_PESQ=/<([^\s<>](?:[^<>\n]{0,78}[^\s<>])?)>/g;
   // {{pergunta}} vira marcador de flashcard (o texto envolvido é a frente do cartão)
   const RE_FCM=/\{\{([^{}\n]{1,200}?)\}\}/g;
+  const RE_EXM=/\(\(([^()\n]{1,120}?)\)\)/g;
+  const dicaExp=t=>{ let d=""; try{ d=window.FORMATO_EXPLICA&&FORMATO_EXPLICA.dica?FORMATO_EXPLICA.dica(t):""; }catch(e){} return d?d+" · clique para abrir":"Explicação: clique para ver ou escrever"; };
   const escH=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   function inlineHtml(t){
     const codigos=[]; let s=String(t).replace(/`([^`]+)`/g,(x,c)=>{ codigos.push(c); return ""+(codigos.length-1)+""; });
     const termos=[]; s=s.replace(RE_PESQ,(x,q)=>{ termos.push(q); return "\uE003"+(termos.length-1)+"\uE004"; });
     const cards=[]; if(window.FORMATO_FLASH_MARCA) s=s.replace(RE_FCM,(x,q)=>{ cards.push(q.trim()); return "\uE005"+(cards.length-1)+"\uE006"; });
+    const exps=[]; if(window.FORMATO_EXPLICA) s=s.replace(RE_EXM,(x,q)=>{ exps.push(q.trim()); return "\uE007"+(exps.length-1)+"\uE008"; });
     s=escH(s)
       .replace(/!\[([^\]]*)\]\((sb:[^)\s]+|https?:\/\/[^)\s]+)\)/g,(x,alt,u)=>u.startsWith("sb:")?`<img class="md-img" data-sb="${u.slice(3)}" alt="${alt||"imagem"}">`:`<img class="md-img" src="${u}" alt="${alt||"imagem"}">`)
       .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>")
@@ -252,7 +261,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       .replace(/==([^=]+)==/g,"<mark>$1</mark>")
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2">$1</a>');
     return s.replace(/(\d+)/g,(x,i)=>"<code>"+escH(codigos[+i])+"</code>").replace(/\uE003(\d+)\uE004/g,(x,i)=>`<span class="pesq" contenteditable="false" data-q="${escH(termos[+i])}" title="Pesquisar “${escH(termos[+i])}”">${escH(termos[+i])}</span>`)
-      .replace(/\uE005(\d+)\uE006/g,(x,i)=>`<span class="fcm" contenteditable="false" data-fc="${escH(cards[+i])}" title="Flashcard: clique para ver ou editar">${escH(cards[+i])}</span>`);
+      .replace(/\uE005(\d+)\uE006/g,(x,i)=>`<span class="fcm" contenteditable="false" data-fc="${escH(cards[+i])}" title="Flashcard: clique para ver ou editar">${escH(cards[+i])}</span>`)
+      .replace(/\uE007(\d+)\uE008/g,(x,i)=>`<span class="exm" contenteditable="false" data-ex="${escH(exps[+i])}" title="${escH(dicaExp(exps[+i]))}">${escH(exps[+i])}</span>`);
   }
   // Tema do fluxograma: o nome dado pelo usuário ou o primeiro passo que não seja Início/Fim.
   function temaFx(d){ if(!d) return "Fluxograma"; if(d.titulo) return d.titulo; const n=((d.modelo&&d.modelo.nos)||[]).map(x=>x.texto).find(t=>t&&!/^(in[ií]cio|fim)$/i.test(t.trim())); return n||"Fluxograma"; }
@@ -322,6 +332,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(t==="IMG"){ const alt=(n.getAttribute("alt")||"imagem").replace(/[\[\]]/g,""); if(n.dataset.sb) o+=`![${alt}](sb:${n.dataset.sb})`; else if(/^https?:/.test(n.getAttribute("src")||"")) o+=`![${alt}](${n.getAttribute("src")})`; continue; }
       if(t==="SPAN"&&n.classList.contains("pesq")){ o+="<"+(n.dataset.q||n.textContent).trim()+">"; continue; }
       if(t==="SPAN"&&n.classList.contains("fcm")){ o+="{{"+(n.dataset.fc||n.textContent).trim()+"}}"; continue; }
+      if(t==="SPAN"&&n.classList.contains("exm")){ o+="(("+(n.dataset.ex||n.textContent).trim()+"))"; continue; }
       if(t==="SPAN"||t==="FONT"){ let x=inl(n); const st=n.style||{}; if(/bold|[6-9]00/.test(st.fontWeight||"")) x=envolve(x,"**"); if(st.fontStyle==="italic") x=envolve(x,"*"); o+=x; continue; }
       o+=inl(n);
     }
@@ -344,7 +355,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(n.nodeType===3||(n.nodeType===1&&!BLOCO.test(t)&&!(n.classList&&n.classList.contains("fx-bloco")))){ if(n.nodeType===3&&!n.nodeValue.trim()&&!buf) continue; if(!buf) buf=document.createElement("div"); buf.appendChild(n.cloneNode(true)); continue; }
       flush(); if(n.nodeType!==1) continue;
       if(n.classList.contains("fx-bloco")){ out.push(n.dataset.linha); continue; }
-      if(n.dataset&&n.dataset.aux&&!n.textContent.replace(/[\u200b\u00a0\s]/g,"")&&!n.querySelector("img,.pesq,.fcm,.fx-bloco")) continue;
+      if(n.dataset&&n.dataset.aux&&!n.textContent.replace(/[\u200b\u00a0\s]/g,"")&&!n.querySelector("img,.pesq,.fcm,.exm,.fx-bloco")) continue;
       if(/^H[1-6]$/.test(t)){ out.push("#".repeat(Math.min(3,+t[1]))+" "+inl(n).replace(/\n/g," ").trim()); continue; }
       if(t==="UL"||t==="OL"){ itens(n,0,out); continue; }
       if(t==="BLOCKQUOTE"){ linhasDe(n).forEach(x=>out.push("> "+x)); continue; }
@@ -596,7 +607,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   let ULT_AUTO=null; // {de, para}
   function autoEd(ed,ch){
     const s=getSelection(); if(!s.rangeCount||!s.isCollapsed) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3||o<2) return;
-    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a,.pesq,.fcm")) return;
+    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a,.pesq,.fcm,.exm")) return;
     const antes=n.nodeValue.slice(0,o-ch.length), m=antes.match(/([A-Za-zÀ-ÖØ-öø-ÿ]+)$/); if(!m) return;
     const ini=antes.length-m[1].length, prev=antes.slice(0,ini);
     const r=corrigida(m[1], !prev.trim()&&!n.previousSibling || /[.!?]\s*$/.test(prev)); if(!r) return;
@@ -790,7 +801,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(k==="tab") return popTabela(ed,BT_ULT);
     if(k==="rev") return popRev(BT_ULT);
     if(k==="fla"){ const s=getSelection(); let t=""; if(s.rangeCount&&ed.contains(s.anchorNode)) t=s.toString(); else if(ed._range&&ed.contains(ed._range.startContainer)) t=ed._range.toString(); if(window.FORMATO_FLASH) window.FORMATO_FLASH(ta,t); return; }
-    if(k==="pq"||k==="mrc") return marcaPelaBarra(ed,k==="mrc");
+    if(k==="pq"||k==="mrc"||k==="exp") return marcaPelaBarra(ed,k);
     if(k==="dest"){ if(document.querySelector(".fmt-cheia")) sairCheia(); if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); return; }
     if(k==="sub"){ if(!dentroDe(ed,"LI")){ cmd("insertUnorderedList"); sincronizar(ed); return; } return recuar(ed); }
     if(k==="sob") return desrecuar(ed);
@@ -818,8 +829,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     while((n=w.nextNode())){ if(!r.intersectsNode(n)) continue; const a=n===r.startContainer?r.startOffset:0, b=n===c.endContainer?c.endOffset:n.nodeValue.length, len=Math.max(0,b-a);
       if(ini==null&&alvo<=ac+len&&(alvo<ac+len||n===c.endContainer)){ ini={n,o:a+(alvo-ac)}; break; } ac+=len; if(n===c.endContainer) break; }
     if(!ini) return null; const x=document.createRange(); x.setStart(ini.n,ini.o); x.setEnd(c.endContainer,c.endOffset);
-    const f=x.cloneContents(); if(f.querySelector&&f.querySelector(".pesq,.fcm,img,.fx-bloco,br,div,li")) return null;
-    const el=ini.n.parentNode; if(el.closest&&el.closest("code,pre,a,.pesq,.fcm")) return null;
+    const f=x.cloneContents(); if(f.querySelector&&f.querySelector(".pesq,.fcm,.exm,img,.fx-bloco,br,div,li")) return null;
+    const el=ini.n.parentNode; if(el.closest&&el.closest("code,pre,a,.pesq,.fcm,.exm")) return null;
     return {r:x, m};
   }
   function porMarca(ed,sp){ const s=getSelection(); const z=document.createTextNode("\u200b"); return {z,poe(r){ r.deleteContents(); r.insertNode(z); r.insertNode(sp); const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c); }}; }
@@ -837,6 +848,29 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     porMarca(ed,sp).poe(t.r);
     sincronizar(ed); abrirMarca(ed,sp,true);
   }
+  // ((termo)) digitado vira termo com explicação e abre a janelinha (a página cuida da explicação)
+  function explicaDigitado(ed){
+    if(!window.FORMATO_EXPLICA) return;
+    const t=trechoAntes(ed,/\(\(([^()\n]{1,120}?)\)\)$/); if(!t||!t.m[1].replace(/\u200b/g,"").trim()) return;
+    const q=t.m[1].replace(/\u200b/g,"").trim(), sp=novaMarca("exp",q);
+    porMarca(ed,sp).poe(t.r); sincronizar(ed); abrirExp(ed,sp,true);
+  }
+  function blocoTexto(el){ let b=el; while(b&&b.parentNode&&!(b.nodeType===1&&/^(DIV|P|LI|H1|H2|H3|BLOCKQUOTE|TD|TH)$/.test(b.tagName)&&b!==el)) b=b.parentNode; return ((b&&b.textContent)||"").replace(/\u200b/g,"").trim().slice(0,600); }
+  function abrirExp(ed,sp,novo){
+    if(!window.FORMATO_EXPLICA) return;
+    const doc=sp.ownerDocument, win=doc.defaultView||window, s=win.getSelection(), rg=s.rangeCount&&ed.contains(s.anchorNode)?s.getRangeAt(0).cloneRange():null;
+    const voltar=()=>{ try{ ed.focus(); if(rg){ const x=win.getSelection(); x.removeAllRanges(); x.addRange(rg); } }catch(e){} };
+    window.FORMATO_EXPLICA.abrir({termo:sp.dataset.ex, el:sp, ta:ed._ta, novo, contexto:blocoTexto(sp), voltar,
+      mudouTermo:t=>{ if(!sp.isConnected||!t) return; sp.dataset.ex=t; sp.textContent=t; sincronizar(ed); },
+      tirar:()=>{ if(!sp.isConnected) return; const tx=doc.createTextNode(sp.textContent); sp.replaceWith(tx); sincronizar(ed); },
+      apagar:()=>{ if(!sp.isConnected) return; const z=sp.nextSibling; if(z&&z.nodeType===3&&z.nodeValue==="\u200b") z.remove(); sp.remove(); sincronizar(ed); },
+      atualizar:()=>{ if(sp.isConnected) sp.title=dicaExp(sp.dataset.ex); } });
+  }
+  document.addEventListener("click",e=>{
+    const t=e.target.closest&&e.target.closest(".exm[data-ex]"); if(!t||!window.FORMATO_EXPLICA) return; e.preventDefault(); e.stopPropagation();
+    const ed=t.closest(".wys"); if(ed) return abrirExp(ed,t,false);
+    window.FORMATO_EXPLICA.abrir({termo:t.dataset.ex, el:t, contexto:blocoTexto(t)});
+  },true);
   function abrirMarca(ed,sp,novo){
     const s=getSelection(), rg=s.rangeCount&&ed.contains(s.anchorNode)?s.getRangeAt(0).cloneRange():null;
     const voltar=()=>{ try{ ed.focus(); if(rg){ const x=getSelection(); x.removeAllRanges(); x.addRange(rg); } }catch(e){} };
@@ -858,37 +892,40 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(document.dispatchEvent(ev)) window.open("https://www.google.com/search?q="+encodeURIComponent(t.dataset.q),"_blank","noopener");
   }
   /* Editar <termo> e {{pergunta}}: clique no marcador (ou botão da barra com o cursor nele) abre esta janelinha */
-  function novaMarca(fc,t){ const sp=document.createElement("span"); sp.className=fc?"fcm":"pesq"; sp.contentEditable="false"; if(fc){ sp.dataset.fc=t; sp.title="Flashcard: clique para ver ou editar"; } else { sp.dataset.q=t; sp.title="Pesquisar “"+t+"” · clique para editar"; } sp.textContent=t; return sp; }
-  function marcaPelaBarra(ed,fc){
+  function novaMarca(tp,t){ if(tp===true) tp="mrc"; else if(tp===false) tp="pq";
+    const sp=document.createElement("span"); sp.className=tp==="mrc"?"fcm":tp==="exp"?"exm":"pesq"; sp.contentEditable="false";
+    if(tp==="mrc"){ sp.dataset.fc=t; sp.title="Flashcard: clique para ver ou editar"; } else if(tp==="exp"){ sp.dataset.ex=t; sp.title=dicaExp(t); } else { sp.dataset.q=t; sp.title="Pesquisar “"+t+"” · clique para editar"; } sp.textContent=t; return sp; }
+  function marcaPelaBarra(ed,tp){
     const s=getSelection(); if(!s.rangeCount||!ed.contains(s.anchorNode)) return;
-    const r=s.getRangeAt(0), cls=fc?".fcm":".pesq", el=n=>n&&(n.nodeType===1?n:n.parentNode);
+    const fc=tp==="mrc", ex=tp==="exp", r=s.getRangeAt(0), cls=fc?".fcm":ex?".exm":".pesq", el=n=>n&&(n.nodeType===1?n:n.parentNode);
     let sp=el(r.startContainer)&&el(r.startContainer).closest(cls);
     if(!sp&&r.startContainer.nodeType===1) sp=[r.startContainer.childNodes[r.startOffset-1],r.startContainer.childNodes[r.startOffset]].find(x=>x&&x.nodeType===1&&x.matches(cls));
     if(!sp&&r.startContainer.nodeType===3){ const tx=r.startContainer; if(r.startOffset<=1&&tx.previousSibling&&tx.previousSibling.nodeType===1&&tx.previousSibling.matches(cls)&&/^\u200b?$/.test(tx.nodeValue.slice(0,r.startOffset))) sp=tx.previousSibling; }
     if(!sp&&!r.collapsed){ const f=r.cloneContents(); if(f.querySelector&&f.querySelector(cls)&&!r.toString().replace(/\u200b/g,"").trim().replace(/^\S+$/,"")) sp=[...ed.querySelectorAll(cls)].find(x=>r.intersectsNode(x)); }
-    if(sp) return editarMarca(sp);
-    let t=r.toString().replace(/\u200b/g,"").replace(/\s+/g," ").trim().replace(fc?/[{}]/g:/[<>]/g,"");
-    if(t.length>(fc?200:80)) t=t.slice(0,fc?200:80).trim();
+    if(sp) return ex?abrirExp(ed,sp,false):editarMarca(sp);
+    const lim=fc?200:ex?120:80;
+    let t=r.toString().replace(/\u200b/g,"").replace(/\s+/g," ").trim().replace(fc?/[{}]/g:ex?/[()]/g:/[<>]/g,"");
+    if(t.length>lim) t=t.slice(0,lim).trim();
     if(dentroDe(ed,"CODE")||dentroDe(ed,"PRE")||dentroDe(ed,"A")) return;
-    const novo=novaMarca(fc,t||(fc?"pergunta":"termo")); r.deleteContents(); const z=document.createTextNode("\u200b"); r.insertNode(z); r.insertNode(novo);
+    const novo=novaMarca(tp,t||(fc?"pergunta":"termo")); r.deleteContents(); const z=document.createTextNode("\u200b"); r.insertNode(z); r.insertNode(novo);
     const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c); sincronizar(ed);
     if(!t) return editarMarca(novo,true);
-    if(fc) abrirMarca(ed,novo,true);
+    if(fc) abrirMarca(ed,novo,true); else if(ex) abrirExp(ed,novo,true);
   }
   function editarMarca(sp,vazio){
-    const ed=sp.closest(".wys"); if(!ed) return; const doc=sp.ownerDocument, win=doc.defaultView||window, fc=sp.classList.contains("fcm");
+    const ed=sp.closest(".wys"); if(!ed) return; const doc=sp.ownerDocument, win=doc.defaultView||window, fc=sp.classList.contains("fcm"), ex=sp.classList.contains("exm");
     doc.querySelectorAll(".mrc-pop").forEach(x=>x._fechar?x._fechar():x.remove());
-    let atual=fc?sp.dataset.fc:sp.dataset.q;
+    let atual=fc?sp.dataset.fc:ex?sp.dataset.ex:sp.dataset.q;
     const p=doc.createElement("div"); p.className="mrc-pop"; p.setAttribute("role","dialog"); p.setAttribute("aria-label",fc?"Editar marcador de flashcard":"Editar termo de pesquisa");
-    p.innerHTML=`<div class="mrc-l"><span>${fc?"{{ }} Pergunta do flashcard":"&lt; &gt; Termo de pesquisa"}</span><span>Enter ${vazio?"confirma":"salva"} · Esc fecha</span></div>
-      <input type="text" maxlength="${fc?200:80}" value="${escH(vazio?"":atual)}" placeholder="${fc?"Escreva a pergunta":"Escreva o termo"}" aria-label="${fc?"Pergunta":"Termo"}">
-      <div class="mrc-b"><button type="button" class="pri" data-m="ir">${fc?(vazio?"Criar flashcard":"Ver flashcard"):"↗ Pesquisar"}</button><button type="button" data-m="ok" hidden>Salvar</button>${vazio?"":`<button type="button" data-m="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button>`}<button type="button" data-m="apagar" title="Apagar o marcador e o texto">Apagar</button></div>`;
+    p.innerHTML=`<div class="mrc-l"><span>${fc?"{{ }} Pergunta do flashcard":ex?"(( )) Termo a explicar":"&lt; &gt; Termo de pesquisa"}</span><span>Enter ${vazio?"confirma":"salva"} · Esc fecha</span></div>
+      <input type="text" maxlength="${fc?200:ex?120:80}" value="${escH(vazio?"":atual)}" placeholder="${fc?"Escreva a pergunta":ex?"Palavra, termo ou frase":"Escreva o termo"}" aria-label="${fc?"Pergunta":"Termo"}">
+      <div class="mrc-b"><button type="button" class="pri" data-m="ir">${fc?(vazio?"Criar flashcard":"Ver flashcard"):ex?"Explicação":"↗ Pesquisar"}</button><button type="button" data-m="ok" hidden>Salvar</button>${vazio?"":`<button type="button" data-m="tirar" title="Mantém o texto e tira a marcação">Tirar marcação</button>`}<button type="button" data-m="apagar" title="Apagar o marcador e o texto">Apagar</button></div>`;
     doc.body.appendChild(p);
     const R=sp.getBoundingClientRect(), W=p.offsetWidth, H=p.offsetHeight;
     p.style.left=Math.max(8,Math.min(R.left,win.innerWidth-W-8))+"px";
     p.style.top=(R.bottom+6+H>win.innerHeight-8&&R.top-6-H>8?R.top-6-H:Math.min(R.bottom+6,win.innerHeight-H-8))+"px";
     const inp=p.querySelector("input"), ok=p.querySelector('[data-m="ok"]');
-    const limpo=()=>inp.value.replace(/\s+/g," ").trim().replace(fc?/[{}]/g:/[<>]/g,"").slice(0,fc?200:80);
+    const limpo=()=>inp.value.replace(/\s+/g," ").trim().replace(fc?/[{}]/g:ex?/[()]/g:/[<>]/g,"").slice(0,fc?200:ex?120:80);
     inp.addEventListener("input",()=>{ ok.hidden=vazio||!limpo()||limpo()===atual; });
     const fora=e=>{ if(!p.contains(e.target)) fechar(false); };
     const tecla=e=>{ if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); fechar(true); } };
@@ -899,11 +936,12 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     p._fechar=()=>fechar(false);
     function salvar(){ const t=limpo(); if(!t) return false; sp.dataset.ok="1"; if(t===atual&&!vazio) return true;
       if(fc){ if(!vazio&&window.FORMATO_FLASH_RENOMEAR) try{ window.FORMATO_FLASH_RENOMEAR(atual,t,ed._ta); }catch(e){} sp.dataset.fc=t; }
+      else if(ex){ sp.dataset.ex=t; sp.title=dicaExp(t); }
       else { sp.dataset.q=t; sp.title="Pesquisar “"+t+"” · clique para editar"; }
       sp.textContent=t; atual=t; sincronizar(ed); return true; }
     function acao(m){
       if(m==="ok"){ if(salvar()) fechar(true); else inp.focus(); return; }
-      if(m==="ir"){ if(!salvar()){ inp.focus(); return; } fechar(!fc); if(fc) abrirMarca(ed,sp,!!vazio); else pesquisarTermo(sp); return; }
+      if(m==="ir"){ if(!salvar()){ inp.focus(); return; } fechar(!fc&&!ex); if(fc) abrirMarca(ed,sp,!!vazio); else if(ex) abrirExp(ed,sp,!!vazio); else pesquisarTermo(sp); return; }
       if(m==="tirar"){ const tx=doc.createTextNode(sp.textContent); sp.replaceWith(tx); sincronizar(ed); p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); try{ ed.focus(); const c=doc.createRange(); c.setStart(tx,tx.nodeValue.length); c.collapse(true); const x=win.getSelection(); x.removeAllRanges(); x.addRange(c); }catch(e){} return; }
       if(m==="apagar"){ const z=sp.nextSibling; if(z&&z.nodeType===3&&z.nodeValue==="\u200b") z.remove(); sp.remove(); sincronizar(ed); p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); try{ ed.focus(); }catch(e){} }
     }
@@ -927,7 +965,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     b.replaceWith(novo); cursorEm(alvo);
   }
   document.addEventListener("compositionend",e=>{ const ed=e.target&&e.target.closest&&e.target.closest(".wys"); if(!ed) return; const dd=e.data||"";
-    if(/[>}]\s*$/.test(dd)) setTimeout(()=>{ if(/>\s*$/.test(dd)) termoDigitado(ed); if(/\}\s*$/.test(dd)) flashDigitado(ed); sincronizar(ed); },0); });
+    if(/[>})]\s*$/.test(dd)) setTimeout(()=>{ if(/>\s*$/.test(dd)) termoDigitado(ed); if(/\}\s*$/.test(dd)) flashDigitado(ed); if(/\)\s*$/.test(dd)) explicaDigitado(ed); sincronizar(ed); },0); });
   document.addEventListener("input",e=>{
     const ed=e.target; if(!ed.classList||!ed.classList.contains("wys")) return;
     if(e.inputType==="insertText"&&e.data===" ") atalhoDigitado(ed);
@@ -935,6 +973,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const dd=e.data||"", digitou=/^insert(Text|ReplacementText)$/.test(e.inputType)||(e.inputType==="insertCompositionText"&&!e.isComposing);
     if(digitou&&/>\s*$/.test(dd)) termoDigitado(ed);
     if(digitou&&/\}\s*$/.test(dd)) flashDigitado(ed);
+    if(digitou&&/\)\s*$/.test(dd)) explicaDigitado(ed);
     if(e.inputType==="insertParagraph"){ const li=dentroDe(ed,"LI"); if(li&&li.parentNode.classList.contains("tk")&&!li.textContent.trim()) li.dataset.tk="0"; }
     sincronizar(ed);
   });
@@ -1183,7 +1222,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
   function aplicar(ta,k){
     ({rev:()=>{}, fla:()=>{ if(window.FORMATO_FLASH) window.FORMATO_FLASH(ta, ta.value.slice(ta.selectionStart,ta.selectionEnd)); }, dest:()=>{ if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); },
-      pq:()=>envolver(ta,"<",">","termo"), mrc:()=>envolver(ta,"{{","}}","pergunta"),
+      pq:()=>envolver(ta,"<",">","termo"), mrc:()=>envolver(ta,"{{","}}","pergunta"), exp:()=>envolver(ta,"((","))","termo"),
       tab:()=>{ const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":""; trocar(ta,a,ta.selectionEnd,antes+"| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n"); },
       sub:()=>recuoTa(ta,true), sob:()=>recuoTa(ta,false), neg:()=>envolver(ta,"**","**","negrito"), ita:()=>envolver(ta,"*","*","itálico"), mar:()=>envolver(ta,"==","==","destaque"),
       tit:()=>titulo(ta), lis:()=>prefixar(ta,"lis"), num:()=>prefixar(ta,"num"), tar:()=>prefixar(ta,"tar"), cit:()=>prefixar(ta,"cit"),
@@ -1298,7 +1337,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(typeof S==="object") def("S",()=>S);
     if(typeof CONVITE!=="undefined") def("CONVITE",()=>CONVITE);
     ["salvarDoc","apagarDoc","logado"].forEach(n=>{ try{ const f=(0,eval)(n); if(typeof f==="function") w[n]=f; }catch(e){} });
-    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_FLASH_RENOMEAR","FORMATO_PROJ","FORMATO_PRAT"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
+    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_FLASH_RENOMEAR","FORMATO_EXPLICA","FORMATO_PROJ","FORMATO_PRAT"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
     if(typeof window.ligarAbaProj==="function") window.ligarAbaProj(doc);
     if(typeof window.ligarAbaPrat==="function") window.ligarAbaPrat(doc);
     w.toast=t=>{ try{ const d=doc.createElement("div"); d.className="toast"; d.textContent=t; doc.body.appendChild(d); setTimeout(()=>d.remove(),3500); }catch(e){} };

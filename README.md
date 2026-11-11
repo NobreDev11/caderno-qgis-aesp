@@ -128,3 +128,9 @@ Página estática única (`qgis.html`).
 ### Flashcard com formatação
 - Janela de novo/editar flashcard: Frente e Verso usam o mesmo editor das anotações (negrito, marca-texto, listas, sublistas, código, link, `<termo>`, imagem, tabela, revisão), via `data-rich data-sem-abas data-leve` (sem fluxograma, tela cheia, destacar e `{{}}`).
 - O cartão em Estudar e a janelinha do marcador mostram a formatação; a lista de cartões mostra texto simples (`mdPlano`).
+
+### Explicação `((termo))`
+- Digitar `((palavra, termo ou frase))` (ou botão `(( ))` da formatação com o trecho selecionado) cria o marcador e abre a janelinha da explicação.
+- Explicação escrita com o editor de formatação; ✨ Explicar com IA (`/api/ia` modo `explicar`, só com login e chave) ou "Copiar pedido p/ Claude"; ↗ Pesquisar ("o que é …" na Pesquisa da disciplina).
+- Guardada como glossário: docs `exp-<id>` `{tipo:"exp", termo, texto, disc}`; vale para o mesmo termo em todas as anotações (comparação sem acento/maiúsculas). Passar o mouse mostra o resumo; ✎ corrige o termo e leva a explicação junto.
+- Em leitura (Materiais, Visualizar) o clique só mostra/edita a explicação. Exportação ganha a seção "Glossário (explicações)".
