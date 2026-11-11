@@ -278,6 +278,7 @@ mark{background:color-mix(in srgb,var(--warn) 35%,transparent);color:inherit;bor
 .flut textarea{flex:1;min-height:0;border:0;border-radius:0;resize:none;background:var(--surface);padding:10px 12px;outline-offset:-2px}
 .fl-p{display:flex;justify-content:space-between;gap:8px;padding:6px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);flex:none}
 .fl-p a{color:var(--accent)}
+.pip-av{flex:none;margin:6px 8px 0;padding:8px 10px;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;font-size:12.5px;line-height:1.4}.pip-av .btn{margin-left:6px}
 .flut.pip{position:static;width:100vw;height:100vh;max-width:none;max-height:none;border:0;border-radius:0;box-shadow:none;resize:none}
 .flut.pip .fl-h{cursor:default}
 @media (max-width:820px){
@@ -2111,7 +2112,7 @@ function restaurar(bk){
 const LS_FL="caderno-qgis-aesp:flutuante";
 let FL={aberto:false,id:null,min:false,x:null,y:null,w:380,h:360};
 try{ Object.assign(FL,JSON.parse(localStorage.getItem(LS_FL)||"{}")); }catch(e){}
-let PIP=null, _flRO=null, _flT=null;
+let PIP=null, PIP_COMUM=false, _flRO=null, _flT=null;
 const PIP_OK = "documentPictureInPicture" in window;
 function salvarFL(){ try{ localStorage.setItem(LS_FL,JSON.stringify(FL)); }catch(e){} }
 function abrirFlutuante(id){
@@ -2120,7 +2121,7 @@ function abrirFlutuante(id){
   renderFlutuante();
   const ta=(PIP?PIP.document:document).getElementById("fl-txt"); if(ta){ ta.focus(); ta.selectionStart=ta.value.length; }
 }
-function fecharFlutuante(){ flushTudo(); FL.aberto=false; salvarFL(); if(PIP){ const w=PIP; PIP=null; w.close(); } renderFlutuante(); }
+function fecharFlutuante(){ flushTudo(); FL.aberto=false; salvarFL(); if(PIP){ const w=PIP; PIP=null; PIP_COMUM=false; w.close(); } renderFlutuante(); }
 function focoAula(){ const t=Date.now(); return AULAS.find(a=>statusAula(a)==="cur") || AULAS.find(a=>msDe(a.data,a.ini)>t) || AULAS[AULAS.length-1]; }
 function htmlFlutuante(){
   const a=AK[FL.id]||focoAula(), d=aulaD(a.id);
@@ -2130,7 +2131,8 @@ function htmlFlutuante(){
     <select id="fl-item" aria-label="Aula">${grupos}</select>
     ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
     ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: o QGIS ou os slides)" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
-    ${PIP?`<button type="button" class="btn sm" data-flmax title="Aumentar a janela até o máximo que o navegador permite" aria-label="Aumentar janela">↕</button>`:""}
+    ${PIP?`<button type="button" class="btn sm" data-flmax title="${PIP_COMUM?"Altura da tela inteira / metade":"Aumentar até o máximo que o Chrome permite (cerca de 80% da tela)"}" aria-label="Aumentar janela">↕</button>`:`<button type="button" class="btn sm" data-flalto title="${FL.alto?"Voltar ao tamanho anterior":"Ocupar a altura da tela"}" aria-label="Altura da tela">↕</button>`}
+    ${PIP&&!PIP_COMUM?`<button type="button" class="btn sm" data-flcomum title="Abrir numa janela comum com a altura da tela inteira (não fica por cima das outras janelas)" aria-label="Janela com altura total">⬍</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
    ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações da disciplina" placeholder="Anote aqui durante a aula. Uma anotação para a disciplina toda; salva sozinho.">${esc(notaDaAula(a.id))}</textarea>
    <div class="fl-p"><span class="mono" title="${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}">${fmtData(a.data)} ${a.ini}–${a.fim} · salva sozinho</span><button type="button" class="btn sm pri" data-flsalvar title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button></div>
@@ -2186,10 +2188,22 @@ function sincronizarFlutuante(){
   const doc=PIP?PIP.document:document, ta=doc.getElementById("fl-txt");
   if(ta && doc.activeElement!==ta){ const v=notaDaAula(FL.id); if(ta.value!==v) ta.value=v; }
 }
-async function destacarFlutuante(){
-  let w;
-  try{ w=await documentPictureInPicture.requestWindow({width:Math.max(340,FL.w),height:Math.max(280,FL.h)}); }
-  catch(e){ toast("Não foi possível abrir a janela por cima. Use o Chrome ou o Edge no computador."); return; }
+function avisoPip(w){ const d=w.document, b=d.getElementById("pipbox"); if(!b||d.getElementById("pip-av")) return;
+  const a=d.createElement("div"); a.id="pip-av"; a.className="pip-av";
+  a.innerHTML='O Chrome não deixa esta janela "por cima" passar de cerca de 80% da altura da tela. Para usar a tela inteira, clique em <b>⬍</b> — abre numa janela comum (que não fica por cima das outras). <button type="button" class="btn sm">Ok</button>';
+  a.querySelector("button").onclick=()=>a.remove(); b.prepend(a); setTimeout(()=>a.isConnected&&a.remove(),9000); }
+function janelaComum(de){
+  const W=Math.min(Math.max(340,(PIP&&PIP.outerWidth)||FL.w),screen.availWidth), H=screen.availHeight, L=(screen.availLeft||0)+screen.availWidth-W, T=screen.availTop||0;
+  const w=(de||window).open("","caderno-anot",`popup,width=${W},height=${H},left=${L},top=${T}`);
+  if(!w){ toast("O navegador bloqueou a janela. Permita pop-ups para este site."); return; }
+  const velha=PIP; PIP=null; if(velha&&velha!==w){ try{ velha.close(); }catch(x){} }
+  destacarFlutuante(w);
+}
+async function destacarFlutuante(comum){
+  let w=comum||null;
+  if(!w){ try{ w=await documentPictureInPicture.requestWindow({width:Math.max(340,FL.w),height:Math.max(280,FL.h)}); }
+  catch(e){ toast("Não foi possível abrir a janela por cima. Use o Chrome ou o Edge no computador."); return; } }
+  if(comum){ w.document.open(); w.document.write("<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"></head><body></body></html>"); w.document.close(); w.document.body.style.margin="0"; try{ w.focus(); }catch(x){} }
   for(const ss of [...document.styleSheets]){
     try{ const s=w.document.createElement("style"); s.textContent=[...ss.cssRules].map(r=>r.cssText).join("\n"); w.document.head.appendChild(s); }
     catch(e){ if(ss.href){ const l=w.document.createElement("link"); l.rel="stylesheet"; l.href=ss.href; w.document.head.appendChild(l); } }
@@ -2198,13 +2212,16 @@ async function destacarFlutuante(){
   w.document.title="Anotações · QGIS";
   w.document.body.innerHTML='<section class="flut pip" id="pipbox" aria-label="Bloco de anotações"></section>';
   ligarFlutuante(w.document);
-  w.addEventListener("pagehide",()=>{ if(PIP===w){ flushTudo(); PIP=null; renderFlutuante(); } });
-  PIP=w; FL.min=false; renderFlutuante();
+  w.addEventListener("pagehide",()=>{ if(PIP===w){ flushTudo(); PIP=null; PIP_COMUM=false; renderFlutuante(); } });
+  PIP=w; PIP_COMUM=!!comum; FL.min=false; renderFlutuante();
   const ta=w.document.getElementById("fl-txt"); if(ta) ta.focus();
 }
 function ligarFlutuante(doc){
   doc.addEventListener("click",e=>{
-    const mx=e.target.closest("[data-flmax]"); if(mx&&PIP&&!PIP.closed){ try{ const alto=PIP.outerHeight>=screen.availHeight*0.75; PIP.resizeTo(PIP.outerWidth, alto?Math.round(screen.availHeight*0.5):screen.availHeight); }catch(x){} return; }
+    const mx=e.target.closest("[data-flmax]"); if(mx&&PIP&&!PIP.closed){ const w=PIP, lim=PIP_COMUM?0.95:0.75; try{ const alto=w.outerHeight>=screen.availHeight*lim; if(PIP_COMUM&&!alto) w.moveTo(w.screenX,screen.availTop||0); w.resizeTo(w.outerWidth, alto?Math.round(screen.availHeight*0.5):screen.availHeight); }catch(x){}
+      if(!PIP_COMUM) setTimeout(()=>{ if(!w.closed&&w.outerHeight<screen.availHeight*0.9&&w.outerHeight>=screen.availHeight*0.6) avisoPip(w); },350); return; }
+    if(e.target.closest("[data-flcomum]")&&PIP&&!PIP_COMUM){ janelaComum(e.target.ownerDocument.defaultView); return; }
+    if(e.target.closest("[data-flalto]")&&!PIP){ if(FL.alto){ FL.h=FL.alto.h; FL.y=FL.alto.y; FL.alto=null; } else { FL.alto={h:FL.h,y:FL.y}; FL.h=innerHeight-16; FL.y=8; } salvarFL(); renderFlutuante(); return; }
     const fm=e.target.closest("[data-flmats],[data-flmat],[data-flvoltar],.fl-ver [data-mvx],.fl-ver [data-mvpdf],.fl-ver [data-mvlink],.fl-ver [data-mat]");
     if(fm){ e.preventDefault(); e.stopPropagation(); const d=fm.dataset, dc=fm.ownerDocument;
       if(d.flmats!==undefined){ FL.matsAberto=!FL.matsAberto; renderFlutuante(); return; }

@@ -103,3 +103,7 @@ Página estática única (`qgis.html`).
 ### Links do Google Drive
 - Materiais com link do Drive/Docs/Slides/Sheets abrem dentro do caderno (prévia `/preview`), no cartão e no bloco sobreposto, com botão "Abrir no Drive".
 - Convidado (`?c=`) pode importar links: `/api/link` aceita o cabeçalho `X-Convite`; o texto fica salvo para resumo, questões e flashcards. Compartilhe o arquivo como "Qualquer pessoa com o link".
+
+### Altura do bloco de anotações
+- Bloco na página: botão ↕ ocupa a altura toda da tela (clique de novo para voltar).
+- Janela por cima (PiP): o Chrome limita a ~80% da tela; ↕ vai até esse máximo e avisa. O botão ⬍ reabre o bloco numa janela comum com a altura total (essa não fica por cima das outras).
