@@ -1367,9 +1367,12 @@ document.addEventListener("click",e=>{
   }
 });
 function paneAddMat(){
-  const P=PANE; const abas=[["arquivo","Arquivo (PDF/texto)"],["fotos","Fotos"],["link","Link"],["texto","Colar texto"]];
+  const P=PANE; const abas=[["arquivo","Arquivo (PDF/texto)"],["pasta","Pasta"],["fotos","Fotos"],["link","Link"],["texto","Colar texto"]];
   const campo={
     arquivo:`<label class="lb" for="am-f">PDF, .txt ou .md (até 25 MB)</label><input type="file" id="am-f" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown">`,
+    pasta:`<label class="lb" for="am-p">Pasta com PDFs, textos (.txt/.md) e fotos (inclui subpastas)</label><input type="file" id="am-p" webkitdirectory multiple>
+      <div id="am-pl" class="muted" style="font-size:13px;margin-top:6px"></div>
+      <label class="row" style="gap:6px;font-size:13.5px;margin-top:6px;cursor:pointer"><input type="checkbox" id="am-pj" checked> Juntar as fotos de cada pasta num material (até 8 por material)</label>`,
     fotos:`<label class="lb" for="am-i">Fotos de slides, quadro ou apostila (até 8)</label><input type="file" id="am-i" accept="image/*" multiple>${logado()||CONVITE?"":'<p class="muted" style="font-size:12.5px;margin:6px 0 0">Sem login as fotos ficam só neste navegador. Entre para guardá-las na nuvem.</p>'}`,
     link:`<label class="lb" for="am-u">Endereço (site, PDF, Google Drive/Docs/Slides, YouTube)</label><input type="text" id="am-u" inputmode="url" placeholder="https://…">${logado()?"":(CONVITE?'<p class="fl-f" style="font-size:12.5px;margin:6px 0 0">No link pessoal, importar link não está disponível: copie o texto do site e use “Colar texto”.</p>':'<p class="fl-f" style="font-size:12.5px;margin:6px 0 0">Para importar links, entre na sua conta (botão Entrar).</p>')}`,
     texto:`<label class="lb" for="am-t">Texto do material</label><textarea id="am-t" style="min-height:220px" placeholder="Cole aqui o conteúdo de um slide, apostila, mensagem do grupo…"></textarea>`,
@@ -1379,13 +1382,49 @@ function paneAddMat(){
     <form class="body" id="faddmat">
       <div class="row">${abas.map(([k,l])=>`<button type="button" class="btn sm ${P.aba===k?"on":""}" data-amaba="${k}">${l}</button>`).join("")}</div>
       <div>${campo}</div>
-      <div><label class="lb" for="am-ti">Título (opcional)</label><input type="text" id="am-ti" placeholder="Ex.: Slides – Sistemas de referência"></div>
+      ${P.aba==="pasta"?"":`<div><label class="lb" for="am-ti">Título (opcional)</label><input type="text" id="am-ti" placeholder="Ex.: Slides – Sistemas de referência"></div>`}
       <div><label class="lb" for="am-d">Disciplina</label><select id="am-d"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${P.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
       <p id="am-st" class="muted" style="margin:0;font-size:14px">${esc(P.status||"")}</p>
       <button class="btn pri" type="submit" id="am-b">Salvar material</button>
     </form></section>`;
 }
+/* Pasta: cada PDF/texto vira um material (título = nome do arquivo); fotos viram materiais de fotos por pasta (até 8 cada) */
+const ehDoc = f => /\.(pdf|txt|md)$/i.test(f.name)||f.type==="application/pdf"||f.type==="text/plain"||f.type==="text/markdown";
+const ehFoto = f => (f.type||"").startsWith("image/")||/\.(jpe?g|png|webp|gif|heic)$/i.test(f.name);
+const caminhoDe = f => f.caminho||f.webkitRelativePath||f.name;
+function resumoPasta(fs){ const d=fs.filter(ehDoc), i=fs.filter(ehFoto), o=fs.length-d.length-i.length;
+  return fs.length?`Encontrei <b>${d.length}</b> PDF/texto e <b>${i.length}</b> foto(s)${o?` · ${o} arquivo(s) de outro tipo serão ignorados`:""}.`+(d.length?`<div style="max-height:120px;overflow:auto;margin-top:4px">${d.map(f=>`<div>📄 ${esc(caminhoDe(f))}</div>`).join("")}</div>`:""):""; }
+document.addEventListener("change",e=>{ if(e.target.id==="am-p"){ const l=document.getElementById("am-pl"); if(l) l.innerHTML=resumoPasta([...e.target.files]); } });
+async function salvarPasta(){
+  const st=document.getElementById("am-st"), bt=document.getElementById("am-b"), status=t=>{ st.textContent=t; st.className="muted"; };
+  const fs=[...(document.getElementById("am-p").files||[])], disc=document.getElementById("am-d").value, juntar=document.getElementById("am-pj").checked;
+  const docs=fs.filter(ehDoc), fotos=fs.filter(ehFoto); if(!docs.length&&!fotos.length){ st.textContent="Escolha ou solte uma pasta com PDFs, textos ou fotos."; st.className="fl-f"; return; }
+  bt.disabled=true; let feitos=0, falhas=[]; const total=docs.length+(juntar?0:fotos.length);
+  const novo=(origem,titulo)=>{ const x=novoId(); return {mid:"mat-"+x, tid:"mtx-"+x, meta:{tipo:"mat",titulo,disc,origem,criado:Date.now()+feitos,arquivos:[],questoes:[],resp:{}}}; };
+  for(const f of docs){
+    const n=novo("arquivo",f.name.replace(/\.[^.]+$/,"")); let texto="";
+    try{ status(`(${feitos+1}/${docs.length}) ${f.name}…`);
+      if(f.size>25*1024*1024) throw new Error("maior que 25 MB");
+      if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){ const r=await textoDoPdf(new Uint8Array(await f.arrayBuffer()),(i,t)=>status(`(${feitos+1}/${docs.length}) ${f.name}: página ${i} de ${t}`)); texto=r.texto; n.meta.paginas=r.paginas;
+        if(logado()&&navigator.onLine) n.meta.arquivos.push(await subir(n.mid,f.name,f,"application/pdf")); }
+      else texto=await f.text();
+      texto=texto.slice(0,MAX_TXT); n.meta.chars=texto.length; salvarDoc(n.tid,{tipo:"mtx",texto,imgs:[]},50); salvarDoc(n.mid,n.meta,80); feitos++;
+    }catch(e){ falhas.push(f.name+" ("+(e.message||"erro")+")"); }
+  }
+  // fotos: agrupadas por pasta, até 8 por material
+  const grupos=[]; if(juntar){ const porPasta={}; fotos.forEach(f=>{ const c=caminhoDe(f), p=c.includes("/")?c.slice(0,c.lastIndexOf("/")):"Fotos"; (porPasta[p]=porPasta[p]||[]).push(f); });
+    Object.entries(porPasta).forEach(([p,xs])=>{ for(let i=0;i<xs.length;i+=8) grupos.push([p.split("/").pop()+(xs.length>8?" ("+(i/8+1)+")":""),xs.slice(i,i+8)]); }); }
+  else fotos.forEach(f=>grupos.push([f.name.replace(/\.[^.]+$/,""),[f]]));
+  let gi=0; for(const [titulo,xs] of grupos){ gi++; const n=novo("fotos","Fotos – "+titulo); const imgs=[];
+    try{ for(let i=0;i<xs.length;i++){ status(`Fotos ${gi}/${grupos.length}: ${i+1} de ${xs.length}…`); const b=await comprimirImagem(xs[i]);
+        if(logado()&&navigator.onLine) n.meta.arquivos.push(await subir(n.mid,"foto"+(i+1)+".jpg",b,"image/jpeg")); else imgs.push(await paraDataURL(b)); }
+      n.meta.chars=0; salvarDoc(n.tid,{tipo:"mtx",texto:"",imgs},50); salvarDoc(n.mid,n.meta,80); feitos++;
+    }catch(e){ falhas.push(titulo+" ("+(e.message||"erro")+")"); } }
+  PANE=null; renderPane(); FM.grupo="arquivos"; if(VIEW!=="materiais") ir("materiais"); else render();
+  toast(`${feitos} material(is) criado(s) da pasta.`+(falhas.length?` Não deu certo: ${falhas.slice(0,3).join("; ")}${falhas.length>3?"…":""}`:""));
+}
 async function salvarMaterial(){
+  if(PANE&&PANE.aba==="pasta") return salvarPasta();
   const P=PANE, st=document.getElementById("am-st"), bt=document.getElementById("am-b");
   const status=t=>{ st.textContent=t; st.className="muted"; };
   const x=novoId(), mid="mat-"+x, tid="mtx-"+x;
@@ -1452,8 +1491,8 @@ function anexosHTML(m){
   return `<div class="card"><div class="row" style="justify-content:space-between"><h3>Anexos para estudo ${info("anexos")}</h3>
       <div class="row"><button type="button" class="btn sm" data-anx="link">+ Link</button><button type="button" class="btn sm" data-anx="arquivo">+ PDF/arquivo</button><button type="button" class="btn sm" data-anx="fotos">+ Fotos</button></div></div>
     <form class="anx-form" hidden><input type="text" class="anx-u" inputmode="url" placeholder="https://…" aria-label="Endereço do link"><input type="text" class="anx-n" placeholder="Título (opcional)" aria-label="Título do link"><button type="submit" class="btn sm pri">Adicionar</button></form>
-    <input type="file" class="anx-f" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden><input type="file" class="anx-i" accept="image/*" multiple hidden>
-    <div class="dz anx-dz" data-dz-para=".anx-f,.anx-i" data-dz-escopo=".card"><span class="dz-ic" aria-hidden="true">⤓</span><span class="dz-tx">Arraste e solte aqui PDFs, textos (.txt/.md) ou fotos para anexar</span></div>
+    <input type="file" class="anx-f" accept=".pdf,.txt,.md,application/pdf,text/plain" multiple hidden><input type="file" class="anx-i" accept="image/*" multiple hidden>
+    <div class="dz anx-dz" data-dz-para=".anx-f,.anx-i" data-dz-escopo=".card"><span class="dz-ic" aria-hidden="true">⤓</span><span class="dz-tx">Arraste e solte aqui PDFs, textos (.txt/.md), fotos ou uma pasta para anexar</span></div>
     <p class="anx-st muted" style="margin:6px 0 0;font-size:13px" hidden></p>
     <div class="anx-lista">${itens.length?itens.join(""):'<p class="empty" style="padding:6px 0 0">Nenhum anexo. Junte aqui o link, o PDF ou as fotos que explicam esta nota.</p>'}</div></div>`;
 }
@@ -1496,7 +1535,7 @@ document.addEventListener("submit",e=>{
 document.addEventListener("change",async e=>{
   const t=e.target; if(!t.classList||!(t.classList.contains("anx-f")||t.classList.contains("anx-i"))||!PANE||PANE.tipo!=="mat") return;
   const mid=PANE.id, el=t.closest(".card").querySelector(".anx-st"), st=x=>{ el.hidden=false; el.textContent=x; };
-  try{ if(t.classList.contains("anx-f")){ if(t.files[0]) await anexarArquivo(mid,t.files[0],st); } else await anexarFotos(mid,[...t.files].slice(0,8),st);
+  try{ if(t.classList.contains("anx-f")){ for(const f of [...t.files]) await anexarArquivo(mid,f,st); } else await anexarFotos(mid,[...t.files].slice(0,8),st);
     if(PANE&&PANE.id===mid) renderPane(); toast("Anexo adicionado."); }
   catch(err){ st(err.message||"Não foi possível anexar."); }
 });
@@ -1857,7 +1896,7 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-addmat],[data-amaba],[data-mat],[data-mabrir],[data-mgerar],[data-mcopiar],[data-mcolar],[data-msalvacolar],[data-meditr],[data-mestudar],[data-mlimparq],[data-mapagar],[data-ecomecar],[data-eresp],[data-eprox],[data-eerradas]");
   if(!b||b.disabled) return; const d=b.dataset;
   if(d.addmat!==undefined){ abrirAddMat(d.addmat); return; }
-  if(d.amaba!==undefined){ PANE.aba=d.amaba; PANE.disc=document.getElementById("am-d").value; const ti=document.getElementById("am-ti").value; renderPane(); document.getElementById("am-ti").value=ti; return; }
+  if(d.amaba!==undefined){ PANE.aba=d.amaba; PANE.disc=document.getElementById("am-d").value; const ti=document.getElementById("am-ti")?.value||""; renderPane(); { const e2=document.getElementById("am-ti"); if(e2) e2.value=ti; } return; }
   if(d.mat!==undefined){ flushTudo(); abrirMat(d.mat); return; }
   if(d.mabrir!==undefined){ abrirArquivo(d.mabrir); return; }
   if(d.mgerar!==undefined){ PANE.n=+document.getElementById("mt-n").value; PANE.nf=+document.getElementById("mt-nf").value; gerar(PANE.id,d.mgerar); return; }

@@ -1051,7 +1051,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     return ac.some(a=>a.startsWith(".")?n.endsWith(a):a.endsWith("/*")?t.startsWith(a.slice(0,-1)):t===a); }
   function entregar(inp,files){ let fs=[...files].filter(f=>aceita(inp,f)); if(!fs.length) return 0; if(!inp.multiple) fs=fs.slice(0,1);
     try{ const dt=new DataTransfer(); fs.forEach(f=>dt.items.add(f)); inp.files=dt.files; inp.dispatchEvent(new Event("change",{bubbles:true})); return fs.length; }catch(e){ return 0; } }
-  function zonaTexto(inp){ const n=inp.files&&inp.files.length; return n?(n===1?"📎 "+inp.files[0].name:"📎 "+n+" arquivos escolhidos")+" · clique ou arraste para trocar":(inp.multiple?"Arraste e solte os arquivos aqui ou clique para escolher":"Arraste e solte o arquivo aqui ou clique para escolher"); }
+  function zonaTexto(inp){ const n=inp.files&&inp.files.length, pasta=inp.hasAttribute("webkitdirectory");
+    if(n) return (n===1?"📎 "+inp.files[0].name:"📎 "+n+" arquivos"+(pasta?" na pasta":" escolhidos"))+" · clique ou arraste para trocar";
+    return pasta?"Arraste e solte uma pasta aqui ou clique para escolher":inp.multiple?"Arraste e solte arquivos ou uma pasta aqui, ou clique para escolher":"Arraste e solte o arquivo aqui ou clique para escolher"; }
   function equiparZonas(raiz){
     raiz.querySelectorAll('input[type=file]:not([hidden]):not([data-dz])').forEach(inp=>{
       inp.dataset.dz="1"; const z=inp.ownerDocument.createElement("label"); z.className="dz"; if(inp.id) z.htmlFor=inp.id;
@@ -1060,14 +1062,24 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       inp.addEventListener("change",()=>{ z.querySelector(".dz-tx").textContent=zonaTexto(inp); });
     });
   }
+  // pastas soltas: percorre as subpastas e devolve todos os arquivos (com o caminho em f.caminho)
+  async function arquivosSoltos(dt){
+    const its=[...(dt.items||[])].filter(i=>i.kind==="file"), entradas=its.map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+    if(!entradas.some(x=>x.isDirectory)) return [...dt.files];
+    const out=[];
+    const ler=async(en,pre)=>{ if(en.isFile){ const f=await new Promise((ok,er)=>en.file(ok,er)).catch(()=>null); if(f){ try{ Object.defineProperty(f,"caminho",{value:pre+f.name}); }catch(e){} out.push(f); } return; }
+      if(en.isDirectory){ const r=en.createReader(); let lote; do{ lote=await new Promise(ok=>r.readEntries(ok,()=>ok([]))); for(const x of lote) await ler(x,pre+en.name+"/"); }while(lote.length); } };
+    for(const en of entradas) await ler(en,"");
+    return out.filter(f=>!/^\./.test(f.name)).sort((a,b)=>(a.caminho||a.name).localeCompare(b.caminho||b.name,"pt-BR",{numeric:true}));
+  }
   function ligarZonas(doc){
     if(doc._dz) return; doc._dz=1;
     const alvo=e=>e.target.closest&&(e.target.closest("label.dz")||e.target.closest("[data-dz-para]"));
     const temArq=e=>e.dataTransfer&&[...e.dataTransfer.types].includes("Files");
     doc.addEventListener("dragover",e=>{ const z=alvo(e); if(!z||!temArq(e)) return; e.preventDefault(); e.dataTransfer.dropEffect="copy"; z.classList.add("dz-on"); });
     doc.addEventListener("dragleave",e=>{ const z=alvo(e); if(z&&!z.contains(e.relatedTarget)) z.classList.remove("dz-on"); });
-    doc.addEventListener("drop",e=>{ const z=alvo(e); if(!z||!temArq(e)) return; e.preventDefault(); e.stopPropagation(); z.classList.remove("dz-on");
-      const fs=e.dataTransfer.files; let n=0;
+    doc.addEventListener("drop",async e=>{ const z=alvo(e); if(!z||!temArq(e)) return; e.preventDefault(); e.stopPropagation(); z.classList.remove("dz-on");
+      const fs=await arquivosSoltos(e.dataTransfer); let n=0;
       if(z.matches("label.dz")){ const inp=z.querySelector("input[type=file]"); n=entregar(inp,fs); }
       else { const box=z.closest(z.dataset.dzEscopo||"body")||doc.body; for(const sel of z.dataset.dzPara.split(",")){ const inp=box.querySelector(sel.trim()); if(inp) n+=entregar(inp,fs); } }
       if(!n){ const t=z.querySelector(".dz-tx")||z; const v=t.textContent; t.textContent="Tipo de arquivo não aceito aqui."; setTimeout(()=>{ t.textContent=v; },2200); }
