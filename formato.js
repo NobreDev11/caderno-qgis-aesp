@@ -807,26 +807,34 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     else if(k==="div"){ cmd("insertHorizontalRule"); }
     sincronizar(ed);
   }
+  // Texto logo antes do cursor (no bloco atual, mesmo que esteja partido em vários pedaços pelo navegador,
+  // pela correção ou pela sugestão por Tab) que termina com o padrão: devolve o trecho como Range.
+  function trechoAntes(ed,re){
+    const s=getSelection(); if(!s.rangeCount||!s.isCollapsed) return null; const c=s.getRangeAt(0);
+    if(!ed.contains(c.endContainer)) return null;
+    const bl=blocoAtual(ed)||ed, r=document.createRange(); try{ r.setStart(bl,0); r.setEnd(c.endContainer,c.endOffset); }catch(e){ return null; }
+    const txt=r.toString(), m=txt.match(re); if(!m) return null;
+    let alvo=txt.length-m[0].length, ac=0, ini=null; const w=document.createTreeWalker(bl,NodeFilter.SHOW_TEXT); let n;
+    while((n=w.nextNode())){ if(!r.intersectsNode(n)) continue; const a=n===r.startContainer?r.startOffset:0, b=n===c.endContainer?c.endOffset:n.nodeValue.length, len=Math.max(0,b-a);
+      if(ini==null&&alvo<=ac+len&&(alvo<ac+len||n===c.endContainer)){ ini={n,o:a+(alvo-ac)}; break; } ac+=len; if(n===c.endContainer) break; }
+    if(!ini) return null; const x=document.createRange(); x.setStart(ini.n,ini.o); x.setEnd(c.endContainer,c.endOffset);
+    const f=x.cloneContents(); if(f.querySelector&&f.querySelector(".pesq,.fcm,img,.fx-bloco,br,div,li")) return null;
+    const el=ini.n.parentNode; if(el.closest&&el.closest("code,pre,a,.pesq,.fcm")) return null;
+    return {r:x, m};
+  }
+  function porMarca(ed,sp){ const s=getSelection(); const z=document.createTextNode("\u200b"); return {z,poe(r){ r.deleteContents(); r.insertNode(z); r.insertNode(sp); const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c); }}; }
   // <palavra> digitado vira termo pesquisável na hora
   function termoDigitado(ed){
-    const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3) return;
-    const antes=n.nodeValue.slice(0,o), m=antes.match(/<([^\s<>](?:[^<>\n]{0,78}[^\s<>])?)>$/); if(!m) return;
-    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a")) return;
-    const r=document.createRange(); r.setStart(n,o-m[0].length); r.setEnd(n,o); r.deleteContents();
-    const sp=document.createElement("span"); sp.className="pesq"; sp.contentEditable="false"; sp.dataset.q=m[1]; sp.title="Pesquisar “"+m[1]+"”"; sp.textContent=m[1];
-    const z=document.createTextNode("\u200b"); r.insertNode(z); r.insertNode(sp);
-    const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c);
+    const t=trechoAntes(ed,/<([^\s<>](?:[^<>\n]{0,78}[^\s<>])?)>$/); if(!t) return;
+    const q=t.m[1]; const sp=document.createElement("span"); sp.className="pesq"; sp.contentEditable="false"; sp.dataset.q=q; sp.title="Pesquisar “"+q+"” · clique para editar"; sp.textContent=q;
+    porMarca(ed,sp).poe(t.r);
   }
   // {{pergunta}} digitado vira marcador e abre a janelinha do flashcard (a página cuida do cartão)
   function flashDigitado(ed){
     if(!window.FORMATO_FLASH_MARCA) return;
-    const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, o=s.anchorOffset; if(!n||n.nodeType!==3) return;
-    const antes=n.nodeValue.slice(0,o), m=antes.match(/\{\{([^{}\n]{1,200}?)\}\}$/); if(!m||!m[1].trim()) return;
-    if(n.parentNode.closest&&n.parentNode.closest("code,pre,a")) return;
-    const r=document.createRange(); r.setStart(n,o-m[0].length); r.setEnd(n,o); r.deleteContents();
-    const sp=document.createElement("span"); sp.className="fcm"; sp.contentEditable="false"; sp.dataset.fc=m[1].trim(); sp.title="Flashcard: clique para ver ou editar"; sp.textContent=m[1].trim();
-    const z=document.createTextNode("\u200b"); r.insertNode(z); r.insertNode(sp);
-    const c=document.createRange(); c.setStart(z,1); c.collapse(true); s.removeAllRanges(); s.addRange(c);
+    const t=trechoAntes(ed,/\{\{([^{}\n]{1,200}?)\}\}$/); if(!t||!t.m[1].trim()) return;
+    const q=t.m[1].replace(/\u200b/g,"").trim(); const sp=document.createElement("span"); sp.className="fcm"; sp.contentEditable="false"; sp.dataset.fc=q; sp.title="Flashcard: clique para ver ou editar"; sp.textContent=q;
+    porMarca(ed,sp).poe(t.r);
     sincronizar(ed); abrirMarca(ed,sp,true);
   }
   function abrirMarca(ed,sp,novo){
@@ -918,11 +926,15 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(!novo) return;
     b.replaceWith(novo); cursorEm(alvo);
   }
+  document.addEventListener("compositionend",e=>{ const ed=e.target&&e.target.closest&&e.target.closest(".wys"); if(!ed) return; const dd=e.data||"";
+    if(/[>}]\s*$/.test(dd)) setTimeout(()=>{ if(/>\s*$/.test(dd)) termoDigitado(ed); if(/\}\s*$/.test(dd)) flashDigitado(ed); sincronizar(ed); },0); });
   document.addEventListener("input",e=>{
     const ed=e.target; if(!ed.classList||!ed.classList.contains("wys")) return;
     if(e.inputType==="insertText"&&e.data===" ") atalhoDigitado(ed);
-    if(e.inputType==="insertText"&&e.data===">") termoDigitado(ed);
-    if(e.inputType==="insertText"&&e.data==="}") flashDigitado(ed);
+    // ">" e "}" digitados (teclado comum, teclado do celular/IME ou correção do navegador que troca a palavra)
+    const dd=e.data||"", digitou=/^insert(Text|ReplacementText)$/.test(e.inputType)||(e.inputType==="insertCompositionText"&&!e.isComposing);
+    if(digitou&&/>\s*$/.test(dd)) termoDigitado(ed);
+    if(digitou&&/\}\s*$/.test(dd)) flashDigitado(ed);
     if(e.inputType==="insertParagraph"){ const li=dentroDe(ed,"LI"); if(li&&li.parentNode.classList.contains("tk")&&!li.textContent.trim()) li.dataset.tk="0"; }
     sincronizar(ed);
   });
@@ -1286,7 +1298,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(typeof S==="object") def("S",()=>S);
     if(typeof CONVITE!=="undefined") def("CONVITE",()=>CONVITE);
     ["salvarDoc","apagarDoc","logado"].forEach(n=>{ try{ const f=(0,eval)(n); if(typeof f==="function") w[n]=f; }catch(e){} });
-    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_PROJ","FORMATO_PRAT"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
+    ["FORMATO_FLASH","FORMATO_FLASH_MARCA","FORMATO_FLASH_RENOMEAR","FORMATO_PROJ","FORMATO_PRAT"].forEach(n=>{ if(window[n]) w[n]=window[n]; });
     if(typeof window.ligarAbaProj==="function") window.ligarAbaProj(doc);
     if(typeof window.ligarAbaPrat==="function") window.ligarAbaPrat(doc);
     w.toast=t=>{ try{ const d=doc.createElement("div"); d.className="toast"; d.textContent=t; doc.body.appendChild(d); setTimeout(()=>d.remove(),3500); }catch(e){} };

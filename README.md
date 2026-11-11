@@ -117,3 +117,4 @@ Página estática única (`qgis.html`).
 - Editor: campos Título e Descrição do fluxograma; cada etapa (Início/Fim, Etapa, Decisão, Comando…) tem descrição opcional.
 - "descrição dentro das formas" (padrão): a descrição aparece em letra menor dentro da forma; desmarcado, vira lista "Descrição das etapas" abaixo do desenho.
 - Título e descrição aparecem no bloco da anotação, no Visualizar e no Markdown exportado. Dados: `fx-<id>.titulo`, `.desc`, `modelo.nos[].desc`, `modelo.descNo`.
+- `{{…}}` e `<…>` digitados: o trecho antes do cursor é lido no bloco inteiro (`trechoAntes`), mesmo partido em vários pedaços pela correção, pela sugestão por Tab ou pelo navegador; também funciona com teclado de celular (fim de composição).
