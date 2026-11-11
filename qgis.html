@@ -412,6 +412,12 @@ details.mat-g>summary:hover{color:var(--ink)}
 .fc-dlg textarea{width:100%;resize:vertical}
 .fc-dlg{width:min(620px,100%)}
 .ex-dlg{border-top:4px solid #b7791f}
+.fc-dlg.livre{resize:both;overflow:auto;min-width:300px;min-height:180px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);box-sizing:border-box}
+.fc-dlg.livre .wys{flex:1 1 64px;max-height:none}
+.fc-dlg.livre .ex-tx{flex:1 1 auto;max-height:none}
+.fc-dlg.livre .fc-tx{overflow-wrap:anywhere}
+.dlg-arrasta{cursor:move;user-select:none}
+.dlg-arrasta h3,.dlg-arrasta .ex-termo{cursor:move}
 .ex-termo{font-weight:700;font-size:16.5px;margin-top:2px;word-break:break-word}
 .ex-lapis{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px}.ex-lapis:hover{color:var(--ink)}
 .ex-tx{margin:8px 0 4px;max-height:min(40vh,320px);overflow:auto;font-size:15px}
@@ -1846,6 +1852,30 @@ function vFlash(){
 }
 /* janela para criar/editar um cartão (usada pela página Estudar, pela barra de formatação, pelo material e pelo marcador {{…}})
    o: {id?, disc, frente, verso, origem, mat, doc (janela onde abrir), ancora (elemento perto do qual abrir), aoFechar, mudou} */
+/* Janelinhas de flashcard e explicação: arrastar pelo cabeçalho e mudar o tamanho pelo canto (o tamanho fica lembrado) */
+function dlgMovel(d,chave){
+  const f=d.firstElementChild; if(!f) return; const doc=d.ownerDocument, W=doc.documentElement.clientWidth, H=doc.documentElement.clientHeight, LSK="caderno-qgis:dlg:"+chave;
+  let tam=null; try{ tam=JSON.parse(localStorage.getItem(LSK)||"null"); }catch(e){}
+  const r=f.getBoundingClientRect(), g=d._geo||{};
+  let w=g.w||(tam&&tam.w)||r.width, h=g.h||(tam&&tam.h)||null;
+  w=Math.min(Math.max(300,w),W-16); if(h) h=Math.min(Math.max(180,h),H-16);
+  let x=g.x!=null?g.x:r.left, y=g.y!=null?g.y:r.top;
+  f.classList.add("livre"); f.style.position="fixed"; f.style.margin="0"; f.style.maxHeight=""; f.style.width=w+"px"; if(h) f.style.height=h+"px";
+  const hh=h||f.offsetHeight; x=Math.min(Math.max(8,x),W-w-8); y=Math.min(Math.max(8,y),Math.max(8,H-Math.min(hh,H-16)-8));
+  f.style.left=x+"px"; f.style.top=y+"px";
+  const cab=f.querySelector(":scope > .row"); if(cab){ cab.classList.add("dlg-arrasta"); cab.title="Arraste para mover"; }
+  let ini=null;
+  f.addEventListener("pointerdown",e=>{
+    const c=e.target.closest(".dlg-arrasta");
+    if(c&&!e.target.closest("button,input,select,textarea,a,label,[contenteditable=true]")){ e.preventDefault(); ini={mx:e.clientX,my:e.clientY,x:f.offsetLeft,y:f.offsetTop,arr:true}; try{ f.setPointerCapture(e.pointerId); }catch(x){} return; }
+    ini={w:f.offsetWidth,h:f.offsetHeight,arr:false};
+  });
+  f.addEventListener("pointermove",e=>{ if(!ini||!ini.arr) return; const nx=Math.min(Math.max(8-f.offsetWidth+80,ini.x+e.clientX-ini.mx),W-80), ny=Math.min(Math.max(8,ini.y+e.clientY-ini.my),H-40); f.style.left=nx+"px"; f.style.top=ny+"px"; });
+  const solta=()=>{ if(!ini) return; if(ini.arr){ d._geo={...(d._geo||{}),x:f.offsetLeft,y:f.offsetTop,w:f.offsetWidth,h:f.style.height?f.offsetHeight:null}; }
+    else if(Math.abs(f.offsetWidth-ini.w)>2||Math.abs(f.offsetHeight-ini.h)>2){ const t={w:f.offsetWidth,h:f.offsetHeight}; d._geo={...(d._geo||{}),...t,x:f.offsetLeft,y:f.offsetTop}; try{ localStorage.setItem(LSK,JSON.stringify(t)); }catch(x){} }
+    ini=null; };
+  f.addEventListener("pointerup",solta); doc.addEventListener("pointerup",solta);
+}
 function fecharFlashDlg(doc){ (doc||document).getElementById("fc-dlg")?.remove(); }
 function posDlg(d,o){
   const f=d.firstElementChild; if(!o.ancora){ return; }
@@ -1868,7 +1898,7 @@ function abrirFlashDlg(o){
   </form>`;
   doc.body.appendChild(d);
   { const F=(doc.defaultView&&doc.defaultView.FORMATO)||window.FORMATO; try{ if(F&&F.equipar) F.equipar(d); }catch(e){} }
-  posDlg(d,o);
+  posDlg(d,o); dlgMovel(d,"fc");
   const f=d.querySelector("form"), fe=d.querySelector("#fc-f"), ve=d.querySelector("#fc-v");
   const aviso=t=>{ if(doc===document) toast(t); else if(doc.defaultView&&doc.defaultView.toast) doc.defaultView.toast(t); };
   const fechar=()=>{ d.remove(); if(o.aoFechar) o.aoFechar(); else if(o.volta&&o.volta.isConnected) try{ o.volta.focus(); }catch(e){} };
@@ -1896,7 +1926,7 @@ function verFlashDlg(c,o){
     <div class="row" style="justify-content:flex-end;gap:6px;margin-top:10px">${c.fonte==="fc"?`<button type="button" class="btn sm" data-fcv="editar">Editar</button>`:`<span class="muted" style="font-size:12px;margin-right:auto">Vem da aba Perguntas</span>`}<button type="button" class="btn sm pri" data-fcv="ver">Mostrar resposta</button></div>
     ${o.converter&&o.mudarHTML?o.mudarHTML():""}
   </div>`;
-  doc.body.appendChild(d); posDlg(d,o);
+  doc.body.appendChild(d); posDlg(d,o); dlgMovel(d,"fcv");
   const fechar=()=>{ d.remove(); if(o.aoFechar) o.aoFechar(); };
   d.addEventListener("mousedown",e=>{ if(e.target===d) fechar(); });
   d.querySelector("[data-fcfechar]").onclick=fechar;
@@ -1958,7 +1988,7 @@ function abrirExplica(o){
     </div>`;
     if(modo==="editar"){ const F=(doc.defaultView&&doc.defaultView.FORMATO)||window.FORMATO; try{ if(F&&F.equipar) F.equipar(d); }catch(x){} }
     d.classList.remove("ancorado"); const f=d.firstElementChild; f.style.cssText="";
-    posDlg(d,{ancora:o.el&&o.el.isConnected?o.el:null});
+    posDlg(d,{ancora:o.el&&o.el.isConnected?o.el:null}); dlgMovel(d,"ex");
     setTimeout(()=>{ try{ if(modo==="editar"){ const ta=d.querySelector("#ex-x"), ed=ta&&(ta._ed||ta); ed.focus(); if(ed!==ta){ const r=doc.createRange(); r.selectNodeContents(ed); r.collapse(false); const s=(doc.defaultView||window).getSelection(); s.removeAllRanges(); s.addRange(r); } }
       else if(modo==="termo"){ const i=d.querySelector("#ex-t"); i.focus(); i.select(); } else f.focus(); }catch(x){} },0);
   }

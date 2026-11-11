@@ -135,3 +135,4 @@ Página estática única (`qgis.html`).
 - Guardada como glossário: docs `exp-<id>` `{tipo:"exp", termo, texto, disc}`; vale para o mesmo termo em todas as anotações (comparação sem acento/maiúsculas). Passar o mouse mostra o resumo; ✎ corrige o termo e leva a explicação junto.
 - Em leitura (Materiais, Visualizar) o clique só mostra/edita a explicação. Exportação ganha a seção "Glossário (explicações)".
 - **Mudar o tipo do marcador:** nas janelinhas de `<termo>`, `{{pergunta}}` e `((termo))` (só no editor) há "Mudar para" — troca entre Pesquisa, Flashcard e Explicação mantendo o texto (`converterMarca`). Cartões e explicações já criados continuam guardados.
+- **Janelinhas de flashcard e explicação móveis (`dlgMovel`):** arrastar pelo cabeçalho; redimensionar pelo canto inferior direito (as áreas de texto crescem junto). O tamanho fica lembrado por tipo (`caderno-qgis:dlg:fc|fcv|ex`); a posição vale enquanto a janelinha estiver aberta.
