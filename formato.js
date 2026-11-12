@@ -307,7 +307,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     for(const l of ls){ const m=l.match(RE_ITEM); const ind=m[1].replace(/\t/g,"  ").length, tk=!!m[2], tag=m[5]?"ol":"ul", txt=m[6];
       while(st.length&&ind<st[st.length-1].ind&&!(st.length>1&&ind>st[st.length-2].ind)){ o+=`</li></${st.pop().tag}>`; }
       const top=st[st.length-1];
-      const abrir=()=>{ o+=`<${tag}${tk?' class="tk"':!wys&&tag==="ol"?' class="sn"':""}>`; st.push({ind,tag,tk}); };
+      // lista numerada começa no número digitado no primeiro item (ex.: "4." continua a sequência depois de uma imagem/tabela/fluxograma)
+      const ini=tag==="ol"?parseInt(m[5],10):1, ini2=ini>1&&ini<100000?ini:1;
+      const abrir=()=>{ o+=`<${tag}${tk?' class="tk"':!wys&&tag==="ol"?' class="sn"':""}${ini2>1?` start="${ini2}" style="counter-reset:sn ${ini2-1}"`:""}>`; st.push({ind,tag,tk}); };
       if(top&&ind<=top.ind){ if(top.tag===tag&&top.tk===tk) o+="</li>"; else { o+=`</li></${st.pop().tag}>`; abrir(); } }
       else abrir();
       const ok=tk&&m[3]!==" ";
@@ -365,7 +367,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     return o;
   }
   function itens(lista, prof, out){
-    let n=0; const tk=lista.classList.contains("tk");
+    let n=lista.tagName==="OL"?Math.max(0,(parseInt(lista.getAttribute("start"),10)||1)-1):0; const tk=lista.classList.contains("tk");
     for(const li of lista.children){ if(li.tagName!=="LI"){ if(/^(UL|OL)$/.test(li.tagName)) itens(li,prof+1,out); continue; }
       const sub=[...li.children].filter(c=>/^(UL|OL)$/.test(c.tagName)); const cl=li.cloneNode(true); cl.querySelectorAll(":scope > ul, :scope > ol").forEach(x=>x.remove());
       const ind=" ".repeat(prof*2||+(li.dataset.ind||0)), txt=inl(cl).replace(/\n+$/,"").replace(/\n/g," ");
@@ -1002,9 +1004,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function atalhoDigitado(ed){
     const b=blocoAtual(ed); if(!b||!/^(DIV|P)$/.test(b.tagName)||b.parentNode!==ed) return;
     const t=b.textContent.replace(/\u00a0/g," "); let m, novo=null, alvo=null;
-    const lista=(tag,tk)=>{ const l=document.createElement(tag); if(tk) l.className="tk"; const li=document.createElement("li"); if(tk) li.dataset.tk="0"; li.innerHTML="<br>"; l.appendChild(li); novo=l; alvo=li; };
+    const lista=(tag,tk,ini)=>{ const l=document.createElement(tag); if(tk) l.className="tk"; if(ini>1){ l.setAttribute("start",ini); l.style.counterReset="sn "+(ini-1); } const li=document.createElement("li"); if(tk) li.dataset.tk="0"; li.innerHTML="<br>"; l.appendChild(li); novo=l; alvo=li; };
     if(/^[-*] $/.test(t)) lista("ul");
-    else if(/^\d+[.)] $/.test(t)) lista("ol");
+    else if((m=t.match(/^(\d+)[.)] $/))) lista("ol",false,Math.min(99999,parseInt(m[1],10)));
     else if(/^\[ ?\] $/.test(t)) lista("ul",true);
     else if((m=t.match(/^(#{1,3}) $/))){ novo=document.createElement("h"+m[1].length); novo.innerHTML="<br>"; alvo=novo; }
     else if(/^> $/.test(t)){ novo=document.createElement("blockquote"); const d=document.createElement("div"); d.innerHTML="<br>"; novo.appendChild(d); alvo=d; }
