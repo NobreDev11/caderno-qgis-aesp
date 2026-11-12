@@ -36,6 +36,8 @@
 .fmt::-webkit-scrollbar{display:none}
 .fmt button{flex:none;min-width:30px;height:28px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--ink,inherit);cursor:pointer;font-size:13.5px;line-height:1}
 .fmt button:hover{background:var(--accent-soft)}
+.fmt button.ativo,.fmt button.ativo:hover{background:var(--accent,#1f6f5c)!important;color:#fff!important;box-shadow:0 1px 3px rgb(0 0 0 / .18)}
+.fmt button.ativo *{color:#fff!important;background:transparent!important}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fmt.fmt-presa{position:sticky;top:0;z-index:20;background:var(--surface,#fff);box-shadow:0 6px 14px -12px rgb(0 0 0 / .4)}
 .fmt-cheia .fmt.fmt-presa{position:static;box-shadow:none}
@@ -499,7 +501,27 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function blocoAtual(ed){ const s=getSelection(); if(!s.rangeCount) return null; let n=s.anchorNode; if(n&&n.nodeType===3) n=n.parentNode; while(n&&n!==ed&&!(n.nodeType===1&&/^(DIV|P|H1|H2|H3|LI|PRE|BLOCKQUOTE)$/.test(n.tagName))) n=n.parentNode; return n&&n!==ed?n:null; }
   function dentroDe(ed,tag){ const s=getSelection(); if(!s.rangeCount) return null; let n=s.anchorNode; while(n&&n!==ed){ if(n.nodeType===1&&n.tagName===tag) return n; n=n.parentNode; } return null; }
   function restaurar(ed){ ed.focus(); if(ed._range&&ed.contains(ed._range.startContainer)){ const s=getSelection(); s.removeAllRanges(); s.addRange(ed._range); } }
-  document.addEventListener("selectionchange",()=>{ const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, ed=n&&(n.nodeType===1?n:n.parentNode).closest&&(n.nodeType===1?n:n.parentNode).closest(".wys"); if(ed) ed._range=s.getRangeAt(0).cloneRange(); });
+  document.addEventListener("selectionchange",()=>{ const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, ed=n&&(n.nodeType===1?n:n.parentNode).closest&&(n.nodeType===1?n:n.parentNode).closest(".wys"); if(ed){ ed._range=s.getRangeAt(0).cloneRange(); agendarEstado(ed); } });
+  /* Mostra na barra o que está em uso onde está o cursor (negrito, lista, título…) */
+  let _estT=0;
+  function agendarEstado(ed){ cancelAnimationFrame(_estT); _estT=requestAnimationFrame(()=>estadoBarra(ed)); }
+  function barraDoEd(ed){ const ta=ed&&ed._ta; if(!ta) return null; if(ta._barra&&ta._barra.isConnected) return ta._barra; if(CHEIA&&CHEIA.ta===ta&&CHEIA.bar) return CHEIA.bar; const p=ta.previousElementSibling; return p&&p.classList.contains("fmt")?p:null; }
+  function estadoBarra(ed){
+    const bar=barraDoEd(ed); if(!bar) return; if(bar.classList.contains("fmt-unica")&&bar._ta&&bar._ta._ed!==ed) return;
+    const s=getSelection(); let on={};
+    if(s.rangeCount&&ed.contains(s.anchorNode)){
+      const el=(s.anchorNode.nodeType===1?s.anchorNode:s.anchorNode.parentNode), q=x=>el.closest(x)&&ed.contains(el.closest(x));
+      let b=false,i=false; try{ b=document.queryCommandState("bold"); i=document.queryCommandState("italic"); }catch(e){}
+      const li=q("li")?el.closest("li"):null, lst=li&&li.parentNode;
+      on={ neg:q("b,strong")||(b&&!q("h1,h2,h3,th")), ita:i||q("i,em"), mar:q("mark"), tit:q("h1,h2,h3"), cit:q("blockquote"), cod:q("code,pre"), lnk:q("a"),
+        lis:!!(lst&&lst.tagName==="UL"&&!lst.classList.contains("tk")), num:!!(lst&&lst.tagName==="OL"), tar:!!(lst&&(lst.classList.contains("tk")||li.dataset.tk!==undefined)),
+        tab:q("table") };
+    }
+    bar.querySelectorAll("button[data-fmt]").forEach(bt=>{ const k=bt.dataset.fmt; if(!(k in ESTADOS)) return; const v=!!on[k]; bt.classList.toggle("ativo",v); bt.setAttribute("aria-pressed",v?"true":"false"); });
+  }
+  const ESTADOS={neg:1,ita:1,mar:1,tit:1,cit:1,cod:1,lnk:1,lis:1,num:1,tar:1,tab:1};
+  document.addEventListener("focusout",e=>{ const ed=e.target.closest&&e.target.closest(".wys"); if(!ed) return; setTimeout(()=>{ const a=ed.ownerDocument.activeElement; if(a!==ed&&!(a&&a.closest&&a.closest(".fmt"))){ const bar=barraDoEd(ed); bar&&bar.querySelectorAll("button.ativo").forEach(b=>{ b.classList.remove("ativo"); b.setAttribute("aria-pressed","false"); }); } },0); });
+  document.addEventListener("keyup",e=>{ const ed=e.target.closest&&e.target.closest(".wys"); if(ed) agendarEstado(ed); });
   function cmd(c,v){ try{ document.execCommand(c,false,v); }catch(e){} }
   function envolverEd(ed,tag,exemplo){
     const atual=dentroDe(ed,tag.toUpperCase());
@@ -1342,6 +1364,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     doc.addEventListener("mousedown",e=>{ if(e.target.closest(".fmt button")) e.preventDefault(); });
     doc.addEventListener("click",e=>{
       const bt=e.target.closest(".fmt button[data-fmt]"); if(!bt) return;
+      setTimeout(()=>{ const fb=bt.closest(".fmt"), t=fb&&(fb.classList.contains("fmt-unica")?taDaBarra(fb):fb.nextElementSibling); if(t&&t._ed) estadoBarra(t._ed); },0);
       const fb=bt.closest(".fmt"); let ta=fb.classList.contains("fmt-unica")?taDaBarra(fb):fb.nextElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return;
       const k=bt.dataset.fmt;
       BT_ULT=bt; if(ta._ed) aplicarEd(ta._ed,k); else aplicar(ta,k);
