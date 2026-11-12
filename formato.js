@@ -37,6 +37,10 @@
 .fmt button{flex:none;min-width:30px;height:28px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--ink,inherit);cursor:pointer;font-size:13.5px;line-height:1}
 .fmt button:hover{background:var(--accent-soft)}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.fmt.fmt-unica{position:sticky;top:0;z-index:30;margin:0 0 12px;box-shadow:0 6px 16px -10px rgb(0 0 0 / .35);background:var(--surface,#fff)}
+.fmt-unica .fmt-alvo{flex-basis:100%;font-size:11.5px;font-weight:600;color:var(--muted,#777);padding:0 4px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmt-cheia .fmt.fmt-unica{position:static;box-shadow:none}
+.wys.fmt-ativo{outline:2px solid color-mix(in srgb,var(--accent,#2a7) 45%,transparent);outline-offset:1px}
 .fmt .fmt-cd{font:600 12px ui-monospace,Menlo,Consolas,monospace;letter-spacing:-.5px}
 .mrc-pop{position:fixed;z-index:2147483000;width:min(330px,calc(100vw - 16px));box-sizing:border-box;background:var(--surface,#fff);color:var(--ink,#222);border:1px solid var(--line,#ccc);border-radius:10px;box-shadow:0 12px 32px rgb(0 0 0 / .22);padding:8px 10px;font:13px var(--body,system-ui,sans-serif)}
 .mrc-pop .mrc-l{font-size:11.5px;font-weight:600;color:var(--muted,#777);margin-bottom:5px;display:flex;justify-content:space-between;gap:6px}
@@ -226,13 +230,29 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)&&!(k==="exp"&&!window.FORMATO_EXPLICA)&&!(ta&&ta.dataset.leve&&/^(flx|cheia|dest|fla|mrc|exp)$/.test(k))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
+  /* Barra única: várias caixas (data-barra="unica") dentro de [data-fmt-unica] usam uma só barra,
+     presa no topo da tela ao rolar, que formata a caixa em que se está digitando. */
+  function barraUnica(ta){
+    const box=ta.closest("[data-fmt-unica]"), doc=ta.ownerDocument; let b=box._barra;
+    if(!b||!b.isConnected){ b=barra(doc,ta); b.classList.add("fmt-unica");
+      const lb=doc.createElement("span"); lb.className="fmt-alvo"; lb.setAttribute("aria-live","polite"); b.prepend(lb);
+      box.prepend(b); box._barra=b; b._box=box; }
+    ta._barra=b; if(!b._ta||!b._ta.isConnected) marcarAlvo(b,ta,false);
+    return b;
+  }
+  function nomeCaixa(ta){ return ta.getAttribute("aria-label")||ta.dataset.rotulo||"Texto"; }
+  function marcarAlvo(b,ta,ativo){ b._ta=ta; const lb=b.querySelector(".fmt-alvo"); if(lb) lb.textContent=(ativo?"✎ ":"")+nomeCaixa(ta);
+    b._box&&b._box.querySelectorAll(".wys.fmt-ativo").forEach(x=>x!==ta._ed&&x.classList.remove("fmt-ativo")); if(ativo&&ta._ed) ta._ed.classList.add("fmt-ativo"); }
+  function taDaBarra(b){ if(b._ta&&b._ta.isConnected) return b._ta; const t=b._box&&b._box.querySelector('textarea[data-barra="unica"]'); if(t) b._ta=t; return t; }
+  document.addEventListener("focusin",e=>{ const ed=e.target.closest&&e.target.closest(".wys"); const ta=ed&&ed._ta; if(!ta||ta.dataset.barra!=="unica"||!ta._barra) return; marcarAlvo(ta._barra,ta,true); });
   function equipar(raiz){
     if(typeof aplicarRev==="function") aplicarRev(raiz);
     equiparZonas(raiz); ligarZonas(raiz.ownerDocument||raiz);
     raiz.querySelectorAll(ALVOS).forEach(ta=>{
       if(ta.dataset.fmtOk) return; ta.dataset.fmtOk="1";
       const p=ta.previousElementSibling; if(p&&p.classList.contains("fmt")) return;
-      ta.parentNode.insertBefore(barra(ta.ownerDocument,ta),ta);
+      if(ta.dataset.barra==="unica"&&ta.closest("[data-fmt-unica]")) barraUnica(ta);
+      else ta.parentNode.insertBefore(barra(ta.ownerDocument,ta),ta);
       if(ta.ownerDocument===document){
         // blocos ```mermaid antigos viram linha curta + doc (o desenho aparece no lugar)
         if(window.FLUXO&&FLUXO.converter&&/```mermaid/.test(ta.value)){ const nv=FLUXO.converter(ta.value); if(nv!==ta.value){ ta.value=nv; ta.dispatchEvent(new Event("input",{bubbles:true})); } }
@@ -1274,25 +1294,27 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function contar(){ if(!CHEIA) return; const v=CHEIA.ta.value; const p=(v.match(/\S+/g)||[]).length; CHEIA.n.textContent=p+" palavra"+(p===1?"":"s"); }
   function telaCheia(ta){
     if(CHEIA){ sairCheia(); return; }
-    const doc=ta.ownerDocument, bar=ta.previousElementSibling&&ta.previousElementSibling.classList.contains("fmt")?ta.previousElementSibling:null;
-    const marca=doc.createComment("tela-cheia"); (ta._abas||bar||ta).before(marca);
+    const doc=ta.ownerDocument, unica=ta.dataset.barra==="unica"&&ta._barra&&ta._barra.isConnected?ta._barra:null, bar=unica||(ta.previousElementSibling&&ta.previousElementSibling.classList.contains("fmt")?ta.previousElementSibling:null);
+    const marca=doc.createComment("tela-cheia"); (ta._abas||(unica?ta:bar)||ta).before(marca);
+    const bm=unica?doc.createComment("barra-unica"):null; if(bm) unica.before(bm);
     const ov=doc.createElement("div"); ov.className="fmt-cheia"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-label","Anotação em tela cheia");
     ov.innerHTML=`<header><span class="fc-t"></span><span class="fc-n"></span><button type="button" data-fc="ver">Visualizar</button><button type="button" data-fc="sair">Sair da tela cheia</button></header><div class="fc-b"></div>`;
     ov.querySelector(".fc-t").textContent=tituloDe(ta);
     const corpo=ov.querySelector(".fc-b"); if(ta._abas) corpo.appendChild(ta._abas); if(bar) corpo.appendChild(bar); corpo.appendChild(ta); if(ta._ed) corpo.appendChild(ta._ed); if(ta._pg) corpo.appendChild(ta._pg); if(ta._pr) corpo.appendChild(ta._pr); if(ta._pj) corpo.appendChild(ta._pj);
     const prev=doc.createElement("div"); prev.className="md fc-prev"; prev.hidden=true; corpo.appendChild(prev);
     doc.body.appendChild(ov); doc.body.style.overflow="hidden";
-    CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false};
+    CHEIA={ta,bar,marca,ov,prev,n:ov.querySelector(".fc-n"),fs:false,bm};
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Sair";
     contar(); reajustar(ta); segAtivo(ta).focus();
     const de=doc.documentElement;
     if(de.requestFullscreen && !doc.fullscreenElement && matchMedia("(min-width:821px)").matches){ de.requestFullscreen().then(()=>{ if(CHEIA) CHEIA.fs=true; }).catch(()=>{}); }
   }
   function sairCheia(){
-    if(!CHEIA) return; const {ta,bar,marca,ov,fs}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
+    if(!CHEIA) return; const {ta,bar,marca,ov,fs,bm}=CHEIA, doc=ov.ownerDocument; CHEIA=null;
+    if(bm){ if(bm.isConnected&&bar) bm.before(bar); bm.remove(); }
     const btc=bar&&bar.querySelector('[data-fmt=cheia] .fmt-tx'); if(btc) btc.textContent="Tela cheia";
     ta.hidden=!!ta._ed; if(ta._ed) ta._ed.hidden=false; if(bar) bar.hidden=false;
-    if(marca.isConnected){ if(ta._abas) marca.before(ta._abas); if(bar) marca.before(bar); marca.before(ta); if(ta._ed) ta.after(ta._ed); if(ta._pg) (ta._ed||ta).after(ta._pg); if(ta._pr) ta._pg.after(ta._pr); if(ta._pj) (ta._pr||ta._pg).after(ta._pj); marca.remove(); ov.remove(); reajustar(ta); segAtivo(ta).focus(); }
+    if(marca.isConnected){ if(ta._abas) marca.before(ta._abas); if(bar&&!bm) marca.before(bar); marca.before(ta); if(ta._ed) ta.after(ta._ed); if(ta._pg) (ta._ed||ta).after(ta._pg); if(ta._pr) ta._pg.after(ta._pr); if(ta._pj) (ta._pr||ta._pg).after(ta._pj); marca.remove(); ov.remove(); reajustar(ta); segAtivo(ta).focus(); }
     else { ov.remove(); if(typeof render==="function") try{ render(); }catch(e){} if(typeof renderPane==="function"&&typeof PANE!=="undefined"&&PANE) try{ renderPane(); }catch(e){} }
     doc.body.style.overflow="";
     if(fs && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(()=>{});
@@ -1315,7 +1337,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     doc.addEventListener("mousedown",e=>{ if(e.target.closest(".fmt button")) e.preventDefault(); });
     doc.addEventListener("click",e=>{
       const bt=e.target.closest(".fmt button[data-fmt]"); if(!bt) return;
-      let ta=bt.closest(".fmt").nextElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return;
+      const fb=bt.closest(".fmt"); let ta=fb.classList.contains("fmt-unica")?taDaBarra(fb):fb.nextElementSibling; if(!ta||ta.tagName!=="TEXTAREA") return;
       const k=bt.dataset.fmt;
       BT_ULT=bt; if(ta._ed) aplicarEd(ta._ed,k); else aplicar(ta,k);
     });

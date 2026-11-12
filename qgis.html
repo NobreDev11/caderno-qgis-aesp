@@ -2568,7 +2568,7 @@ function vProjetos(){
   const lista= ps.length>1 ? `<div class="pj-lista">${ps.map(x=>{ const g=progProj(x); return `<button class="pj-it${x.id===p.id?" on":""}" data-pjsel="${x.id}"><strong>${x.principal?"★ ":""}${esc(x.titulo||"Sem título")}</strong><span class="muted">${(PJ_STATUS.find(s=>s[0]===x.status)||PJ_STATUS[0])[1]} · ${g.pct}%${x.prazo?" · até "+fmtPrazo(x.prazo).slice(0,5):""}</span></button>`; }).join("")}</div>` : "";
   const etapas=(p.etapas||[]);
   const discOpts=sel=>`<option value="">Geral</option>`+DISC.map(d=>`<option value="${d.k}" ${sel===d.k?"selected":""}>${esc(curto(d.k))}</option>`).join("");
-  return topo+lista+`
+  return topo+lista+`<div class="pj-corpo" data-fmt-unica>
   <div class="card pj-cab">
     <div class="row" style="gap:8px;align-items:flex-end">
       <div style="flex:3 1 260px"><label class="lb" for="pj-ti">Título do projeto</label><input type="text" id="pj-ti" data-pjcampo="titulo" value="${esc(p.titulo||"")}"></div>
@@ -2583,7 +2583,7 @@ function vProjetos(){
   </div>
   <div class="grid2">
     <div class="card"><h3>Planejamento ${info("pjplano")}</h3>
-      ${PJ_CAMPOS.map(([c,t,ph])=>`<label class="lb" for="pjc-${c}" style="margin-top:10px">${t}</label><textarea id="pjc-${c}" class="pj-auto" data-pjcampo="${c}" rows="2" placeholder="${esc(ph)}">${esc(p[c]||"")}</textarea>`).join("")}
+      ${PJ_CAMPOS.map(([c,t,ph])=>`<label class="lb" for="pjc-${c}" style="margin-top:10px">${t}</label><textarea id="pjc-${c}" class="pj-auto" data-pjcampo="${c}" data-rich="1" data-sem-abas="1" data-barra="unica" aria-label="${esc(t)}" rows="2" placeholder="${esc(ph)}">${esc(p[c]||"")}</textarea>`).join("")}
     </div>
     <div class="card"><h3>Etapas ${info("pjetapas")}</h3>
       <div class="pj-etapas">${etapas.length?etapas.map((e,i)=>`<div class="pj-et${e.feito?" ok":""}" data-eid="${e.id}">
@@ -2603,7 +2603,7 @@ function vProjetos(){
           <span class="row" style="gap:4px;flex-wrap:wrap">${et.length?`<span class="chip">${ef}/${et.length} etapa(s)</span>`:""}${lg.length?lg.map(k=>`<span class="chip">${sw(k)}${esc(curto(k))}</span>`).join(""):`<span class="chip">individual</span>`}</span></button>`; }).join("")}</div></div>
   </div>
   <div class="card"><h3>Desenvolvimento do projeto ${info("pjtexto")}</h3><p class="muted" style="margin:2px 0 8px;font-size:13.5px">Texto principal: resultados, análises, tabelas, fluxogramas, conclusões. Mesmo editor das anotações.</p>
-    <textarea data-rich="1" data-sem-abas="1" data-pjtexto="${p.id}" aria-label="Desenvolvimento do projeto" placeholder="Escreva aqui o desenvolvimento do projeto…">${esc(p.texto||"")}</textarea></div>
+    <textarea data-rich="1" data-sem-abas="1" data-barra="unica" data-pjtexto="${p.id}" aria-label="Desenvolvimento do projeto" placeholder="Escreva aqui o desenvolvimento do projeto…">${esc(p.texto||"")}</textarea></div>
   <div class="card"><h3>Referências ${info("pjrefs")}</h3>
     <div class="grid2" style="gap:12px">
       <div><label class="lb">Links</label>${(p.links||[]).length?`<div class="pj-refs">${p.links.map((l,i)=>`<div class="row" style="gap:6px"><a href="${esc(l.url)}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.titulo||l.url)}</a><button class="btn sm" data-pjlink="${i}" title="Tirar link">✕</button></div>`).join("")}</div>`:'<p class="empty" style="padding:4px 0">Nenhum link.</p>'}
@@ -2611,7 +2611,7 @@ function vProjetos(){
       <div><label class="lb">Materiais do caderno</label>${(p.mats||[]).filter(id=>S.docs[id]&&!S.docs[id].apagado).length?`<div class="pj-refs">${p.mats.filter(id=>S.docs[id]&&!S.docs[id].apagado).map(id=>`<div class="row" style="gap:6px"><button class="btn sm" data-mat="${id}" style="flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.docs[id].titulo||"Material")}</button><button class="btn sm" data-pjmat="${id}" title="Tirar do projeto">✕</button></div>`).join("")}</div>`:'<p class="empty" style="padding:4px 0">Nenhum material ligado.</p>'}
         <div class="row" style="gap:6px;margin-top:6px"><select id="pj-mt" style="flex:1;min-width:0"><option value="">Escolher material…</option>${mats().filter(m=>!(p.mats||[]).includes(m.id)).map(m=>`<option value="${m.id}">${esc((m.disc&&DK[m.disc]?curto(m.disc)+" · ":"")+(m.titulo||"Material"))}</option>`).join("")}</select><button class="btn sm pri" data-pj="addmat">+ Material</button></div></div>
     </div>
-  </div>`;
+  </div></div>`;
 }
 function projetoMD(p){
   let o=`# ${p.titulo||"Projeto"}\n${(PJ_STATUS.find(s=>s[0]===p.status)||PJ_STATUS[0])[1]}${p.prazo?" · entrega "+fmtPrazo(p.prazo):""}\n\n`;

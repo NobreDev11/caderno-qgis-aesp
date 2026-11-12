@@ -141,3 +141,7 @@ Página estática única (`qgis.html`).
 - Na janelinha de `((termo))`: **⚡ Explicação rápida**; no marcador `<termo>` (editor): **⚡ Rápida**. Busca um trecho conceitual na Wikipédia em português (API aberta `w/api.php` + `rest_v1/page/summary`, sem chave), mostra "digitando" com título, link e aviso de fonte (CC BY-SA).
 - Escolhe o resultado mais ligado ao curso (`RAP_DOM`: cartografia, geodésia, coordenadas, SIG, segurança…), pula desambiguação; "Outro resultado" passa para o próximo significado.
 - "Usar como explicação" leva o trecho (com a fonte) para a edição da explicação; na pesquisa rápida, "Salvar como explicação (( ))" salva e transforma o `<termo>` em `((termo))`.
+
+### Projetos: barra de formatação única
+- Os campos do planejamento (Objetivo, Problema, Área, Dados, Metodologia, Produtos) e o Desenvolvimento usam o editor das anotações.
+- Uma só barra (`data-fmt-unica` no container, `data-barra="unica"` nas caixas) fica no topo e presa ao rolar; formata a caixa em que se está digitando (nome dela aparece na barra e a caixa ganha contorno). Tela cheia leva a barra junto e devolve ao sair.
