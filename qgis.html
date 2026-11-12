@@ -161,6 +161,13 @@ h2 .info{width:20px;height:20px;font-size:12px;vertical-align:4px}
 details.sec{border-top:1px solid var(--line);padding:8px 0 2px}
 .dtog{all:unset;cursor:pointer;width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none;margin:-2px 0 0 -6px}
 .dtog:hover{background:var(--accent-soft)}
+/* disciplina aberta: cabeçalho fica preso no topo ao rolar (para recolher sem voltar lá em cima) */
+.dcard:has(> .dhead .dtog[aria-expanded="true"])>.dhead{position:sticky;top:-24px;z-index:26;background:var(--surface);margin:-16px -16px 0;padding:16px 16px 6px;border-radius:12px 12px 0 0}
+.dcard.preso>.dhead{padding:8px 16px;border-radius:0;border-bottom:1px solid var(--line);box-shadow:0 10px 16px -14px rgb(0 0 0 / .45);align-items:center;flex-direction:row}
+.dcard.preso>.dhead>div:first-of-type>.muted,.dcard.preso>.dhead>div:first-of-type>.mono{display:none}
+.dcard.preso>.dhead h3{font-size:15.5px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-rec{display:none}.dcard.preso .dh-rec{display:inline-flex}
+.dcard .fmt.fmt-presa{top:calc(var(--dh,0px) - 24px)}
 .dtog:focus-visible{outline:2px solid var(--accent)}
 .dtog .chev{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
 .dtog[aria-expanded="true"] .chev{transform:rotate(45deg)}
@@ -937,6 +944,7 @@ function vDisciplinas(){
         <div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
         <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
         <div class="row" style="gap:6px;align-items:flex-start">
+          <button type="button" class="btn sm dh-rec" data-dtog="${x.k}" title="Recolher esta disciplina">▴ Recolher</button>
           <details class="pres-pop" data-prespop="${x.k}" ${PRES_POP===x.k?"open":""}><summary class="btn sm" title="Marcar presença ou falta em cada aula">Presença ${anot.length}/${aulas.length} <span aria-hidden="true">▾</span></summary>
             <div class="pres-cx"><div class="row" style="justify-content:space-between;gap:6px;margin-bottom:6px"><span class="lb" style="margin:0">Presença (${anot.length} de ${aulas.length})</span>${info("discaulas")}</div>
             <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
@@ -1154,9 +1162,17 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){ const c=document.querySelector(".mnav.cheio"); if(c&&c.classList.contains("solto")){ e.stopImmediatePropagation(); soltarNav(c); return; } if(c){ e.stopImmediatePropagation(); c.classList.remove("cheio"); document.body.style.overflow=""; const b=c.querySelector('[data-nv="cheio"]'); if(b) b.textContent="⛶ Expandir"; } }
 },true);
 
+// marca a disciplina aberta cujo cabeçalho está preso no topo e passa a altura dele para a barra de formatação
+function cabPresos(){ const m=document.querySelector("main"); if(!m) return; const top=m.getBoundingClientRect().top;
+  document.querySelectorAll(".dcard").forEach(c=>{ const tg=c.querySelector(".dtog"), ab=tg&&tg.getAttribute("aria-expanded")==="true"; const r=c.getBoundingClientRect(), h=c.querySelector(".dhead");
+    const preso=ab&&r.top<top-4&&r.bottom>top+120; c.classList.toggle("preso",preso); if(h) c.style.setProperty("--dh",(ab?h.offsetHeight:0)+"px"); }); }
+let _cabT=0; document.addEventListener("scroll",e=>{ if(e.target&&e.target.tagName==="MAIN"){ cancelAnimationFrame(_cabT); _cabT=requestAnimationFrame(cabPresos); } },true);
+addEventListener("resize",()=>requestAnimationFrame(cabPresos));
 function abrirCard(k,on){ const c=document.getElementById("d-"+k); if(!c) return; const b=c.querySelector(".dbody"), t=c.querySelector("[data-dtog]"); b.hidden=!on; t.setAttribute("aria-expanded",String(on)); t.title=(on?"Recolher":"Expandir")+" disciplina"; SECOES["card-"+k]=on; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(e){} if(on) montarNavs(); }
 document.addEventListener("click",e=>{
-  const t=e.target.closest&&e.target.closest("[data-dtog]"); if(t){ abrirCard(t.dataset.dtog, t.getAttribute("aria-expanded")!=="true"); return; }
+  const t=e.target.closest&&e.target.closest("[data-dtog]"); if(t){ const c=document.getElementById("d-"+t.dataset.dtog), tg=c&&c.querySelector(".dtog"), fechar=tg&&tg.getAttribute("aria-expanded")==="true", estava=c&&c.classList.contains("preso");
+    abrirCard(t.dataset.dtog, !fechar);
+    if(fechar&&estava&&c){ c.classList.remove("preso"); c.scrollIntoView({block:"start"}); } setTimeout(cabPresos,0); return; }
   const a=e.target.closest&&e.target.closest("[data-dtodas]"); if(a){ DISC.forEach(d=>abrirCard(d.k, a.dataset.dtodas==="1")); }
 });
 
