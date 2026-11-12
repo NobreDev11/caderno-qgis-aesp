@@ -37,6 +37,8 @@
 .fmt button{flex:none;min-width:30px;height:28px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--ink,inherit);cursor:pointer;font-size:13.5px;line-height:1}
 .fmt button:hover{background:var(--accent-soft)}
 .fmt button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.fmt.fmt-presa{position:sticky;top:0;z-index:20;background:var(--surface,#fff);box-shadow:0 6px 14px -12px rgb(0 0 0 / .4)}
+.fmt-cheia .fmt.fmt-presa{position:static;box-shadow:none}
 .fmt.fmt-unica{position:sticky;top:0;z-index:30;margin:0 0 12px;box-shadow:0 6px 16px -10px rgb(0 0 0 / .35);background:var(--surface,#fff)}
 .fmt-unica .fmt-alvo{flex-basis:100%;font-size:11.5px;font-weight:600;color:var(--muted,#777);padding:0 4px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fmt-cheia .fmt.fmt-unica{position:static;box-shadow:none}
@@ -227,7 +229,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function barra(doc,ta){
     const pip=doc!==document, semDest=pip||!window.FORMATO_DESTACAR||!ta||ta.id==="fl-txt"||ta.dataset.rich;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
-    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)&&!(k==="exp"&&!window.FORMATO_EXPLICA)&&!(ta&&ta.dataset.leve&&/^(flx|cheia|dest|fla|mrc|exp)$/.test(k))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
+    d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)&&!(k==="exp"&&!window.FORMATO_EXPLICA)&&!(ta&&ta.dataset.leve&&/^(flx|cheia|dest|fla|mrc|exp)$/.test(k))&&!(ta&&ta.dataset.fmtSo&&!ta.dataset.fmtSo.split(",").includes(k))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;
   }
   /* Barra única: várias caixas (data-barra="unica") dentro de [data-fmt-unica] usam uma só barra,
@@ -488,6 +490,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const h=ta.offsetHeight; if(h>40) ed.style.minHeight=Math.min(h,420)+"px";
     const {notas}=separar(ta.value); ed.innerHTML=mdParaHtml(notas); ed.classList.toggle("vazio",!notas.trim());
     ta.after(ed); ta._ed=ed; ta.hidden=true; montarAbas(ta); focarNovo(ed);
+    { const bar=ta.previousElementSibling; if(bar&&bar.classList&&bar.classList.contains("fmt")) bar.classList.add("fmt-presa"); }
     Object.defineProperty(ta,"value",{configurable:true,get(){ return descV.get.call(this); },set(v){ descV.set.call(this,v); if(!this._sync&&this._ed) requestAnimationFrame(()=>desenhar(this)); }});
     const lab=ta.id&&document.querySelector(`label[for="${ta.id}"]`); if(lab) lab.addEventListener("click",()=>ed.focus());
   }

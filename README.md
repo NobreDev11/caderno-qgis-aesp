@@ -145,3 +145,5 @@ Página estática única (`qgis.html`).
 ### Projetos: barra de formatação única
 - Os campos do planejamento (Objetivo, Problema, Área, Dados, Metodologia, Produtos) e o Desenvolvimento usam o editor das anotações.
 - Uma só barra (`data-fmt-unica` no container, `data-barra="unica"` nas caixas) fica no topo e presa ao rolar; formata a caixa em que se está digitando (nome dela aparece na barra e a caixa ganha contorno). Tela cheia leva a barra junto e devolve ao sair.
+- **Fluxograma:** Descrição do fluxograma e descrição de cada etapa usam o editor com a barra única presa no topo da coluna (negrito, itálico, destaque, listas, revisão — `data-fmt-so`). No desenho viram `<b>`, `<i>`, `<u>`, "•" e quebras de linha (`mdRotulo`); abaixo do desenho/no bloco, Markdown completo.
+- **Barra presa em todas as anotações (`fmt-presa`):** a barra de cada editor fica no topo ao rolar dentro da área da anotação (útil em tabelas e notas longas).

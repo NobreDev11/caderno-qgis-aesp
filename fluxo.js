@@ -32,11 +32,19 @@ const MODELOS = {
   git:{nome:"Exemplo: fluxo do Git", m:{dir:"LR",nos:[{id:"n1",forma:"inicio",texto:"Editar arquivos"},{id:"n2",forma:"nota",texto:"git add ."},{id:"n3",forma:"nota",texto:"git commit -m \"mensagem\""},{id:"n4",forma:"nota",texto:"git push"},{id:"n5",forma:"inicio",texto:"GitHub atualizado"}],ligs:[{de:"n1",para:"n2",rot:""},{de:"n2",para:"n3",rot:""},{de:"n3",para:"n4",rot:""},{de:"n4",para:"n5",rot:""}]}},
 };
 const limpa = t => String(t||"").replace(/"/g,"'").replace(/[\r\n]+/g," ").trim() || " ";
+// Descrição da etapa (Markdown simples da barra de formatação) → rótulo do Mermaid: negrito, itálico, destaque, listas e quebras de linha.
+function mdRotulo(t){
+  return String(t||"").split(/\r?\n/).map(l=>l.replace(/^\s*#{1,3}\s+/,"").replace(/^(\s*)[-*]\s+(?:\[[ xX]\]\s*)?/,(x,sp)=>(sp.length>=2?"&nbsp;&nbsp;":"")+"• ").replace(/^>\s?/,""))
+    .filter(l=>l.trim()).map(l=>l.replace(/"/g,"'").replace(/!\[[^\]]*\]\([^)]*\)/g,"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/</g,"#lt;").replace(/>/g,"#gt;")
+      .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>").replace(/==([^=]+)==/g,"<u>$1</u>").replace(/`([^`]+)`/g,"$1")
+      .replace(/\{\{([^{}]+)\}\}|\(\(([^()]+)\)\)/g,(x,a,b)=>a||b).replace(/&lt;|&gt;/g,""))
+    .join("<br/>");
+}
 function paraMermaid(m){
   const l=["flowchart "+(m.dir==="LR"?"LR":"TD")];
   const comDesc=m.descNo!==false;
   for(const n of m.nos){ const f=FORMAS[n.forma]||FORMAS.etapa, dsc=comDesc&&String(n.desc||"").trim();
-    l.push("  "+n.id+f.a+limpa(n.texto)+(dsc?"<br/><small>"+limpa(dsc).replace(/</g,"#lt;").replace(/>/g,"#gt;")+"</small>":"")+f.b); }
+    l.push("  "+n.id+f.a+limpa(n.texto)+(dsc?"<br/><small>"+mdRotulo(dsc)+"</small>":"")+f.b); }
   const ids=new Set(m.nos.map(n=>n.id));
   for(const g of m.ligs){ if(!ids.has(g.de)||!ids.has(g.para)) continue; const r=String(g.rot||"").replace(/["|]/g,"").trim(); l.push("  "+g.de+(r?' -->|"'+r+'"| ':" --> ")+g.para); }
   return l.join("\n");
@@ -60,8 +68,9 @@ function gravarFx(id, modelo, codigo, info){ const a=(S.docs["fx-"+id]&&!S.docs[
 function extras(d){
   if(!d||d.apagado) return {desc:"",lista:""}; const m=d.modelo||{}, desc=String(d.desc??m.desc??"").trim();
   const nos=(m.nos||[]).map((n,i)=>({n,i})).filter(x=>String(x.n.desc||"").trim());
-  return { desc: desc?`<p class="fx-desc">${escH(desc).replace(/\n/g,"<br>")}</p>`:"",
-    lista: nos.length&&m.descNo===false?`<details class="fx-det"><summary>Descrição das etapas (${nos.length})</summary><ol>${nos.map(x=>`<li value="${x.i+1}"><b>${escH(x.n.texto||"(sem texto)")}</b> <span class="fx-fm">${escH((FORMAS[x.n.forma]||FORMAS.etapa).nome)}</span><div>${escH(x.n.desc.trim()).replace(/\n/g,"<br>")}</div></li>`).join("")}</ol></details>`:"" };
+  const mdh=t=>typeof md==="function"?md(t):escH(t).replace(/\n/g,"<br>");
+  return { desc: desc?`<div class="fx-desc md">${mdh(desc)}</div>`:"",
+    lista: nos.length&&m.descNo===false?`<details class="fx-det"><summary>Descrição das etapas (${nos.length})</summary><ol>${nos.map(x=>`<li value="${x.i+1}"><b>${escH(x.n.texto||"(sem texto)")}</b> <span class="fx-fm">${escH((FORMAS[x.n.forma]||FORMAS.etapa).nome)}</span><div class="md">${mdh(x.n.desc.trim())}</div></li>`).join("")}</ol></details>`:"" };
 }
 const linhaFx = id => "![Fluxograma](fx:"+id+")";
 // Troca os blocos ```mermaid do texto por linhas curtas, guardando cada fluxograma no seu doc.
@@ -160,10 +169,10 @@ function desenharEditor(){
       <div class="row">${ED.idx!=null?`<button class="btn sm danger" data-fxapagar>Apagar</button>`:""}<button class="btn sm" data-fxfechar>Cancelar</button><button class="btn sm pri" data-fxsalvar>Salvar na anotação</button></div>
     </header>
     <div class="fx-body">
-      <div class="fx-col">
+      <div class="fx-col" data-fmt-unica>
         <div class="fx-sec fx-info">
           <label class="fx-campo">Título <input type="text" id="fx-tit" maxlength="80" value="${escH(ED.titulo)}" placeholder="Ex.: Georreferenciar uma imagem"></label>
-          <label class="fx-campo">Descrição do fluxograma <textarea id="fx-desc" rows="2" placeholder="Para que serve, quando usar, observações…">${escH(ED.desc)}</textarea></label>
+          <label class="fx-campo">Descrição do fluxograma <textarea id="fx-desc" rows="2" data-rich="1" data-sem-abas="1" data-barra="unica" data-leve="1" data-fmt-so="neg,ita,mar,lis,num,rev" aria-label="Descrição do fluxograma" placeholder="Para que serve, quando usar, observações…">${escH(ED.desc)}</textarea></label>
         </div>
         ${ED.modoCodigo?`<p class="fx-dica">Modo código (Mermaid). <a href="https://mermaid.js.org/syntax/flowchart.html" target="_blank" rel="noopener">Guia da sintaxe</a>.${m?"":" Este fluxograma foi escrito à mão, por isso abre direto no código."}</p>
           <textarea id="fx-cod" spellcheck="false">${escH(ED.codigo)}</textarea>
@@ -174,7 +183,7 @@ function desenharEditor(){
             <select data-fxforma="${n.id}" aria-label="Forma da etapa ${i+1}">${Object.entries(FORMAS).map(([k,v])=>`<option value="${k}" ${n.forma===k?"selected":""}>${v.nome}</option>`).join("")}</select>
             <input type="text" data-fxtexto="${n.id}" value="${escH(n.texto)}" placeholder="Texto da etapa" aria-label="Texto da etapa ${i+1}">
             <button class="btn sm" data-fxsobe="${n.id}" ${i?"":"disabled"} aria-label="Subir">↑</button><button class="btn sm" data-fxdesce="${n.id}" ${i<m.nos.length-1?"":"disabled"} aria-label="Descer">↓</button><button class="btn sm danger" data-fxdelno="${n.id}" aria-label="Apagar etapa">✕</button>
-            <textarea class="fx-nd" rows="1" data-fxdesc="${n.id}" placeholder="Descrição ${n.forma==="inicio"?"do início/fim":n.forma==="decisao"?"da decisão":"da etapa"} (opcional)" aria-label="Descrição da etapa ${i+1}">${escH(n.desc||"")}</textarea>
+            <textarea class="fx-nd" rows="1" data-rich="1" data-sem-abas="1" data-barra="unica" data-leve="1" data-fmt-so="neg,ita,mar,lis,num,rev" data-fxdesc="${n.id}" placeholder="Descrição ${n.forma==="inicio"?"do início/fim":n.forma==="decisao"?"da decisão":"da etapa"} (opcional)" aria-label="Descrição da etapa ${i+1}">${escH(n.desc||"")}</textarea>
           </div>`).join("")}
           <div class="row"><button class="btn sm" data-fxaddno="etapa">+ Etapa</button><button class="btn sm" data-fxaddno="decisao">+ Decisão</button><button class="btn sm" data-fxaddno="nota">+ Comando</button><button class="btn sm" data-fxaddno="inicio">+ Início/Fim</button></div></div>
           <div class="fx-sec"><b>Ligações (setas)</b>
@@ -267,6 +276,11 @@ const css=`
 .fx-campo textarea{resize:vertical;min-height:2.6em;field-sizing:content;max-height:30vh}
 .fx-nd{grid-column:3 / -1;font:inherit;font-size:13px;color:var(--ink,inherit);background:var(--bg);border:1px dashed var(--line);border-radius:7px;padding:4px 8px;resize:vertical;min-height:1.9em;field-sizing:content;max-height:30vh;margin-top:-2px}
 .fx-nd:focus{border-style:solid}
+.fx-no .wys{grid-column:3 / -1;min-height:1.9em;padding:4px 8px;font-size:13px;border:1px dashed var(--line);border-radius:7px;margin-top:-2px;max-height:30vh;overflow:auto}
+.fx-no .wys:focus{border-style:solid}
+.fx-info .wys{min-height:2.6em;padding:6px 8px;font-size:14px;font-weight:400;max-height:30vh;overflow:auto}
+.fx-col>.fmt-unica{margin:-4px 0 0}
+.fx-desc.md p{margin:0 0 4px}
 .fx-desc{margin:2px 4px 4px;font-size:13px;color:var(--muted);line-height:1.45;text-align:left}
 .fx-det{font-size:13px;margin:2px 4px;text-align:left}.fx-det summary{cursor:pointer;color:var(--muted);font-weight:600}
 .fx-det ol{margin:6px 0 0;padding-left:22px}.fx-det li{margin:3px 0}.fx-det .fx-fm{font-size:11.5px;color:var(--muted);margin-left:4px}.fx-det li div{color:var(--ink,inherit)}
@@ -285,7 +299,7 @@ const css=`
   .fx-no{grid-template-columns:18px minmax(0,1fr) auto auto auto;}
   .fx-no select{grid-column:2 / -1}
   .fx-no input{grid-column:2 / 3}
-  .fx-nd{grid-column:2 / -1}
+  .fx-nd,.fx-no .wys{grid-column:2 / -1}
   .fx-lig{grid-template-columns:1fr auto 1fr;}
   .fx-lig input{grid-column:1 / 3}
 }`;
