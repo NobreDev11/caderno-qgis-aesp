@@ -308,7 +308,21 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pj-et{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr) auto;gap:4px 6px;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .pj-et>input[type=checkbox]{grid-column:1;grid-row:1}.pj-et>input[type=text]{grid-column:2/4;grid-row:1}.pj-et>.pj-mv{grid-column:4;grid-row:1}
 .pj-et>select{grid-column:2;grid-row:2;font-size:13px;padding-top:3px;padding-bottom:3px}.pj-et>input[type=date]{grid-column:3;grid-row:2;font-size:13px;padding-top:3px;padding-bottom:3px}
-.pj-et input[type=text]{min-width:0}.pj-et.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
+.pj-et input[type=text]{min-width:0}
+.pj-etd{grid-column:1/-1;grid-row:3;margin:2px 0 0 26px}
+.pj-etd>summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:600;padding:2px 0;list-style:none}.pj-etd>summary::-webkit-details-marker{display:none}
+.pj-etd>summary::before{content:"▸ ";color:var(--muted)}.pj-etd[open]>summary::before{content:"▾ "}
+.pj-etd[open]{padding:4px 0 6px}
+.pj-etd .wys{min-height:2.4em;max-height:40vh;overflow:auto;margin:4px 0}
+.pj-links{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.pj-lk{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px;max-width:100%}
+.pj-lk a{color:var(--accent);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.pj-lk a:hover{text-decoration:underline}
+.pj-lk button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;padding:0 4px}
+.pj-jus-l>summary{cursor:pointer;list-style:none}.pj-jus-l>summary::-webkit-details-marker{display:none}
+.pj-jus-l>summary h4::before{content:"▸ ";color:var(--muted)}.pj-jus-l[open]>summary h4::before{content:"▾ "}
+.pj-jus-i>summary{cursor:pointer;list-style:none;font-weight:600;font-size:13.5px;display:flex;gap:6px;align-items:center;margin-bottom:4px}.pj-jus-i>summary::-webkit-details-marker{display:none}
+.pj-jus-i>summary::before{content:"▸";color:var(--muted)}.pj-jus-i[open]>summary::before{content:"▾"}
+.pj-jus-p{font-weight:400;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}.pj-et.ok input[type=text]{text-decoration:line-through;color:var(--muted)}
 .pj-mv{display:flex;gap:2px}.pj-mv button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:6px;min-width:26px;height:28px;cursor:pointer;font:inherit;font-size:12.5px}
 .pj-mv button:disabled{opacity:.3;cursor:default}.pj-mv button:hover:not(:disabled){color:var(--accent)}
 .pj-mapa{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:14px;align-items:start;margin-top:8px}
@@ -329,6 +343,8 @@ textarea.pj-auto{width:100%;resize:vertical;min-height:44px;overflow:hidden}
 .pj-jus-l{border-top:1px solid var(--line);margin-top:10px}
 .pj-jus-i{margin:0 0 10px}.pj-jus-t{font-weight:600;font-size:13.5px;display:flex;gap:6px;align-items:center;margin-bottom:4px}
 .pj-jus .wys{min-height:2.4em;max-height:30vh;overflow:auto}
+.pj-corpo>.fmt.fmt-unica{top:-24px}
+.pj-et2d{margin:0 0 6px 26px;font-size:13.5px}.pj-et2d summary{cursor:pointer;color:var(--accent);font-size:12.5px;font-weight:600}
 .pj-puxa{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .pj-lig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .pj-lig .md{font-size:13.5px}.pj-l-t{margin-top:4px}
@@ -1166,6 +1182,9 @@ document.addEventListener("keydown",e=>{
 function cabPresos(){ const m=document.querySelector("main"); if(!m) return; const top=m.getBoundingClientRect().top;
   document.querySelectorAll(".dcard").forEach(c=>{ const tg=c.querySelector(".dtog"), ab=tg&&tg.getAttribute("aria-expanded")==="true"; const r=c.getBoundingClientRect(), h=c.querySelector(".dhead");
     const preso=ab&&r.top<top-4&&r.bottom>top+120; c.classList.toggle("preso",preso); if(h) c.style.setProperty("--dh",(ab?h.offsetHeight:0)+"px"); }); }
+document.addEventListener("toggle",e=>{ const d=e.target; if(!d||!d.dataset) return;
+  if(d.dataset.etd){ d.open?PJ_ETD.add(d.dataset.etd):PJ_ETD.delete(d.dataset.etd); }
+  if(d.dataset.pjjus){ PJ_JUS[d.dataset.pjjus]=d.open; guardarPjJus(); } },true);
 let _cabT=0; document.addEventListener("scroll",e=>{ if(e.target&&e.target.tagName==="MAIN"){ cancelAnimationFrame(_cabT); _cabT=requestAnimationFrame(cabPresos); } },true);
 addEventListener("resize",()=>requestAnimationFrame(cabPresos));
 function abrirCard(k,on){ const c=document.getElementById("d-"+k); if(!c) return; const b=c.querySelector(".dbody"), t=c.querySelector("[data-dtog]"); b.hidden=!on; t.setAttribute("aria-expanded",String(on)); t.title=(on?"Recolher":"Expandir")+" disciplina"; SECOES["card-"+k]=on; try{ localStorage.setItem("caderno-qgis:secoes",JSON.stringify(SECOES)); }catch(e){} if(on) montarNavs(); }
@@ -2573,6 +2592,11 @@ function novoProjeto(modelo){
 
 /* ---- página Projetos ---- */
 let PRJ_SEL=null;
+// etapas com detalhes abertos e estado do bloco "Justificativa das ligações" (lembrados neste navegador)
+let PJ_ETD=new Set(), PJ_JUS={}; try{ PJ_JUS=JSON.parse(localStorage.getItem("caderno-qgis:pjjus")||"{}")||{}; }catch(e){}
+function guardarPjJus(){ try{ localStorage.setItem("caderno-qgis:pjjus",JSON.stringify(PJ_JUS)); }catch(e){} }
+const urlOk=u=>{ u=String(u||"").trim(); if(!u) return ""; if(!/^[a-z]+:\/\//i.test(u)) u="https://"+u; try{ const x=new URL(u); return /^https?:$/.test(x.protocol)?x.href:""; }catch(e){ return ""; } };
+const nomeLink=l=>l.t||(()=>{ try{ const x=new URL(l.u); return x.hostname.replace(/^www\./,"")+(x.pathname.length>1?x.pathname.slice(0,30)+(x.pathname.length>30?"…":""):""); }catch(e){ return l.u; } })();
 function grafoLigacoes(p){
   const W=300,H=250,cx=W/2,cy=H/2,R=95, pos={};
   DISC.forEach((d,i)=>{ const a=-Math.PI/2+i*2*Math.PI/DISC.length; pos[d.k]=[cx+R*Math.cos(a),cy+R*Math.sin(a),a]; });
@@ -2614,7 +2638,12 @@ function vProjetos(){
         <input type="text" data-pjet="t" value="${esc(e.t||"")}" aria-label="Etapa">
         <select data-pjet="disc" aria-label="Disciplina" style="border-left:4px solid ${e.disc&&DK[e.disc]?DK[e.disc].cor:"var(--line)"}">${discOpts(e.disc)}</select>
         <input type="date" data-pjet="prazo" value="${esc(e.prazo||"")}" aria-label="Prazo">
-        <span class="pj-mv"><button type="button" data-pjet="sobe" title="Subir" ${i?"":"disabled"}>↑</button><button type="button" data-pjet="desce" title="Descer" ${i<etapas.length-1?"":"disabled"}>↓</button><button type="button" data-pjet="tirar" title="Apagar etapa">✕</button></span></div>`).join(""):'<p class="empty">Nenhuma etapa. Divida o projeto em passos com responsável (disciplina) e prazo.</p>'}</div>
+        <span class="pj-mv"><button type="button" data-pjet="sobe" title="Subir" ${i?"":"disabled"}>↑</button><button type="button" data-pjet="desce" title="Descer" ${i<etapas.length-1?"":"disabled"}>↓</button><button type="button" data-pjet="tirar" title="Apagar etapa">✕</button></span>
+        <details class="pj-etd" data-etd="${e.id}" ${PJ_ETD.has(e.id)?"open":""}><summary>Detalhes e links${(e.obs||"").trim()||(e.links||[]).length?` <span class="muted">· ${[(e.obs||"").trim()?"texto":"",(e.links||[]).length?(e.links.length+" link"+(e.links.length>1?"s":"")):""].filter(Boolean).join(" · ")}</span>`:""}</summary>
+          <textarea rows="2" data-rich="1" data-sem-abas="1" data-barra="unica" data-pjet="obs" aria-label="Detalhes da etapa ${i+1}${e.t?": "+esc(e.t.slice(0,40)):""}" placeholder="Como fazer, ferramentas e menus do QGIS, dados usados, entregável, observações…">${esc(e.obs||"")}</textarea>
+          <div class="pj-links">${(e.links||[]).map((l,j)=>`<span class="pj-lk"><a href="${esc(l.u)}" target="_blank" rel="noopener" title="${esc(l.u)}">🔗 ${esc(nomeLink(l))}</a><button type="button" data-pjet="tirarlink" data-i="${j}" title="Tirar link" aria-label="Tirar link">✕</button></span>`).join("")}</div>
+          <div class="row pj-addlk" style="gap:6px"><input type="url" class="pj-lk-u" placeholder="Link de acesso (site, Drive, dados, vídeo…)" style="flex:2 1 200px;min-width:0"><input type="text" class="pj-lk-t" placeholder="Nome (opcional)" style="flex:1 1 120px;min-width:0"><button type="button" class="btn sm" data-pjet="addlink">+ Link</button></div>
+        </details></div>`).join(""):'<p class="empty">Nenhuma etapa. Divida o projeto em passos com responsável (disciplina) e prazo.</p>'}</div>
       <form class="row pj-add" id="pj-fet" style="gap:6px;margin-top:8px"><input type="text" id="pj-et-t" placeholder="Nova etapa" style="flex:2 1 180px"><select id="pj-et-d" style="flex:1 1 120px">${discOpts("")}</select><button class="btn sm pri">Adicionar</button></form>
     </div>
   </div>
@@ -2624,8 +2653,8 @@ function vProjetos(){
         return `<button class="pj-dc" data-pjir="${d.k}" style="border-left:5px solid ${d.cor}"><strong>${esc(nomeDisc(d.k))}</strong>
           <span class="pj-dt">${(x.texto||"").trim()?esc((x.texto||"").trim().split("\n").map(limparMd).filter(Boolean).join(" · ").slice(0,160))+((x.texto||"").trim().length>160?"…":""):'<i class="muted">Sem parte escrita ainda</i>'}</span>
           <span class="row" style="gap:4px;flex-wrap:wrap">${et.length?`<span class="chip">${ef}/${et.length} etapa(s)</span>`:""}${lg.length?lg.map(k=>`<span class="chip">${sw(k)}${esc(curto(k))}</span>`).join(""):`<span class="chip">individual</span>`}</span></button>`; }).join("")}</div></div>
-    ${(()=>{ const ps=pares(p.id); return ps.length?`<div class="pj-jus-l"><h4 style="margin:14px 0 6px">Justificativa das ligações</h4>${ps.map(([a,b])=>`<div class="pj-jus-i"><div class="pj-jus-t">${sw(a)}${esc(curto(a))} <span class="muted">↔</span> ${sw(b)}${esc(curto(b))}</div>
-      <textarea rows="2" data-rich="1" data-sem-abas="1" data-barra="unica" data-pjlpor="${b}" data-pjlde="${a}" data-prj="${p.id}" aria-label="Ligação ${esc(curto(a))} ↔ ${esc(curto(b))}" placeholder="Por que essas disciplinas se ligam: o que uma usa da outra…">${esc(ligPor(p.id,a,b))}</textarea></div>`).join("")}</div>`:""; })()}
+    ${(()=>{ const ps=pares(p.id), feitas=ps.filter(([a,b])=>ligPor(p.id,a,b).trim()).length; return ps.length?`<details class="pj-jus-l" data-pjjus="sec" ${PJ_JUS.sec!==false?"open":""}><summary><h4 style="margin:14px 0 6px;display:inline-block">Justificativa das ligações <span class="muted" style="font-weight:400;font-size:13px">${feitas} de ${ps.length} justificada${ps.length>1?"s":""}</span></h4></summary>${ps.map(([a,b])=>{ const j=ligPor(p.id,a,b).trim(), key=ligKey(a,b); return `<details class="pj-jus-i" data-pjjus="${key}" ${PJ_JUS[key]===false?"":(PJ_JUS[key]||!j?"open":"")}><summary>${sw(a)}${esc(curto(a))} <span class="muted">↔</span> ${sw(b)}${esc(curto(b))}${j?`<span class="pj-jus-p">— ${esc(limparMd(j.split("\n")[0]).slice(0,90))}</span>`:`<span class="pj-jus-p">— sem justificativa</span>`}</summary>
+      <textarea rows="2" data-rich="1" data-sem-abas="1" data-barra="unica" data-pjlpor="${b}" data-pjlde="${a}" data-prj="${p.id}" aria-label="Ligação ${esc(curto(a))} ↔ ${esc(curto(b))}" placeholder="Por que essas disciplinas se ligam: o que uma usa da outra…">${esc(ligPor(p.id,a,b))}</textarea></details>`; }).join("")}</details>`:""; })()}
   </div>
   <div class="card"><h3>Desenvolvimento do projeto ${info("pjtexto")}</h3><p class="muted" style="margin:2px 0 8px;font-size:13.5px">Texto principal: resultados, análises, tabelas, fluxogramas, conclusões. Mesmo editor das anotações.</p>
     <textarea data-rich="1" data-sem-abas="1" data-barra="unica" data-pjtexto="${p.id}" aria-label="Desenvolvimento do projeto" placeholder="Escreva aqui o desenvolvimento do projeto…">${esc(p.texto||"")}</textarea></div>
@@ -2641,7 +2670,9 @@ function vProjetos(){
 function projetoMD(p){
   let o=`# ${p.titulo||"Projeto"}\n${(PJ_STATUS.find(s=>s[0]===p.status)||PJ_STATUS[0])[1]}${p.prazo?" · entrega "+fmtPrazo(p.prazo):""}\n\n`;
   PJ_CAMPOS.forEach(([c,t])=>{ if((p[c]||"").trim()) o+=`## ${t}\n${p[c].trim()}\n\n`; });
-  if((p.etapas||[]).length) o+=`## Etapas\n`+p.etapas.map(e=>`- [${e.feito?"x":" "}] ${e.t}${e.disc&&DK[e.disc]?" ("+curto(e.disc)+")":""}${e.prazo?" · até "+fmtPrazo(e.prazo):""}`).join("\n")+"\n\n";
+  if((p.etapas||[]).length) o+=`## Etapas\n`+p.etapas.map(e=>`- [${e.feito?"x":" "}] ${e.t}${e.disc&&DK[e.disc]?" ("+curto(e.disc)+")":""}${e.prazo?" · até "+fmtPrazo(e.prazo):""}`
+    +((e.obs||"").trim()?"\n"+e.obs.trim().split("\n").map(l=>"    "+l).join("\n"):"")
+    +((e.links||[]).length?"\n"+e.links.map(l=>`    - [${nomeLink(l)}](${l.u})`).join("\n"):"")).join("\n")+"\n\n";
   const partes=DISC.filter(d=>(pjd(p.id,d.k).texto||"").trim()||ligados(p.id,d.k).length);
   if(partes.length){ o+=`## Contribuição de cada disciplina\n\n`; partes.forEach(d=>{ const lg=ligados(p.id,d.k); o+=`### ${nomeDisc(d.k)}\n${lg.length?"Ligada a: "+lg.map(curto).join(", ")+"\n\n":""}${(pjd(p.id,d.k).texto||"").trim()}\n\n`; }); }
   { const ps=pares(p.id); if(ps.length){ o+=`## Ligações entre disciplinas\n\n`; ps.forEach(([a,b])=>{ const j=ligPor(p.id,a,b).trim(); o+=`- **${curto(a)} ↔ ${curto(b)}**${j?": "+j.replace(/\n+/g," "):""}\n`; }); o+="\n"; } }
@@ -2690,7 +2721,7 @@ function projAbaHTML(k){
   <label class="lb" style="margin-top:12px">Parte de ${esc(curto(k))} no projeto ${info("pjparte")}</label>
   <textarea class="pj-auto pj-parte" data-pjparte="${k}" data-prj="${p.id}" rows="3" placeholder="Como o que foi estudado nesta disciplina entra no projeto: técnicas, dados, análises, produtos…">${esc(d.texto||"")}</textarea>
   <div class="pj-sec"><span class="lb" style="margin:0">Etapas desta disciplina</span>
-    ${minhas.length?minhas.map(e=>`<label class="pj-et2${e.feito?" ok":""}"><input type="checkbox" data-pjxet="${e.id}" ${e.feito?"checked":""}> <span>${esc(e.t)}</span>${e.prazo?`<span class="mono muted" style="font-size:12px">${fmtPrazo(e.prazo).slice(0,5)}</span>`:""}</label>`).join(""):'<p class="muted" style="margin:4px 0;font-size:13px">Nenhuma etapa desta disciplina.</p>'}
+    ${minhas.length?minhas.map(e=>`<label class="pj-et2${e.feito?" ok":""}"><input type="checkbox" data-pjxet="${e.id}" ${e.feito?"checked":""}> <span>${esc(e.t)}</span>${e.prazo?`<span class="mono muted" style="font-size:12px">${fmtPrazo(e.prazo).slice(0,5)}</span>`:""}</label>${(e.obs||"").trim()||(e.links||[]).length?`<div class="pj-et2d">${(e.obs||"").trim()?`<details><summary>Detalhes</summary><div class="md">${md(e.obs)}</div></details>`:""}${(e.links||[]).length?`<div class="pj-links">${e.links.map(l=>`<span class="pj-lk"><a href="${esc(l.u)}" target="_blank" rel="noopener" title="${esc(l.u)}">🔗 ${esc(nomeLink(l))}</a></span>`).join("")}</div>`:""}</div>`:""}`).join(""):'<p class="muted" style="margin:4px 0;font-size:13px">Nenhuma etapa desta disciplina.</p>'}
     <div class="row" style="gap:6px;margin-top:4px"><input type="text" class="pj-novaet" data-k="${k}" placeholder="Nova etapa desta disciplina" style="flex:1;min-width:0"><button type="button" class="btn sm" data-pjx="etapa">+ Etapa</button></div>
   </div>
   <div class="pj-sec"><div class="row" style="justify-content:space-between;gap:6px"><span class="lb" style="margin:0">Ligação com outras disciplinas ${info("pjligas")}</span>
@@ -3056,6 +3087,7 @@ document.addEventListener("input",e=>{
   if(VIEW!=="projetos") return;
   if(t.dataset.pjcampo){ if(t.tagName==="TEXTAREA") autoAltura(t); salvarPrj(PRJ_SEL,{[t.dataset.pjcampo]:t.value}); if(t.dataset.pjcampo==="titulo"){ const it=document.querySelector(`.pj-it[data-pjsel="${PRJ_SEL}"] strong`); if(it) it.textContent=(S.docs[PRJ_SEL].principal?"★ ":"")+(t.value||"Sem título"); } return; }
   if(t.dataset.pjtexto){ salvarPrj(t.dataset.pjtexto,{texto:t.value}); return; }
+  if(t.dataset.pjet==="obs"){ const id=t.closest(".pj-et").dataset.eid; salvarPrj(PRJ_SEL,{etapas:(S.docs[PRJ_SEL].etapas||[]).map(x=>x.id===id?{...x,obs:t.value}:x)},600); return; }
   if(t.dataset.pjet==="t"){ const id=t.closest(".pj-et").dataset.eid; salvarPrj(PRJ_SEL,{etapas:(S.docs[PRJ_SEL].etapas||[]).map(x=>x.id===id?{...x,t:t.value}:x)}); return; }
 });
 document.addEventListener("change",e=>{
@@ -3064,9 +3096,10 @@ document.addEventListener("change",e=>{
     if(c==="principal"){ projetos().forEach(x=>{ if(x.id!==PRJ_SEL&&x.principal&&t.checked) salvarPrj(x.id,{principal:false},80); }); salvarPrj(PRJ_SEL,{principal:t.checked},80); }
     else salvarPrj(PRJ_SEL,{[c]:t.value},80);
     render(); return; }
-  if(t.dataset.pjet&&t.dataset.pjet!=="t"){ const id=t.closest(".pj-et").dataset.eid, v=t.type==="checkbox"?t.checked:t.value;
+  if(t.dataset.pjet&&!/^(t|obs)$/.test(t.dataset.pjet)){ const id=t.closest(".pj-et").dataset.eid, v=t.type==="checkbox"?t.checked:t.value;
     salvarPrj(PRJ_SEL,{etapas:(S.docs[PRJ_SEL].etapas||[]).map(x=>x.id===id?{...x,[t.dataset.pjet]:v}:x)},80); render(); return; }
 });
+document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.closest&&e.target.closest(".pj-addlk")&&e.target.tagName==="INPUT"){ e.preventDefault(); e.target.closest(".pj-addlk").querySelector('[data-pjet="addlink"]').click(); } });
 document.addEventListener("submit",e=>{
   if(e.target.id==="pj-fet"){ e.preventDefault(); const t=document.getElementById("pj-et-t").value.trim(); if(!t) return; const disc=document.getElementById("pj-et-d").value;
     salvarPrj(PRJ_SEL,{etapas:[...(S.docs[PRJ_SEL].etapas||[]),{id:novoId(),t,disc,feito:false,prazo:""}]},80); render(); document.getElementById("pj-et-d").value=disc; document.getElementById("pj-et-t").focus(); return; }
@@ -3082,6 +3115,11 @@ document.addEventListener("click",e=>{
   if(ds.pjlink!==undefined){ salvarPrj(PRJ_SEL,{links:(p.links||[]).filter((x,i)=>i!==+ds.pjlink)},80); render(); return; }
   if(ds.pjmat){ salvarPrj(PRJ_SEL,{mats:(p.mats||[]).filter(x=>x!==ds.pjmat)},80); render(); return; }
   if(ds.pjet==="feito") return;
+  if(ds.pjet==="addlink"||ds.pjet==="tirarlink"){ const row=b.closest(".pj-et"), id=row.dataset.eid, et=(p.etapas||[]).map(x=>({...x})), e2=et.find(x=>x.id===id); if(!e2) return;
+    if(ds.pjet==="addlink"){ const iu=row.querySelector(".pj-lk-u"), it=row.querySelector(".pj-lk-t"), u=urlOk(iu.value); if(!u){ toast("Cole um link válido (https://…)."); iu.focus(); return; }
+      e2.links=[...(e2.links||[]),{u,t:it.value.trim().slice(0,80)}]; }
+    else e2.links=(e2.links||[]).filter((x,j)=>j!==+b.dataset.i);
+    PJ_ETD.add(id); salvarPrj(PRJ_SEL,{etapas:et},80); render(); setTimeout(()=>document.querySelector(`.pj-et[data-eid="${id}"] .pj-lk-u`)?.focus(),30); return; }
   if(ds.pjet==="sobe"||ds.pjet==="desce"||ds.pjet==="tirar"){ const id=b.closest(".pj-et").dataset.eid, et=[...(p.etapas||[])], i=et.findIndex(x=>x.id===id); if(i<0) return;
     if(ds.pjet==="tirar"){ if(!b.dataset.conf&&(et[i].t||"").trim()){ b.dataset.conf="1"; b.textContent="Apagar?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent="✕"; } },3000); return; } et.splice(i,1); }
     else { const j=ds.pjet==="sobe"?i-1:i+1; if(j<0||j>=et.length) return; [et[i],et[j]]=[et[j],et[i]]; }
