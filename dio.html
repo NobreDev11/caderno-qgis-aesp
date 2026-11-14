@@ -586,7 +586,7 @@ function sw(k){ return `<span class="sw" style="background:${DK[k].cor}"></span>
 function editando(){ const a=document.activeElement; return a && (a.tagName==="TEXTAREA"||a.isContentEditable||(a.tagName==="INPUT"&&a.type==="text")); }
 
 /* ============ NAVEGAÇÃO ============ */
-const VIEWS=[["hoje","Hoje"],["trilha","Trilha"],["fases","Fases"],["portfolio","Portfólio"],["materiais","Materiais"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
+const VIEWS=[["hoje","Hoje"],["trilha","Trilha"],["fases","Fases"],["portfolio","Portfólio"],["materiais","Materiais"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["formatacao","Formatação"],["backup","Exportar"]];
 let VIEW = "hoje", FASE_SEL="todas", PANE=null;
 function lerHash(){ const h=location.hash.slice(1); if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
 window.addEventListener("hashchange",()=>{ lerHash(); render(); });
@@ -1378,7 +1378,7 @@ document.addEventListener("input",e=>{ const t=e.target; if(FL.aberto&&((t.datas
 function render(){
   lerHash();
   renderNav();
-  const V={hoje:vHoje,trilha:vTrilha,fases:vFases,portfolio:vPortfolio,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
+  const V={hoje:vHoje,trilha:vTrilha,fases:vFases,portfolio:vPortfolio,materiais:vMateriais,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,formatacao:()=>`<div><h2>Índice de formatação</h2></div><div class="card">${window.FORMATO&&FORMATO.indice?FORMATO.indice():""}</div>`,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno DIO no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (seu caderno continua salvo neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_dio.sql</span> → Run → recarregue esta página.</p><div class="row" style="margin-top:8px"><button class="btn sm pri" data-copiasql>Copiar SQL</button><a class="btn sm" href="https://supabase.com/dashboard/project/ytionrwdwdmcxbdgqnkt/sql/new" target="_blank" rel="noopener">Abrir o SQL Editor</a></div></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
   sincronizarFlutuante();

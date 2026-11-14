@@ -824,7 +824,7 @@ const ICONES={
   projetos:'<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.5l2 2H16a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"/><path d="m7 11.5 2 2 4-4"/>',
 };
 const icone = k => `<svg class="ic" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[k]||""}</svg>`;
-const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["projetos","Projetos"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["backup","Exportar"]];
+const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["projetos","Projetos"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["formatacao","Formatação"],["backup","Exportar"]];
 let VIEW = "hoje", DIA_SEL=null, PANE=null;
 function lerHash(){ const h=location.hash.slice(1); if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
 window.addEventListener("hashchange",()=>{ lerHash(); render(); });
@@ -3139,7 +3139,7 @@ document.addEventListener("keydown",e=>{ const g=e.target.closest&&e.target.clos
 function render(){
   lerHash();
   renderNav();
-  const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,projetos:vProjetos,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,backup:vBackup}[VIEW];
+  const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,projetos:vProjetos,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,formatacao:()=>`<div><h2>Índice de formatação</h2></div><div class="card">${window.FORMATO&&FORMATO.indice?FORMATO.indice():""}</div>`,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/caderno_notas.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
   if(VIEW==="disciplinas") montarNavs();

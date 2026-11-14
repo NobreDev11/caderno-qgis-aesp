@@ -30,6 +30,7 @@
     ["tab",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="1.5"/><path d="M2 7.5h16M2 12h16M8 3v14M13 3v14"/></svg><span class="fmt-tx">Tabela</span>',"Inserir tabela neste ponto (com o cursor numa tabela: adicionar/remover linhas e colunas). Tab passa para a próxima célula."],
     ["fla",'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5.5" y="2.5" width="12" height="9" rx="1.5"/><rect x="2.5" y="7.5" width="12" height="9" rx="1.5" fill="var(--surface,#fff)"/><path d="M6 12h5"/></svg><span class="fmt-tx">Flashcard</span>',"Flashcard: o trecho selecionado vira um cartão de revisão (\"termo: explicação\" já separa frente e verso)"],
     ["rev",'<span class="fmt-rev">Aa✓</span>',"Revisão: correção ortográfica (automática ou não) e sugestão de palavras por Tab"],
+    ["idx",'<span class="fmt-idx">?</span>',"Índice de formatação: os códigos para formatar digitando (também na aba Formatação)"],
   ];
   const CSS=`
 .fmt{width:0;min-width:100%;box-sizing:border-box;display:flex;gap:2px;align-items:center;flex-wrap:wrap;overflow-x:auto;scrollbar-width:none;padding:3px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);flex:none}
@@ -136,6 +137,22 @@ label.dz:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .tb-pop .tb-rm{color:#c0392b}
 .tb-pop .tb-t{font-weight:700;font-size:12.5px}
 .fmt .fmt-rev{font-weight:700;font-size:12px;letter-spacing:-.02em}
+.fmt .fmt-idx{display:inline-grid;place-items:center;width:18px;height:18px;border:1.6px solid currentColor;border-radius:50%;font-weight:700;font-size:11.5px}
+.fx-idx{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px}
+.fx-idx .sh{position:absolute;inset:0;background:rgb(0 0 0 / .35)}
+.fx-idx .bx{position:relative;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 50px rgb(0 0 0 / .3);width:min(820px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:16px 18px}
+.fx-idx .cab{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.fx-idx h2{margin:0}
+.idx-t{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+.idx-t th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+.idx-t td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.idx-t td.cd{font-family:var(--mono,ui-monospace,monospace);font-size:13px;white-space:pre-wrap;word-break:break-word;background:var(--accent-soft);border-radius:4px}
+.idx-t td.md>*:first-child{margin-top:0}.idx-t td.md>*:last-child{margin-bottom:0}
+.idx-t td.md table{font-size:12.5px}
+.idx-t .k{white-space:nowrap;color:var(--muted);font-size:12.5px}
+.idx-t tr.sec td{background:none;font-weight:700;color:var(--accent);padding-top:14px;font-family:inherit;font-size:13px}
+.idx-dicas{margin:14px 0 0;padding-left:1.2em;line-height:1.6;font-size:14px}
+@media (max-width:640px){.idx-t .k{display:none}.idx-t td,.idx-t th{padding:6px 4px}.idx-t td.cd{font-size:12px;min-width:104px;overflow-wrap:anywhere}}
 .rev-pop{max-width:320px}
 .tb-pop label.rev-op{display:flex;flex-direction:row;gap:8px;align-items:flex-start;cursor:pointer;padding:4px 2px;color:inherit;font-size:13.5px}
 .tb-pop .rev-op input{width:auto;padding:0}
@@ -845,6 +862,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   }
   function aplicarEd(ed,k){
     const ta=ed._ta;
+    if(k==="idx") return abrirIndice(ta.ownerDocument);
     if(k==="cheia") return telaCheia(ta);
     if(k==="flx") return fluxograma(ta);
     restaurar(ed);
@@ -905,6 +923,45 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const t=trechoAntes(ed,/\(\(([^()\n]{1,120}?)\)\)$/); if(!t||!t.m[1].replace(/\u200b/g,"").trim()) return;
     const q=t.m[1].replace(/\u200b/g,"").trim(), sp=novaMarca("exp",q);
     porMarca(ed,sp).poe(t.r); sincronizar(ed); abrirExp(ed,sp,true);
+  }
+  // **negrito**, *itálico*, ==marca==, `código` e [texto](https://…) digitados viram formatação na hora: os símbolos somem
+  const INLINE_DIG=[
+    [/(?<!\*)\*\*([^*\s\u200b](?:[^*\n]*[^*\s\u200b])?)\*\*$/,"b"],
+    [/(?<![*\w])\*([^*\s\u200b](?:[^*\n]*[^*\s\u200b])?)\*$/,"i"],
+    [/(?<!=)==([^=\s\u200b](?:[^=\n]*[^=\s\u200b])?)==$/,"mark"],
+    [/(?<!`)`([^`\n\u200b][^`\n]*)`$/,"code"],
+    [/(?<!!)\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)$/,"a"],
+  ];
+  // Ctrl+Z logo depois de uma formatação automática devolve os símbolos digitados
+  let ULT_CONV=null;
+  function desfazerConv(ed){
+    const c=ULT_CONV; ULT_CONV=null; if(!c||c.ed!==ed||!c.nos[0].isConnected) return false;
+    let tn=document.createTextNode(c.txt);
+    if(c.nos[0].tagName==="HR"||c.nos[0].tagName==="PRE"){ const d=document.createElement("div"); d.appendChild(tn); c.nos[0].before(d); }
+    else c.nos[0].before(tn);
+    c.nos.forEach(n=>n.isConnected&&n.remove());
+    const r=document.createRange(); r.setStart(tn,tn.nodeValue.length); r.collapse(true); const s=getSelection(); s.removeAllRanges(); s.addRange(r);
+    sincronizar(ed); return true;
+  }
+  function inlineDigitado(ed){
+    if(dentroDe(ed,"CODE")||dentroDe(ed,"PRE")||dentroDe(ed,"A")) return false;
+    for(const [re,tag] of INLINE_DIG){
+      const t=trechoAntes(ed,re); if(!t) continue;
+      const el=document.createElement(tag); el.textContent=t.m[1].replace(/\u200b/g,"");
+      if(tag==="a"){ el.href=t.m[2]; el.target="_blank"; el.rel="noopener"; }
+      const pm=porMarca(ed,el); pm.poe(t.r);   // o cursor fica depois, fora da formatação
+      ULT_CONV={ed, nos:[el,pm.z], txt:t.m[0]};
+      return true;
+    }
+    return false;
+  }
+  // "---" ou "```" sozinhos na linha + Enter viram linha divisória ou bloco de código
+  function blocoDigitado(ed){
+    const b=blocoAtual(ed); if(!b||!/^(DIV|P)$/.test(b.tagName)||b.parentNode!==ed) return false;
+    const t=b.textContent.replace(/[\u200b\u00a0]/g," ").trim();
+    if(/^(-{3,}|\*{3,}|_{3,})$/.test(t)){ const hr=document.createElement("hr"), d=document.createElement("div"); d.innerHTML="<br>"; b.replaceWith(hr); hr.after(d); cursorEm(d); ULT_CONV={ed,nos:[hr,d],txt:t}; return true; }
+    if(/^```[\w-]*$/.test(t)){ const pre=document.createElement("pre"); pre.innerHTML="<br>"; b.replaceWith(pre); const nos=[pre]; if(!pre.nextSibling){ const d=document.createElement("div"); d.innerHTML="<br>"; pre.after(d); nos.push(d); } cursorEm(pre); ULT_CONV={ed,nos,txt:t,bloco:true}; return true; }
+    return false;
   }
   function blocoTexto(el){ let b=el; while(b&&b.parentNode&&!(b.nodeType===1&&/^(DIV|P|LI|H1|H2|H3|BLOCKQUOTE|TD|TH)$/.test(b.tagName)&&b!==el)) b=b.parentNode; return ((b&&b.textContent)||"").replace(/\u200b/g,"").trim().slice(0,600); }
   function abrirExp(ed,sp,novo){
@@ -1042,6 +1099,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(e.inputType==="insertText"&&e.data===" ") atalhoDigitado(ed);
     // ">" e "}" digitados (teclado comum, teclado do celular/IME ou correção do navegador que troca a palavra)
     const dd=e.data||"", digitou=/^insert(Text|ReplacementText)$/.test(e.inputType)||(e.inputType==="insertCompositionText"&&!e.isComposing);
+    ULT_CONV=null;
+    if(digitou&&/[*=`)]$/.test(dd)) inlineDigitado(ed);
     if(digitou&&/>\s*$/.test(dd)) termoDigitado(ed);
     if(digitou&&/\}\s*$/.test(dd)) flashDigitado(ed);
     if(digitou&&/\)\s*$/.test(dd)) explicaDigitado(ed);
@@ -1053,6 +1112,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(e.key==="Tab"&&celAtual(ed)){ e.preventDefault(); const c=celAtual(ed), cs=[...c.closest("table").querySelectorAll("th,td")], i=cs.indexOf(c);
       if(e.shiftKey){ focarCel(cs[i-1]||c); return; } if(i===cs.length-1){ opTabela(ed,"linha"); focarCel(c.closest("table").rows[c.closest("table").rows.length-1].children[0]); return; } focarCel(cs[i+1]); return; }
     if(e.key==="Tab"&&dentroDe(ed,"LI")){ e.preventDefault(); if(e.shiftKey) desrecuar(ed); else recuar(ed); return; }
+    if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&e.key.toLowerCase()==="z"&&ULT_CONV&&desfazerConv(ed)){ e.preventDefault(); return; }
+    if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&blocoDigitado(ed)){ e.preventDefault(); sincronizar(ed); return; }
     // Enter num item vazio de sublista: volta um nível (como no Word)
     if(e.key==="Enter"&&!e.shiftKey){ const li=dentroDe(ed,"LI"); if(li&&!li.textContent.replace(/[\u200b\s]/g,"")&&!li.querySelector("img")&&li.parentNode.parentNode.tagName==="LI"){ e.preventDefault(); desrecuar(ed); return; } }
     if(!(e.ctrlKey||e.metaKey)||e.altKey) return; const k=e.key.toLowerCase();
@@ -1291,7 +1352,61 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     d.addEventListener("click",fechar); doc.addEventListener("keydown",k,true);
   }
   function recuoTa(ta,mais){ const {a,b,ls}=linhas(ta); const n=ls.map(l=>!l.trim()?l:mais?"  "+l:l.replace(/^ {1,2}|^\t/,"")); const t=n.join("\n"); trocar(ta,a,b,t,a,a+t.length); }
+  /* ---------- Índice de formatação (aba "Formatação" e botão ? da barra) ---------- */
+  const INDICE=[
+    ["Texto"],
+    ["**texto**","Negrito","N · Ctrl+B"],
+    ["*texto*","Itálico","I · Ctrl+I"],
+    ["==texto==","Marca-texto","M"],
+    ["`git status`","Código no meio do texto","</>"],
+    ["[texto](https://site.com)","Link (Ctrl+clique abre)","🔗 · Ctrl+K"],
+    ["Títulos e blocos"],
+    ["# Título","Título grande (digite # e espaço)","T"],
+    ["## Subtítulo","Título médio","T T"],
+    ["### Seção","Título pequeno","T T T"],
+    ["> texto","Citação ou destaque (> e espaço)","❝"],
+    ["```\ncódigo\n```","Bloco de código (digite ``` e Enter)","</> em linha vazia"],
+    ["---","Linha divisória (digite --- e Enter)","―"],
+    ["Listas"],
+    ["- item","Lista (- e espaço, ou * e espaço)","•"],
+    ["1. item","Lista numerada (começa no número digitado)","1."],
+    ["- item\n  - subitem","Sublista: Tab entra um nível, Shift+Tab volta","⇥ ⇤"],
+    ["[ ] tarefa\n[x] feita","Tarefa / checklist ([ ] e espaço; clique na caixinha para marcar)","☐ · Ctrl+Shift+X"],
+    ["Inserir"],
+    ["| A | B |\n|---|---|\n| 1 | 2 |","Tabela (Tab passa para a próxima célula)","Tabela"],
+    ["![nome](https://site.com/foto.png)","Imagem da internet. As suas: botão Imagem, Ctrl+V ou arrastar","Imagem"],
+    ["","Fluxograma: só pelo botão (o editor guarda e desenha)","Fluxograma"],
+    ["Marcadores de estudo"],
+    ["<termo>","Termo pesquisável: clique abre a pesquisa","<>"],
+    ["{{pergunta}}","Pergunta de flashcard","{{}}"],
+    ["((termo))","Termo com explicação","(( ))"],
+  ];
+  function indice(){
+    const r=t=>t.replace(/\\n/g,"\n");
+    const res=c=>{ if(!c) return '<span class="muted">—</span>';
+      if(/^<|^\{\{|^\(\(/.test(c)) return `<span class="muted">vira um marcador clicável</span>`;
+      try{ return typeof md==="function"?md(r(c)):escH(r(c)); }catch(e){ return escH(r(c)); } };
+    let n=0;
+    return `<p class="sub" style="margin:0">No editor o texto já aparece formatado. Digite os códigos da primeira coluna: ao fechar o símbolo (ou, no começo da linha, ao dar espaço ou Enter) os símbolos somem e a formatação aparece. Quem preferir usa os botões da barra. Se a formatação automática aparecer sem você querer (ex.: num cálculo com asteriscos), aperte <b>Ctrl+Z</b> logo em seguida para os símbolos voltarem.</p>
+    <table class="idx-t"><thead><tr><th>Digite</th><th>Resultado</th><th>O que é</th><th class="k">Botão · atalho</th></tr></thead><tbody>
+    ${INDICE.map(l=>l.length===1?`<tr class="sec"><td colspan="4">${escH(l[0])}</td></tr>`:`<tr><td class="cd">${escH(r(l[0]))}</td><td class="md">${res(l[0])}</td><td>${escH(l[1])}</td><td class="k">${escH(l[2])}</td></tr>`).join("")}
+    </tbody></table>
+    <ul class="idx-dicas"><li><b>Enter</b> numa lista cria o próximo item; <b>Enter</b> num item vazio sai da lista.</li>
+    <li><b>Shift+Enter</b> quebra a linha sem começar outro parágrafo.</li>
+    <li><b>Ctrl+Z</b> desfaz e <b>Ctrl+Y</b> refaz.</li>
+    <li>Selecionar um trecho e clicar num botão formata o trecho; clicar de novo tira a formatação.</li></ul>`;
+  }
+  function abrirIndice(doc){
+    doc=doc||document; const v=doc.getElementById("fmt-idx"); if(v){ v.remove(); return; }
+    const d=doc.createElement("div"); d.id="fmt-idx"; d.className="fx-idx";
+    d.innerHTML=`<div class="sh" data-idxx></div><div class="bx" role="dialog" aria-modal="true" aria-label="Índice de formatação"><div class="cab"><h2>Índice de formatação</h2><button type="button" class="btn sm" data-idxx aria-label="Fechar">✕</button></div>${indice()}</div>`;
+    doc.body.appendChild(d);
+    d.addEventListener("click",e=>{ if(e.target.closest("[data-idxx]")) d.remove(); });
+    d.querySelector("button[data-idxx]").focus();
+  }
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ const v=document.getElementById("fmt-idx"); if(v){ v.remove(); e.stopImmediatePropagation(); e.preventDefault(); } } },true);
   function aplicar(ta,k){
+    if(k==="idx") return abrirIndice(ta.ownerDocument);
     ({rev:()=>{}, fla:()=>{ if(window.FORMATO_FLASH) window.FORMATO_FLASH(ta, ta.value.slice(ta.selectionStart,ta.selectionEnd)); }, dest:()=>{ if(window.FORMATO_DESTACAR) window.FORMATO_DESTACAR(ta); },
       pq:()=>envolver(ta,"<",">","termo"), mrc:()=>envolver(ta,"{{","}}","pergunta"), exp:()=>envolver(ta,"((","))","termo"),
       tab:()=>{ const v=ta.value, a=ta.selectionStart, antes=a>0&&v[a-1]!=="\n"?"\n":""; trocar(ta,a,ta.selectionEnd,antes+"| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n"); },
@@ -1419,5 +1534,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     carregar("/fluxo.js").then(()=>carregar("/formato.js")).then(()=>{ if(!w.FORMATO){ // sem script na janela: volta à caixa simples
       const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); ligarRev(doc); } });
   }
-  window.FORMATO={ampliar, lerPergs, listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
+  window.FORMATO={indice, abrirIndice, ampliar, lerPergs, listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();
