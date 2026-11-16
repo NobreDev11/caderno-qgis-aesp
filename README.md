@@ -154,3 +154,16 @@ Página estática única (`qgis.html`).
 - **Disciplinas: cabeçalho preso:** com a disciplina aberta, ao rolar o cabeçalho (nome, Presença, Editar nome) fica preso no topo, compacto, com botão **▴ Recolher**; ao recolher, a tela volta para o começo do cartão. A barra de formatação fica logo abaixo dele (`--dh`, `cabPresos`).
 - **Etapas com detalhes e links:** cada etapa tem "Detalhes e links" (retrátil): texto com formatação (`obs`, barra única) e links de acesso (`links:[{u,t}]`, Enter adiciona, ✕ tira). Aparecem também na aba Projetos da disciplina responsável e na exportação.
 - **Justificativa das ligações retrátil:** a seção e cada par abrem/fecham (lembrado em `caderno-qgis:pjjus`); fechado, o par mostra o começo do texto ou "sem justificativa", e o título mostra quantas estão justificadas.
+
+## Código comum (QGIS e DIO)
+- O app ficou num só lugar: **`caderno.js`** (lógica) e **`caderno.css`** (estilos). Cada curso tem um arquivo de dados/config carregado antes: **`curso-qgis.js`** (`CURSO`, disciplinas, aulas do QTS, modelo de projeto, textos) e **`curso-dio.js`** (`CURSO`, fases, 42 itens da trilha, prompts de estudo, modelo de projeto). Toda melhoria nova em `caderno.js` vale para os dois cadernos.
+- `CURSO`: `tabela` (caderno_notas/caderno_dio), prefixos do localStorage (`lsp`, `lsp2`), `convite`, `presenca`, `compartilharPratica`, `views`, `aulaDoc` (aula/item), textos (`tituloMD`, `phDisc`, `rotAula`…).
+- O início do app espera o `DOMContentLoaded`, para o curso poder trocar funções depois do `caderno.js` (`iniciarCaderno`).
+- Ganchos trocáveis: `discIntro`, `discLinhas`, `discPres`, `discBarra` (cartão da disciplina/fase), `renderPaneAula` (painel), `renderProg` (barra lateral), `flOpcoes`/`flRodape` (bloco por cima), `statusAula`, `focoAula`, `discPadrao`, `aulaAtualDe`, `window.TELAS_EXTRA` (telas a mais).
+
+### Caderno DIO (`/dio`) = app comum + `dio.js`
+- Mesmas funções do QGIS: anotações da fase com abas Perguntas / Prática / Projetos, barra de formatação completa (`<>`, `{{}}`, `(( ))`, tabelas, fluxograma, revisão), materiais com visualizador e Drive, pesquisa no cartão, bloco por cima (PiP) com materiais, flashcards e Estudar, página Projetos (etapas com detalhes e links, ligações justificadas), explicações e pesquisa rápida.
+- Essência DIO mantida em `dio.js`: Hoje (item atual, ritmo, prompt de estudo, anotação rápida do item), Trilha (42 itens por fase), Portfólio (links do GitHub), painel do item (status, ★, prompt, repositório, anotações do item). Na tela Fases, o botão "Itens x/y" abre os itens da fase (no lugar da presença).
+- Cada item é uma "aula" para o app (`AULAS` gerado dos itens, doc `item-<id>`); o bloco por cima escolhe o item e escreve nas anotações da fase.
+- Sem presença, sem link de convidado e sem link público de prática (dependem das tabelas do QGIS). Textos "disciplina" viram "fase" só na interface (`trocarTermos`, nunca no que você escreve).
+- `prompts-dio.js` ganhou flashcards (`pedidoFlashcards`, `lerFlashcards`); `/api/ia` usa `curso:"dio"`.

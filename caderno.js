@@ -299,6 +299,7 @@ const ICONES={
   tarefas:'<path d="M8 5.5h9M8 10h9M8 14.5h9"/><path d="m2.5 5.5 1.2 1.2 2-2.2M2.5 10l1.2 1.2 2-2.2M2.5 14.5l1.2 1.2 2-2.2"/>',
   busca:'<circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 5 5"/>',
   backup:'<path d="M10 3v10M6 9l4 4 4-4"/><path d="M3.5 14.5v2.5h13v-2.5"/>',
+  formatacao:'<path d="M4 15.5 9 4.5h2l5 11M6.2 11h7.6"/>',
   projetos:'<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.5l2 2H16a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"/><path d="m7 11.5 2 2 4-4"/>',
 };
 const icone = k => `<svg class="ic" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[k]||""}</svg>`;
@@ -800,9 +801,9 @@ function resultados(){
 function exportarMD(){
   let o=`# ${CURSO.tituloMD}\n\n`;
   DISC.forEach(d=>{
-    o+=`## ${nomeDisc(d.k)}\n${d.inst.join(" · ")} · ${d.ha} h/a\n\n`;
+    o+=`## ${nomeDisc(d.k)}\n${d.inst.join(" · ")} · ${d.ha} ${CURSO.unidadeH||"h/a"}\n\n`;
     const dn=discD(d.k).nota; if(dn&&dn.trim()) o+=`${dn.trim()}\n\n`;
-    AULAS.filter(a=>a.k===d.k).forEach(a=>{const ad=aulaD(a.id); if((ad.nota||"").trim()||ad.estrela) o+=`### Aula ${a.n}/${a.tot} · ${fmtData(a.data)} ${a.ini}${ad.estrela?" ★":""}\n${(ad.nota||"").trim()}\n\n`;});
+    AULAS.filter(a=>a.k===d.k).forEach(a=>{const ad=aulaD(a.id); if((ad.nota||"").trim()||ad.estrela) o+=`### ${CURSO.aulas===false?rotAula(a):"Aula "+a.n+"/"+a.tot+" · "+fmtData(a.data)+" "+a.ini}${ad.estrela?" ★":""}\n${(ad.nota||"").trim()}\n\n`;});
     notas().filter(n=>n.disc===d.k).forEach(n=>{o+=`### Nota: ${n.titulo||"Sem título"}\n${(n.texto||"").trim()}\n\n`;});
     mats().filter(m=>m.disc===d.k&&m.resumo).forEach(m=>{o+=`### Material: ${m.titulo}\n${m.resumo.trim()}\n\n`;});
   });
@@ -1835,9 +1836,9 @@ document.addEventListener("scroll",fecharPop,true);
 const LS_BK=CURSO.lsp+"ultimoBackup";
 function contagem(docs){
   const v=Object.values(docs).filter(b=>b&&!b.apagado);
-  return {aulas:v.filter(b=>b.tipo==="aula"&&((b.nota||"").trim()||b.pres||b.estrela)).length, notas:v.filter(b=>b.tipo==="nota").length, tarefas:v.filter(b=>b.tipo==="tarefa").length, mats:v.filter(b=>b.tipo==="mat").length, quest:v.filter(b=>b.tipo==="mat").reduce((s,b)=>s+(b.questoes||[]).length,0), resumos:v.filter(b=>b.tipo==="disc"&&(b.nota||"").trim()).length};
+  return {aulas:v.filter(b=>b.tipo===(CURSO.aulaDoc||"aula")&&((b.nota||"").trim()||b.pres||b.estrela)).length, notas:v.filter(b=>b.tipo==="nota").length, tarefas:v.filter(b=>b.tipo==="tarefa").length, mats:v.filter(b=>b.tipo==="mat").length, quest:v.filter(b=>b.tipo==="mat").reduce((s,b)=>s+(b.questoes||[]).length,0), resumos:v.filter(b=>b.tipo==="disc"&&(b.nota||"").trim()).length};
 }
-const txtCont = c => `${c.aulas} aula(s) anotada(s) · ${c.notas} nota(s) · ${c.tarefas} tarefa(s) · ${c.mats} material(is) · ${c.quest} questão(ões) · ${c.resumos} resumo(s) de disciplina`;
+const txtCont = c => `${c.aulas} ${CURSO.rotAulas||"aula(s) anotada(s)"} · ${c.notas} nota(s) · ${c.tarefas} tarefa(s) · ${c.mats} material(is) · ${c.quest} questão(ões) · ${c.resumos} resumo(s) de disciplina`;
 function baixarArquivo(nome, conteudo, tipo){
   const url=URL.createObjectURL(new Blob([conteudo],{type:tipo})); const a=document.createElement("a"); a.href=url; a.download=nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
@@ -2447,7 +2448,7 @@ function pratAbaHTML(k){
         <div class="row" style="justify-content:flex-end;gap:6px;margin-top:6px"><button type="button" class="btn sm" data-prx="copiarnota">Copiar</button><button type="button" class="btn sm" data-prx="editarnota" title="Volta o texto para o campo de anotações para editar e salvar de novo">Editar</button><button type="button" class="btn sm danger" data-prx="apagarnota">Apagar</button></div></details>`).join("")}</div>`:""}
       ${ab.link?`<div class="pr-comp"><span class="lb" style="margin:0 0 4px">Link desta prática ${info("prlink")}</span><div class="row" style="gap:6px"><input type="text" readonly value="${esc(location.origin+"/pratica?t="+ab.link)}" class="pr-url" aria-label="Link da prática" style="flex:1;min-width:0;font:12.5px var(--mono)"><button type="button" class="btn sm pri" data-prx="copiarlink">Copiar</button><button type="button" class="btn sm" data-prx="abrirlink">Abrir</button><button type="button" class="btn sm danger" data-prx="desligarlink">Desativar</button></div></div>`:""}
       <div class="row" style="justify-content:space-between;margin-top:10px;gap:6px"><button type="button" class="btn sm" data-prx="fechar">Fechar</button>
-        <span class="row" style="gap:6px">${ab.link?"":`<button type="button" class="btn sm" data-prx="compart" title="Cria um link só desta prática para outras pessoas verem e marcarem os passos (cada uma na sua cópia)">Compartilhar link</button>`}<button type="button" class="btn sm" data-prx="copiar">Copiar como texto</button><button type="button" class="btn sm danger" data-prx="apagar">Apagar</button></span></div>
+        <span class="row" style="gap:6px">${ab.link||CURSO.compartilharPratica===false?"":`<button type="button" class="btn sm" data-prx="compart" title="Cria um link só desta prática para outras pessoas verem e marcarem os passos (cada uma na sua cópia)">Compartilhar link</button>`}<button type="button" class="btn sm" data-prx="copiar">Copiar como texto</button><button type="button" class="btn sm danger" data-prx="apagar">Apagar</button></span></div>
     </div>`; })():"";
   return `<div class="row" style="justify-content:space-between;gap:6px"><span class="lb" style="margin:0">Práticas de ${esc(curto(k))} ${info("pratica")}</span><button type="button" class="btn sm pri" data-prx="nova">+ Nova prática</button></div>${lista}${ed}`;
 }
