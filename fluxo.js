@@ -187,7 +187,9 @@ function svgLivre(m, vbFixo, alcas){
     if(bs.length){ const R=Math.max(...bs.map(c=>c.x+c.w/2),a.x,b.x)+30, L=Math.min(...bs.map(c=>c.x-c.w/2),a.x,b.x)-30, dir=Math.sign(dy)||1;
       const lado=(Math.abs(R-a.x)+Math.abs(R-b.x))<=(Math.abs(L-a.x)+Math.abs(L-b.x))?"r":"l", lane=lado==="r"?R+faixa.r++*16:L-faixa.l++*16;
       const yIni=a.y+dir*(a.h/2+18), yFim=b.y-dir*(b.h/2+18); way=[[lane,yIni],[lane,yFim]]; }
-    const ini=borda(a,way[0][0]-a.x,way[0][1]-a.y), fim=borda(b,way[way.length-1][0]-b.x,way[way.length-1][1]-b.y);
+    // pontas: na direção do caminho, ou no ponto da borda escolhido arrastando (g.pIni / g.pFim, relativos ao centro)
+    const ok=v=>v&&isFinite(v.dx)&&isFinite(v.dy)&&(v.dx||v.dy);
+    const ini=ok(g.pIni)?borda(a,g.pIni.dx,g.pIni.dy):borda(a,way[0][0]-a.x,way[0][1]-a.y), fim=ok(g.pFim)?borda(b,g.pFim.dx,g.pFim.dy):borda(b,way[way.length-1][0]-b.x,way[way.length-1][1]-b.y);
     const P=[[a.x+ini[0],a.y+ini[1]],...way,[b.x+fim[0],b.y+fim[1]]];
     let d; if(cv==="linear") d="M"+P.map(p=>p.join(",")).join(" L");
     else if(cv==="step"){ const Q=[P[0]]; for(let i=1;i<P.length;i++){ const [px,py]=Q[Q.length-1], [x,y]=P[i]; if(px!==x&&py!==y) Q.push(vert?[px,y]:[x,py]); Q.push([x,y]); } d=cantos(Q,8); }
@@ -197,8 +199,9 @@ function svgLivre(m, vbFixo, alcas){
     const mf=t==="linha"?"":' marker-end="url(#fxl-pt)"', mi=t==="dupla"?' marker-start="url(#fxl-pt)"':"";
     const rot=String(g.rot||"").trim(), rw=rot?medir(rot,13)+10:0;
     if(rot&&!via){ for(let n=0;n<6&&rotulos.some(r=>Math.abs(r[0]-lx)<(r[2]+rw)/2+4&&Math.abs(r[1]-ly)<22);n++) ly+=22; } if(rot) rotulos.push([lx,ly,rw]);
+    const pontas=alcas?[["a",P[0],ok(g.pIni)],["b",P[P.length-1],ok(g.pFim)]].map(([q,pt,fx])=>`<rect class="fxl-ponta${fx?" fixa":""}" data-ponta="${e.i}:${q}" x="${pt[0]-5}" y="${pt[1]-5}" width="10" height="10" rx="2"><title>Arraste para mudar onde a seta ${q==="a"?"sai":"chega"}${fx?" · duplo clique volta ao automático":""}</title></rect>`).join(""):"";
     const alca=alcas&&!rot?`<circle class="fxl-alca${via?" fixa":""}" data-alca="${e.i}" cx="${way.length>1?lx:way[0][0]}" cy="${way.length>1?(way[0][1]+way[1][1])/2:way[0][1]}" r="7"><title>Arraste para mudar o caminho da seta${via?" · duplo clique volta ao automático":""}</title></circle>`:"";
-    return `<g class="fxl-lig" data-lig="${e.i}"><path d="${d}" fill="none" stroke="${K.s}" stroke-width="${w}"${dash}${mf}${mi}/>${rot?`<g${alcas?` class="fxl-alca-r${via?" fixa":""}" data-alca="${e.i}"`:""}><rect x="${lx-rw/2}" y="${ly-10}" width="${rw}" height="20" fill="${K.lb}"/><text x="${lx}" y="${ly+1}" fill="${K.lt}" font-size="13">${esc2(rot)}</text>${alcas?`<title>Arraste o rótulo para mudar o caminho da seta${via?" · duplo clique volta ao automático":""}</title>`:""}</g>`:""}${alca}</g>`; }).join("");
+    return `<g class="fxl-lig" data-lig="${e.i}"><path d="${d}" fill="none" stroke="${K.s}" stroke-width="${w}"${dash}${mf}${mi}/>${rot?`<g${alcas?` class="fxl-alca-r${via?" fixa":""}" data-alca="${e.i}"`:""}><rect x="${lx-rw/2}" y="${ly-10}" width="${rw}" height="20" fill="${K.lb}"/><text x="${lx}" y="${ly+1}" fill="${K.lt}" font-size="13">${esc2(rot)}</text>${alcas?`<title>Arraste o rótulo para mudar o caminho da seta${via?" · duplo clique volta ao automático":""}</title>`:""}</g>`:""}${alca}${pontas}</g>`; }).join("");
   const caixas=m.nos.map(n=>{ const c=C[n.id], th=c.tl.length*19, dh=c.dl.length?c.dl.length*16+4:0, y0=-(th+dh)/2+10;
     return `<g class="fxl-no" data-n="${n.id}" transform="translate(${c.x},${c.y})" fill="${n.forma==="decisao"?K.dec:K.no}" stroke="${K.nb}" stroke-width="1">${formaSVG(n.forma,c.w,c.h)}
       ${c.tl.map((l,j)=>`<text stroke="none" fill="${K.tx}" font-size="15" y="${y0+j*19}">${esc2(l)}</text>`).join("")}${c.dl.map((l,j)=>`<text stroke="none" fill="${K.d}" font-size="12.5" y="${y0+th+5+j*16}">${esc2(l)}</text>`).join("")}</g>`; }).join("");
@@ -381,12 +384,14 @@ function desenharLivreEd(vb){ const el=document.getElementById("fx-prev"); if(!e
   const ponto=(sv,e)=>{ const pt=sv.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; return pt.matrixTransform(sv.getScreenCTM().inverse()); };
   document.addEventListener("pointerdown",e=>{ if(!ED||!ED.m||!ED.m.livre||!ED.movendo) return; const el=document.getElementById("fx-prev"); if(!el||!el.contains(e.target)) return;
     const sv=el.querySelector("svg.fxl"); if(!sv) return;
+    const pt=e.target.closest("[data-ponta]"); if(pt){ e.preventDefault(); const [i,q]=pt.dataset.ponta.split(":"); arr={sv,el,ponta:{i:+i,q},vb:sv.getAttribute("viewBox").split(" ").map(Number),moveu:false,ids:[]}; try{ el.setPointerCapture(e.pointerId); }catch(x){} el.classList.add("arrastando"); return; }
     const al=e.target.closest("[data-alca]"); if(al){ e.preventDefault(); const i=+al.dataset.alca; arr={sv,el,seta:i,vb:sv.getAttribute("viewBox").split(" ").map(Number),moveu:false,ids:[]}; try{ el.setPointerCapture(e.pointerId); }catch(x){} el.classList.add("arrastando"); return; }
     const no=e.target.closest("[data-n]"), gr=!no&&e.target.closest("[data-g]"); if(!no&&!gr) return;
     e.preventDefault(); const p=ponto(sv,e), ids=no?[no.dataset.n]:ED.m.nos.filter(n=>grupoNorm(n.grupo)===gr.dataset.g).map(n=>n.id);
     arr={sv,el,ids,p0:p,ini:ids.map(id=>({...ED.m.pos[id]})),vias:ED.m.ligs.map(g=>g.via?{...g.via}:null),vb:sv.getAttribute("viewBox").split(" ").map(Number),moveu:false}; try{ el.setPointerCapture(e.pointerId); }catch(x){} el.classList.add("arrastando"); });
   document.addEventListener("pointermove",e=>{ if(!arr) return; const p=ponto(arr.sv,e);
-    if(arr.seta!==undefined){ arr.moveu=true; const g=ED.m.ligs[arr.seta]; if(g) g.via={x:Math.round(p.x/10)*10,y:Math.round(p.y/10)*10}; }
+    if(arr.ponta){ arr.moveu=true; const g=ED.m.ligs[arr.ponta.i]; if(g){ const c=ED.m.pos[arr.ponta.q==="a"?g.de:g.para]; if(c){ const v={dx:Math.round(p.x-c.x),dy:Math.round(p.y-c.y)}; if(v.dx||v.dy){ if(arr.ponta.q==="a") g.pIni=v; else g.pFim=v; } } } }
+    else if(arr.seta!==undefined){ arr.moveu=true; const g=ED.m.ligs[arr.seta]; if(g) g.via={x:Math.round(p.x/10)*10,y:Math.round(p.y/10)*10}; }
     else { const dx=p.x-arr.p0.x, dy=p.y-arr.p0.y; if(Math.abs(dx)+Math.abs(dy)>2) arr.moveu=true;
     arr.ids.forEach((id,i)=>{ ED.m.pos[id]={x:Math.round((arr.ini[i].x+dx)/10)*10,y:Math.round((arr.ini[i].y+dy)/10)*10}; });
     // seta com caminho próprio acompanha a caixa (metade do movimento se só uma ponta se move)
@@ -394,7 +399,8 @@ function desenharLivreEd(vb){ const el=document.getElementById("fx-prev"); if(!e
     cancelAnimationFrame(arr.raf); arr.raf=requestAnimationFrame(()=>{ if(!arr) return; arr.el.innerHTML=svgLivre(ED.m,arr.vb,true); const s2=arr.el.querySelector("svg"); const z=parseFloat(arr.sv.style.width)/arr.vb[2]; if(s2&&z){ s2.style.maxWidth="none"; s2.style.width=Math.round(arr.vb[2]*z)+"px"; s2.style.height=Math.round(arr.vb[3]*z)+"px"; } arr.sv=s2||arr.sv; }); });
   const fim=()=>{ if(!arr) return; const a=arr; arr=null; a.el.classList.remove("arrastando"); if(a.moveu){ mudou(false); } };
   document.addEventListener("pointerup",fim); document.addEventListener("pointercancel",fim);
-  document.addEventListener("dblclick",e=>{ const al=ED&&ED.movendo&&e.target.closest&&e.target.closest("#fx-prev [data-alca]"); if(!al) return; const g=ED.m.ligs[+al.dataset.alca]; if(g&&g.via){ delete g.via; mudou(false); } });
+  document.addEventListener("dblclick",e=>{ const pt=ED&&ED.movendo&&e.target.closest&&e.target.closest("#fx-prev [data-ponta]"); if(pt){ const [i,q]=pt.dataset.ponta.split(":"), g=ED.m.ligs[+i]; if(g){ delete g[q==="a"?"pIni":"pFim"]; mudou(false); } return; }
+    const al=ED&&ED.movendo&&e.target.closest&&e.target.closest("#fx-prev [data-alca]"); if(!al) return; const g=ED.m.ligs[+al.dataset.alca]; if(g&&g.via){ delete g.via; mudou(false); } });
 })();
 // Prévia: o desenho ocupa o espaço disponível (sem estourar), com zoom − / Ajustar / +
 let FX_ZOOM=0;
@@ -430,7 +436,7 @@ document.addEventListener("click",e=>{
   if(d.fxsobe!==undefined||d.fxdesce!==undefined){ const id=d.fxsobe||d.fxdesce, i=m.nos.findIndex(n=>n.id===id), j=i+(d.fxsobe?-1:1); if(j<0||j>=m.nos.length) return; [m.nos[i],m.nos[j]]=[m.nos[j],m.nos[i]]; mudou(true); return; }
   if(d.fxaddlig!==undefined){ const n=m.nos; m.ligs.push({de:n[n.length-2].id,para:n[n.length-1].id,rot:""}); mudou(true); return; }
   if(d.fxdellig!==undefined){ m.ligs.splice(parseInt(d.fxdellig,10),1); mudou(true); return; }
-  if(d.fxlivre!==undefined){ if(!m.livre){ const sv=document.querySelector("#fx-prev svg"); m.pos=posDoMermaid(sv,m); m.livre=true; } ED.movendo=true; mudou(true); aviso("Arraste as caixas, o nome de um grupo ou o ponto ● de uma seta. Depois clique em ✓ Salvar posições."); return; }
+  if(d.fxlivre!==undefined){ if(!m.livre){ const sv=document.querySelector("#fx-prev svg"); m.pos=posDoMermaid(sv,m); m.livre=true; } ED.movendo=true; mudou(true); aviso("Arraste as caixas, o nome de um grupo, o ponto ● ou rótulo de uma seta e as pontas ■ (onde a seta sai e chega). Depois clique em ✓ Salvar posições."); return; }
   if(d.fxposok!==undefined){ organizar(m); ED.movendo=false; mudou(true); aviso("Posições salvas e setas organizadas."); return; }
   if(d.fxauto!==undefined){ delete m.livre; delete m.pos; ED.movendo=false; document.getElementById("fx-prev")?.classList.remove("fx-livre"); mudou(true); return; }
   if(d.fxlinv!==undefined){ const g=m.ligs[parseInt(d.fxlinv,10)]; if(g){ [g.de,g.para]=[g.para,g.de]; mudou(true); } return; }
@@ -494,6 +500,7 @@ const css=`
 svg.fxl{font-family:inherit;overflow:visible}
 svg.fxl .fxl-alca{fill:var(--surface,#fff);stroke:var(--accent,#5b3cc4);stroke-width:2;cursor:move;opacity:.85}
 svg.fxl .fxl-alca:hover{opacity:1;r:9}svg.fxl .fxl-alca.fixa{fill:var(--accent,#5b3cc4)}
+svg.fxl .fxl-ponta{fill:var(--surface,#fff);stroke:#d35400;stroke-width:2;cursor:crosshair;opacity:.9}svg.fxl .fxl-ponta.fixa{fill:#d35400}
 svg.fxl .fxl-alca-r{cursor:move}svg.fxl .fxl-alca-r rect{stroke:var(--accent,#5b3cc4);stroke-width:1.5;stroke-dasharray:3 2}svg.fxl .fxl-alca-r.fixa rect{stroke-dasharray:none}
 svg.fxl text{text-anchor:middle;dominant-baseline:middle}
 .fx-sec{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
