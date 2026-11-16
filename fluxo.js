@@ -163,7 +163,7 @@ function cantos(pts,r){ // polilinha com cantos arredondados
     if(!k){ d+=` L${x1},${y1}`; continue; }
     d+=` L${x1-(x1-x0)/l1*k},${y1-(y1-y0)/l1*k} Q${x1},${y1} ${x1+(x2-x1)/l2*k},${y1+(y2-y1)/l2*k}`; }
   const u=pts[pts.length-1]; return d+` L${u[0]},${u[1]}`; }
-function svgLivre(m, vbFixo, alcas){
+function svgLivre(m, vbFixo, alcas, guias){
   const comDesc=m.descNo!==false, pos=m.pos||{}, C={}, K=corLivre();
   m.nos.forEach((n,i)=>{ const c=caixa(n,comDesc), p=pos[n.id]||{x:120+(i%3)*240,y:60+Math.floor(i/3)*140}; C[n.id]={...c,x:p.x,y:p.y,forma:n.forma,n}; });
   const esc2=escH, G=[];
@@ -217,7 +217,7 @@ function svgLivre(m, vbFixo, alcas){
   const vb=vbFixo||[Math.min(...xs)-40,Math.min(...ys)-30,Math.max(...xs)-Math.min(...xs)+80,Math.max(...ys)-Math.min(...ys)+60];
   return `<svg class="fxl" xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(v=>Math.round(v)).join(" ")}" width="${Math.round(vb[2])}" height="${Math.round(vb[3])}" role="img" aria-label="Fluxograma">
     <defs><marker id="fxl-pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${K.s}"/></marker></defs>
-    ${gs}${setas}${caixas}</svg>`;
+    ${gs}${setas}${caixas}${(guias||[]).map(g=>g.x!==undefined?`<line class="fxl-guia" x1="${g.x}" y1="${g.a}" x2="${g.x}" y2="${g.b}"/>`:`<line class="fxl-guia" x1="${g.a}" y1="${g.y}" x2="${g.b}" y2="${g.y}"/>`).join("")}</svg>`;
 }
 // "Salvar posições": alinha as caixas em linhas e colunas e abre espaço entre elas (desenho organizado)
 function organizar(m){
@@ -386,6 +386,18 @@ function prever(){ clearTimeout(_pt); _pt=setTimeout(async()=>{ if(!ED) return; 
   try{ const svg=await desenharSVG(cod); if(ED&&el.isConnected){ const st=el.scrollTop, sl=el.scrollLeft; el.innerHTML=svg; ajustarPrevia(); el.scrollTop=st; el.scrollLeft=sl; } }
   catch(e){ if(el.isConnected) el.innerHTML=`<p class="fx-erro">${escH((e&&e.message||"Não foi possível desenhar.").split("\n").slice(0,2).join(" "))}</p>`; } },250); }
 function desenharLivreEd(vb){ const el=document.getElementById("fx-prev"); if(!el||!ED) return; const st=el.scrollTop, sl=el.scrollLeft; el.innerHTML=svgLivre(ED.m,vb,!!ED.movendo); el.classList.add("fx-livre"); el.classList.toggle("fx-movendo",!!ED.movendo); ajustarPrevia(); el.scrollTop=st; el.scrollLeft=sl; }
+// Guias de alinhamento: ao chegar perto do centro/borda de outra caixa, encaixa e mostra a linha
+function caixasDe(m, menos){ const comDesc=m.descNo!==false; return m.nos.filter(n=>!menos.includes(n.id)&&m.pos[n.id]).map(n=>{ const c=caixa(n,comDesc), p=m.pos[n.id]; return {x:p.x,y:p.y,w:c.w,h:c.h}; }); }
+function encaixar(px,py,w,h,outros,T){
+  T=T||8; const g=[]; let bx=null, by=null;
+  const cx=[["c",0],["l",-w/2],["r",w/2]], alvoX=o=>[o.x,o.x-o.w/2,o.x+o.w/2], cy=[["c",0],["t",-h/2],["b",h/2]], alvoY=o=>[o.y,o.y-o.h/2,o.y+o.h/2];
+  outros.forEach(o=>{ cx.forEach(([k,d],i)=>{ const v=alvoX(o)[i], dist=Math.abs(px+d-v); if(dist<=T&&(!bx||dist<bx.d)) bx={d:dist,x:v-d,linha:v,o}; });
+    cy.forEach(([k,d],i)=>{ const v=alvoY(o)[i], dist=Math.abs(py+d-v); if(dist<=T&&(!by||dist<by.d)) by={d:dist,y:v-d,linha:v,o}; }); });
+  const x=bx?bx.x:Math.round(px/10)*10, y=by?by.y:Math.round(py/10)*10;
+  if(bx){ const os=outros.filter(o=>alvoX(o).some(v=>Math.abs(v-bx.linha)<0.5)); g.push({x:bx.linha,a:Math.min(y-h/2,...os.map(o=>o.y-o.h/2))-16,b:Math.max(y+h/2,...os.map(o=>o.y+o.h/2))+16}); }
+  if(by){ const os=outros.filter(o=>alvoY(o).some(v=>Math.abs(v-by.linha)<0.5)); g.push({y:by.linha,a:Math.min(x-w/2,...os.map(o=>o.x-o.w/2))-16,b:Math.max(x+w/2,...os.map(o=>o.x+o.w/2))+16}); }
+  return {x,y,guias:g};
+}
 // Arrastar caixas (e grupos) na prévia
 (function(){ let arr=null;
   const ponto=(sv,e)=>{ const pt=sv.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; return pt.matrixTransform(sv.getScreenCTM().inverse()); };
@@ -398,12 +410,16 @@ function desenharLivreEd(vb){ const el=document.getElementById("fx-prev"); if(!e
     arr={sv,el,ids,p0:p,ini:ids.map(id=>({...ED.m.pos[id]})),vias:ED.m.ligs.map(g=>g.via?{...g.via}:null),vb:sv.getAttribute("viewBox").split(" ").map(Number),moveu:false}; try{ el.setPointerCapture(e.pointerId); }catch(x){} el.classList.add("arrastando"); });
   document.addEventListener("pointermove",e=>{ if(!arr) return; const p=ponto(arr.sv,e);
     if(arr.ponta){ arr.moveu=true; const g=ED.m.ligs[arr.ponta.i]; if(g){ const c=ED.m.pos[arr.ponta.q==="a"?g.de:g.para]; if(c){ const v={dx:Math.round(p.x-c.x),dy:Math.round(p.y-c.y)}; if(v.dx||v.dy){ if(arr.ponta.q==="a") g.pIni=v; else g.pFim=v; } } } }
-    else if(arr.seta!==undefined){ arr.moveu=true; const g=ED.m.ligs[arr.seta]; if(g){ let x=p.x, y=p.y; const v=arr.viz; if(v){ x=(6*p.x-v[0]-v[2])/4; y=(6*p.y-v[1]-v[3])/4; } g.via={x:Math.round(x/5)*5,y:Math.round(y/5)*5}; } }
+    else if(arr.seta!==undefined){ arr.moveu=true; const g=ED.m.ligs[arr.seta]; if(g){ let x=p.x, y=p.y; const v=arr.viz; if(v){ x=(6*p.x-v[0]-v[2])/4; y=(6*p.y-v[1]-v[3])/4; } const r=encaixar(x,y,0,0,caixasDe(ED.m,[])); g.via={x:r.x,y:r.y}; arr.guias=r.guias; } }
     else { const dx=p.x-arr.p0.x, dy=p.y-arr.p0.y; if(Math.abs(dx)+Math.abs(dy)>2) arr.moveu=true;
-    arr.ids.forEach((id,i)=>{ ED.m.pos[id]={x:Math.round((arr.ini[i].x+dx)/10)*10,y:Math.round((arr.ini[i].y+dy)/10)*10}; });
+    if(!arr.outros) arr.outros=caixasDe(ED.m,arr.ids);
+    if(arr.ids.length===1){ const n=ED.m.nos.find(x=>x.id===arr.ids[0]), c=caixa(n,ED.m.descNo!==false), r=encaixar(arr.ini[0].x+dx,arr.ini[0].y+dy,c.w,c.h,arr.outros); ED.m.pos[arr.ids[0]]={x:r.x,y:r.y}; arr.guias=r.guias; }
+    else { // grupo: alinha pelo centro do conjunto
+      const xs=arr.ini.map(q=>q.x), ys=arr.ini.map(q=>q.y), mx=(Math.min(...xs)+Math.max(...xs))/2, my=(Math.min(...ys)+Math.max(...ys))/2, r=encaixar(mx+dx,my+dy,0,0,arr.outros);
+      const ddx=r.x-mx, ddy=r.y-my; arr.ids.forEach((id,i)=>{ ED.m.pos[id]={x:Math.round(arr.ini[i].x+ddx),y:Math.round(arr.ini[i].y+ddy)}; }); arr.guias=r.guias; }
     // seta com caminho próprio acompanha a caixa (metade do movimento se só uma ponta se move)
     ED.m.ligs.forEach((g,i)=>{ const v=arr.vias[i]; if(!v) return; const k=(arr.ids.includes(g.de)?1:0)+(arr.ids.includes(g.para)?1:0); if(k) g.via={x:Math.round((v.x+dx*k/2)/10)*10,y:Math.round((v.y+dy*k/2)/10)*10}; }); }
-    cancelAnimationFrame(arr.raf); arr.raf=requestAnimationFrame(()=>{ if(!arr) return; arr.el.innerHTML=svgLivre(ED.m,arr.vb,true); const s2=arr.el.querySelector("svg"); const z=parseFloat(arr.sv.style.width)/arr.vb[2]; if(s2&&z){ s2.style.maxWidth="none"; s2.style.width=Math.round(arr.vb[2]*z)+"px"; s2.style.height=Math.round(arr.vb[3]*z)+"px"; } arr.sv=s2||arr.sv; }); });
+    cancelAnimationFrame(arr.raf); arr.raf=requestAnimationFrame(()=>{ if(!arr) return; arr.el.innerHTML=svgLivre(ED.m,arr.vb,true,arr.guias); const s2=arr.el.querySelector("svg"); const z=parseFloat(arr.sv.style.width)/arr.vb[2]; if(s2&&z){ s2.style.maxWidth="none"; s2.style.width=Math.round(arr.vb[2]*z)+"px"; s2.style.height=Math.round(arr.vb[3]*z)+"px"; } arr.sv=s2||arr.sv; }); });
   const fim=()=>{ if(!arr) return; const a=arr; arr=null; a.el.classList.remove("arrastando"); if(a.moveu){ mudou(false); } };
   document.addEventListener("pointerup",fim); document.addEventListener("pointercancel",fim);
   document.addEventListener("dblclick",e=>{ const pt=ED&&ED.movendo&&e.target.closest&&e.target.closest("#fx-prev [data-ponta]"); if(pt){ const [i,q]=pt.dataset.ponta.split(":"), g=ED.m.ligs[+i]; if(g){ delete g[q==="a"?"pIni":"pFim"]; mudou(false); } return; }
@@ -507,6 +523,7 @@ const css=`
 svg.fxl{font-family:inherit;overflow:visible}
 svg.fxl .fxl-alca{fill:var(--surface,#fff);stroke:var(--accent,#5b3cc4);stroke-width:2;cursor:move;opacity:.85}
 svg.fxl .fxl-alca:hover{opacity:1;r:9}svg.fxl .fxl-alca.fixa{fill:var(--accent,#5b3cc4)}
+svg.fxl .fxl-guia{stroke:#e8459f;stroke-width:1.2;stroke-dasharray:5 4;pointer-events:none}
 svg.fxl .fxl-ponta{fill:var(--surface,#fff);stroke:#d35400;stroke-width:2;cursor:crosshair;opacity:.9}svg.fxl .fxl-ponta.fixa{fill:#d35400}
 svg.fxl .fxl-alca-r{cursor:move}svg.fxl .fxl-alca-r rect{stroke:var(--accent,#5b3cc4);stroke-width:1.5;stroke-dasharray:3 2}svg.fxl .fxl-alca-r.fixa rect{stroke-dasharray:none}
 svg.fxl text{text-anchor:middle;dominant-baseline:middle}
