@@ -46,19 +46,29 @@ const CURVAS={basis:"Curvas suaves",linear:"Retas",step:"Em ângulo reto"};
 const ESPACOS={compacto:"Compacto",normal:"Normal",amplo:"Amplo"};
 function opSeta(g){ const n=Math.max(1,Math.min(3,parseInt(g.tam,10)||1)), x=k=>k.repeat(n-1);
   return {seta:"--"+x("-")+">", pont:"-."+x(".")+"->", grossa:"=="+x("=")+">", dupla:"<--"+x("-")+">", linha:"---"+x("-"), invis:"~~~"+x("~")}[g.tipo||"seta"]||"-->"; }
+const grupoNorm=g=>String(g||"").replace(/["\[\]]/g,"").trim();
+function gruposDe(m){ const v=[]; (m.nos||[]).forEach(n=>{ const g=grupoNorm(n.grupo); if(g&&!v.includes(g)) v.push(g); }); return v; }
 function paraMermaid(m){
   const l=["flowchart "+(m.dir==="LR"?"LR":"TD")];
   const cfg={}; if(m.curva&&m.curva!=="basis") cfg.curve=m.curva;
   const E={compacto:[28,32],amplo:[85,95]}[m.esp]; if(E){ cfg.nodeSpacing=E[0]; cfg.rankSpacing=E[1]; }
   if(Object.keys(cfg).length) l.unshift('%%{init: {"flowchart": '+JSON.stringify(cfg)+'}}%%');
   const comDesc=m.descNo!==false;
-  for(const n of m.nos){ const f=FORMAS[n.forma]||FORMAS.etapa, dsc=comDesc&&String(n.desc||"").trim();
-    l.push("  "+n.id+f.a+limpa(n.texto)+(dsc?"<br/><small>"+mdRotulo(dsc)+"</small>":"")+f.b); }
+  const def=n=>{ const f=FORMAS[n.forma]||FORMAS.etapa, dsc=comDesc&&String(n.desc||"").trim(); return n.id+f.a+limpa(n.texto)+(dsc?"<br/><small>"+mdRotulo(dsc)+"</small>":"")+f.b; };
+  // Grupos: etapas com o mesmo grupo ficam juntas numa coluna/bloco (subgraph), com ou sem moldura
+  const grupos=m.grInv?gruposDe(m).reverse():gruposDe(m), estilos=[];
+  grupos.forEach((g,gi)=>{ const gid="G"+(gi+1); l.push("  subgraph "+gid+'["'+limpa(g)+'"]'); l.push("    direction "+(m.dir==="LR"?"LR":"TB"));
+    m.nos.filter(n=>grupoNorm(n.grupo)===g).forEach(n=>l.push("    "+def(n))); l.push("  end");
+    if(m.molduras===false) estilos.push("  style "+gid+" fill:transparent,stroke:transparent,color:transparent"); });
+  for(const n of m.nos) if(!grupoNorm(n.grupo)) l.push("  "+def(n));
   const ids=new Set(m.nos.map(n=>n.id));
   const extra=[];
-  m.ligs.forEach((g,i)=>{ if(!ids.has(g.de)||!ids.has(g.para)) return; const r=g.tipo==="invis"?"":String(g.rot||"").replace(/["|]/g,"").trim(), op=opSeta(g), eid=g.curva&&g.tipo!=="invis"?"e"+i+"@":"";
-    l.push("  "+g.de+" "+eid+op+(r?'|"'+r+'"|':"")+" "+g.para); if(eid) extra.push("  e"+i+"@{ curve: "+g.curva+" }"); });
-  l.push(...extra);
+  m.ligs.forEach((g,i)=>{ if(!ids.has(g.de)||!ids.has(g.para)) return; const r=g.tipo==="invis"?"":String(g.rot||"").replace(/["|]/g,"").trim(), op=opSeta(g);
+    // "volta": a seta aparece de "de" para "para", mas o desenho a trata ao contrário — não puxa a caixa de destino para baixo
+    const volta=!!g.volta&&g.tipo!=="invis"&&g.tipo!=="dupla"&&g.tipo!=="linha", eid=(g.curva||volta)&&g.tipo!=="invis"?"e"+i+"@":"";
+    l.push("  "+(volta?g.para:g.de)+" "+eid+op+(r?'|"'+r+'"|':"")+" "+(volta?g.de:g.para));
+    if(g.curva&&eid) extra.push("  e"+i+"@{ curve: "+g.curva+" }"); if(volta) extra.push("  %% volta e"+i); });
+  l.push(...extra,...estilos);
   return l.join("\n");
 }
 function bloco(m, codigo){ return "```mermaid\n"+(m?"%% fluxo "+JSON.stringify(m)+"\n":"")+(m?paraMermaid(m):codigo.trim())+"\n```"; }
@@ -108,12 +118,20 @@ function carregar(){
 }
 function escuro(){ const t=document.documentElement.dataset.theme; return t? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
 let seq=0, temaAtual=null;
+// Setas "de volta": desenhadas no sentido do layout, com a ponta trocada para o início
+function virarVoltas(svg, codigo){
+  const vs=[...String(codigo).matchAll(/%% volta (e\d+)/g)].map(x=>x[1]); if(!vs.length) return svg;
+  const t=document.createElement("div"); t.innerHTML=svg;
+  vs.forEach(eid=>{ const p=t.querySelector(`path[data-id="${eid}"]`); if(!p) return; const me=p.getAttribute("marker-end")||""; if(!me) return;
+    p.setAttribute("marker-start",me.replace(/End\)/,"Start)").replace(/-pointEnd/,"-pointStart").replace(/-circleEnd/,"-circleStart").replace(/-crossEnd/,"-crossStart")); p.removeAttribute("marker-end"); });
+  return t.innerHTML;
+}
 async function desenharSVG(codigo){
   const mm=await carregar();
   const tema=escuro()?"dark":"default";
   if(tema!==temaAtual){ mm.initialize({startOnLoad:false, securityLevel:"strict", theme:tema, fontFamily:getComputedStyle(document.body).fontFamily, flowchart:{curve:"basis", useMaxWidth:true}}); temaAtual=tema; }
   const id="fx-"+(++seq);
-  try{ const {svg}=await mm.render(id, codigo); return svg; }
+  try{ const {svg}=await mm.render(id, codigo); return virarVoltas(svg, codigo); }
   finally{ document.getElementById(id)?.remove(); document.getElementById("d"+id)?.remove(); }
 }
 async function renderizar(raiz){
@@ -194,14 +212,17 @@ function desenharEditor(){
             <span class="fx-num">${i+1}</span>
             <select data-fxforma="${n.id}" aria-label="Forma da etapa ${i+1}">${Object.entries(FORMAS).map(([k,v])=>`<option value="${k}" ${n.forma===k?"selected":""}>${v.nome}</option>`).join("")}</select>
             <input type="text" data-fxtexto="${n.id}" value="${escH(n.texto)}" placeholder="Texto da etapa" aria-label="Texto da etapa ${i+1}">
+            <input type="text" class="fx-gr" data-fxgrupo="${n.id}" value="${escH(n.grupo||"")}" list="fx-grupos" placeholder="Grupo (opcional)" aria-label="Grupo da etapa ${i+1}" title="Etapas com o mesmo grupo ficam juntas no desenho (ex.: Desenvolvedor 1)">
             <span class="fx-acts"><button class="btn sm" data-fxsobe="${n.id}" ${i?"":"disabled"} aria-label="Subir" title="Subir">↑</button><button class="btn sm" data-fxdesce="${n.id}" ${i<m.nos.length-1?"":"disabled"} aria-label="Descer" title="Descer">↓</button><button class="btn sm danger" data-fxdelno="${n.id}" aria-label="Apagar etapa" title="Apagar etapa">✕</button></span>
             <textarea class="fx-nd" rows="1" data-rich="1" data-sem-abas="1" data-barra="unica" data-leve="1" data-fmt-so="neg,ita,mar,lis,num,rev" data-fxdesc="${n.id}" placeholder="Descrição ${n.forma==="inicio"?"do início/fim":n.forma==="decisao"?"da decisão":"da etapa"} (opcional)" aria-label="Descrição da etapa ${i+1}">${escH(n.desc||"")}</textarea>
           </div>`).join("")}
+          <datalist id="fx-grupos">${gruposDe(m).map(g=>`<option value="${escH(g)}">`).join("")}</datalist>
+          ${gruposDe(m).length?`<div class="fx-grl"><span>Grupos:</span>${gruposDe(m).map(g=>`<span class="fx-qt">${escH(g)} · ${m.nos.filter(n=>grupoNorm(n.grupo)===g).length}</span>`).join("")}<label class="fx-ck"><input type="checkbox" id="fx-mold" ${m.molduras!==false?"checked":""}> mostrar moldura e nome dos grupos</label>${gruposDe(m).length>1?`<label class="fx-ck" title="Troca a ordem em que os grupos aparecem (ex.: Desenvolvedor 1 à esquerda ou à direita)"><input type="checkbox" id="fx-grinv" ${m.grInv?"checked":""}> trocar a ordem dos grupos</label>`:""}</div>`:`<p class="fx-dica">Dica: dê o mesmo <b>Grupo</b> às etapas que devem ficar juntas (ex.: tudo do Desenvolvedor 1 numa coluna, do Desenvolvedor 2 em outra).</p>`}
           <div class="row fx-add"><button class="btn sm" data-fxaddno="etapa">+ Etapa</button><button class="btn sm" data-fxaddno="decisao">+ Decisão</button><button class="btn sm" data-fxaddno="nota">+ Comando</button><button class="btn sm" data-fxaddno="inicio">+ Início/Fim</button></div></div>
           <div class="fx-sec"><div class="fx-sh"><b>Ligações (setas) <span class="fx-qt">${m.ligs.length}</span></b>
             <span class="row" style="gap:8px"><label class="fx-lb">Setas <select id="fx-curva">${Object.entries(CURVAS).map(([k,v])=>`<option value="${k}" ${(m.curva||"basis")===k?"selected":""}>${v}</option>`).join("")}</select></label>
             <label class="fx-lb">Espaço <select id="fx-esp">${Object.entries(ESPACOS).map(([k,v])=>`<option value="${k}" ${(m.esp||"normal")===k?"selected":""}>${v}</option>`).join("")}</select></label></span></div>
-          <p class="fx-dica">Para organizar o desenho: mude o <b>comprimento</b> da seta (empurra a caixa para baixo/longe), use uma seta <b>invisível</b> entre caixas que devem ficar alinhadas, troque a <b>curva</b> de uma seta ou a ordem das etapas.</p>
+          <p class="fx-dica">Para organizar o desenho: marque <b>volta</b> nas setas que retornam (ex.: git push ao servidor), dê o mesmo <b>Grupo</b> às etapas que devem ficar juntas, mude o <b>comprimento</b> da seta (empurra a caixa para baixo/longe), use uma seta <b>invisível</b> entre caixas que devem ficar alinhadas, troque a <b>curva</b> de uma seta ou a ordem das etapas.</p>
           ${m.ligs.length?m.ligs.map((g,i)=>`<div class="fx-lig">
             <select data-fxde="${i}" aria-label="De">${optNos(g.de)}</select><span class="fx-seta" aria-hidden="true">→</span>
             <select data-fxpara="${i}" aria-label="Para">${optNos(g.para)}</select>
@@ -211,6 +232,7 @@ function desenharEditor(){
               <select data-fxltipo="${i}" aria-label="Tipo da seta">${Object.entries(TIPOS_SETA).map(([k,v])=>`<option value="${k}" ${(g.tipo||"seta")===k?"selected":""}>${v}</option>`).join("")}</select>
               <select data-fxltam="${i}" aria-label="Comprimento da seta" title="Seta mais longa afasta a caixa de destino">${[["1","Curta"],["2","Média"],["3","Longa"]].map(([k,v])=>`<option value="${k}" ${String(g.tam||1)===k?"selected":""}>${v}</option>`).join("")}</select>
               <select data-fxlcurva="${i}" aria-label="Curva desta seta" ${g.tipo==="invis"?"disabled":""}><option value="">Curva padrão</option>${Object.entries(CURVAS).map(([k,v])=>`<option value="${k}" ${g.curva===k?"selected":""}>${v}</option>`).join("")}</select>
+              <label class="fx-ck" title="Para setas que voltam (ex.: git push de volta ao servidor): a seta continua apontando para o destino, mas não puxa a caixa de destino para baixo"><input type="checkbox" data-fxlvolta="${i}" ${g.volta?"checked":""} ${/^(invis|dupla|linha)$/.test(g.tipo||"")?"disabled":""}> volta</label>
               <button type="button" class="btn sm" data-fxlinv="${i}" title="Inverter o sentido (troca origem e destino)" aria-label="Inverter o sentido">⇄ Inverter</button>
             </div></div>`).join(""):'<p class="fx-dica">Nenhuma seta ainda.</p>'}
           <div class="row"><button class="btn sm" data-fxaddlig ${m.nos.length<2?"disabled":""}>+ Ligação</button></div></div>
@@ -267,6 +289,7 @@ document.addEventListener("input",e=>{
   if(t.id==="fx-tit"){ ED.titulo=t.value; return; }
   if(t.id==="fx-desc"){ ED.desc=t.value; return; }
   if(d.fxdesc!==undefined){ const n=ED.m.nos.find(n=>n.id===d.fxdesc); if(n){ n.desc=t.value; mudou(false); } return; }
+  if(d.fxgrupo!==undefined){ const n=ED.m.nos.find(n=>n.id===d.fxgrupo); if(n){ n.grupo=t.value.slice(0,40)||undefined; mudou(false); } return; }
   if(d.fxtexto!==undefined){ const n=ED.m.nos.find(n=>n.id===d.fxtexto); if(n){ n.texto=t.value; mudou(false);
     document.querySelectorAll(`option[value="${n.id}"]`).forEach(o=>{ if(o.closest(".fx-lig")){ const i=ED.m.nos.indexOf(n); o.textContent=(i+1)+". "+(t.value||"(sem texto)"); } }); } return; }
   if(d.fxrot!==undefined){ const g=ED.m.ligs[parseInt(d.fxrot,10)]; if(g){ g.rot=t.value; mudou(false); } return; }
@@ -280,10 +303,14 @@ document.addEventListener("change",e=>{
   if(d.fxforma!==undefined){ const n=ED.m.nos.find(n=>n.id===d.fxforma); if(n){ n.forma=t.value; mudou(false); } return; }
   if(d.fxde!==undefined){ ED.m.ligs[parseInt(d.fxde,10)].de=t.value; mudou(false); return; }
   if(d.fxpara!==undefined){ ED.m.ligs[parseInt(d.fxpara,10)].para=t.value; mudou(false); return; }
+  if(d.fxgrupo!==undefined){ const id=d.fxgrupo; mudou(true); setTimeout(()=>document.querySelector(`[data-fxdesc="${id}"]`)?.closest(".fx-no")?.querySelector(".fx-gr")?.blur(),0); return; }
+  if(t.id==="fx-grinv"){ ED.m.grInv=t.checked||undefined; mudou(false); return; }
+  if(t.id==="fx-mold"){ ED.m.molduras=t.checked?undefined:false; mudou(false); return; }
   if(t.id==="fx-curva"){ ED.m.curva=t.value==="basis"?undefined:t.value; mudou(false); return; }
   if(t.id==="fx-esp"){ ED.m.esp=t.value==="normal"?undefined:t.value; mudou(false); return; }
   if(d.fxltipo!==undefined){ const g=ED.m.ligs[parseInt(d.fxltipo,10)]; if(g){ g.tipo=t.value==="seta"?undefined:t.value; mudou(true); } return; }
   if(d.fxltam!==undefined){ const g=ED.m.ligs[parseInt(d.fxltam,10)]; if(g){ g.tam=t.value==="1"?undefined:+t.value; mudou(false); } return; }
+  if(d.fxlvolta!==undefined){ const g=ED.m.ligs[parseInt(d.fxlvolta,10)]; if(g){ g.volta=t.checked||undefined; mudou(false); } return; }
   if(d.fxlcurva!==undefined){ const g=ED.m.ligs[parseInt(d.fxlcurva,10)]; if(g){ g.curva=t.value||undefined; mudou(false); } return; }
 });
 document.addEventListener("keydown",e=>{ if(ED&&e.key==="Escape"){ e.stopImmediatePropagation(); fechar(); } },true);
@@ -321,9 +348,11 @@ const css=`
 .fx-campo{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--muted)}
 .fx-campo input,.fx-campo textarea{font:inherit;font-size:14px;font-weight:400;color:var(--ink,inherit);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 .fx-campo textarea{resize:vertical;min-height:2.6em;field-sizing:content;max-height:30vh}
-.fx-nd{grid-column:2 / -1;font:inherit;font-size:13px;color:var(--ink,inherit);background:var(--bg);border:1px dashed var(--line);border-radius:7px;padding:4px 8px;resize:vertical;min-height:1.9em;field-sizing:content;max-height:30vh;margin-top:-2px}
+.fx-gr{grid-column:2;font-size:13px!important;padding:4px 8px!important;border-style:dashed!important}
+.fx-grl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.fx-nd{grid-column:3 / -1;font:inherit;font-size:13px;color:var(--ink,inherit);background:var(--bg);border:1px dashed var(--line);border-radius:7px;padding:4px 8px;resize:vertical;min-height:1.9em;field-sizing:content;max-height:30vh;margin-top:-2px}
 .fx-nd:focus{border-style:solid}
-.fx-no .wys{grid-column:2 / -1;min-height:1.9em;padding:4px 8px;font-size:13px;border:1px dashed var(--line);border-radius:7px;margin-top:0;max-height:30vh;overflow:auto;background:var(--surface)}
+.fx-no .wys{grid-column:3 / -1;min-height:1.9em;padding:4px 8px;font-size:13px;border:1px dashed var(--line);border-radius:7px;margin-top:0;max-height:30vh;overflow:auto;background:var(--surface)}
 .fx-no .wys:focus{border-style:solid}
 .fx-info .wys{min-height:2.6em;padding:6px 8px;font-size:14px;font-weight:400;max-height:30vh;overflow:auto}
 .fx-col>.fmt-unica{margin:-4px 0 0;flex:none;border-radius:10px;top:-14px}
@@ -352,7 +381,7 @@ const css=`
   .fx-no select{grid-column:2 / 3}
   .fx-no input{grid-column:2 / -1}
   .fx-no .fx-num{grid-row:1}.fx-no select{grid-row:1}.fx-acts{grid-column:3;grid-row:1}
-  .fx-nd,.fx-no .wys{grid-column:2 / -1}
+  .fx-nd,.fx-no .wys,.fx-gr{grid-column:2 / -1}
   .fx-lig{grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr);}
   .fx-lig input{grid-column:1 / 3}
   .fx-pv{border:0;padding:4px}
