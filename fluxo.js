@@ -146,6 +146,16 @@ const NORMAL={b:[0,1],t:[0,-1],l:[-1,0],r:[1,0]};
 function porta(c,lado,f){ // f entre 0 e 1 ao longo do lado
   if(lado==="b"||lado==="t"){ const span=c.forma==="decisao"?0:c.w*0.7; return [c.x-span/2+span*f, c.y+(lado==="b"?c.h/2:-c.h/2)]; }
   const span=c.forma==="decisao"?0:c.h*0.6; return [c.x+(lado==="r"?c.w/2:-c.w/2), c.y-span/2+span*f]; }
+// ponto na borda da caixa na direção (dx,dy)
+function borda(c,dx,dy){ const hw=c.w/2, hh=c.h/2; if(!dx&&!dy) return [0,hh];
+  if(c.forma==="decisao"){ const k=1/(Math.abs(dx)/hw+Math.abs(dy)/hh); return [dx*k,dy*k]; }
+  const k=Math.min(dx?hw/Math.abs(dx):1e9, dy?hh/Math.abs(dy):1e9); return [dx*k,dy*k]; }
+// mesma curva do desenho automático (d3 curveBasis)
+function curvaBasis(P){ if(P.length<2) return ""; if(P.length===2) return `M${P[0][0]},${P[0][1]} L${P[1][0]},${P[1][1]}`;
+  let d=`M${P[0][0]},${P[0][1]}`, [x0,y0]=P[0], [x1,y1]=P[0];
+  const bz=(x,y)=>`C${(2*x0+x1)/3},${(2*y0+y1)/3} ${(x0+2*x1)/3},${(y0+2*y1)/3} ${(x0+4*x1+x)/6},${(y0+4*y1+y)/6}`;
+  P.slice(1).forEach(([x,y],i)=>{ if(i===0){ x0=x1; y0=y1; x1=x; y1=y; return; } if(i===1) d+=` L${(5*x0+x1)/6},${(5*y0+y1)/6}`; d+=" "+bz(x,y); x0=x1; y0=y1; x1=x; y1=y; });
+  d+=" "+bz(x1,y1)+` L${x1},${y1}`; return d; }
 function cantos(pts,r){ // polilinha com cantos arredondados
   let d=`M${pts[0][0]},${pts[0][1]}`;
   for(let i=1;i<pts.length-1;i++){ const [x0,y0]=pts[i-1],[x1,y1]=pts[i],[x2,y2]=pts[i+1];
@@ -159,37 +169,34 @@ function svgLivre(m, vbFixo){
   const esc2=escH, G=[];
   gruposDe(m).forEach(g=>{ const ms=m.nos.filter(n=>grupoNorm(n.grupo)===g).map(n=>C[n.id]); if(!ms.length) return;
     G.push({g,x1:Math.min(...ms.map(c=>c.x-c.w/2))-20,x2:Math.max(...ms.map(c=>c.x+c.w/2))+20,y1:Math.min(...ms.map(c=>c.y-c.h/2))-34,y2:Math.max(...ms.map(c=>c.y+c.h/2))+20}); });
-  // setas: lados e portas
+  // setas como no desenho automático: saem da borda na direção do caminho, passam por um ponto intermediário
+  // (perto da caixa de destino) e entram de frente nela; desviam de caixas no caminho por um corredor lateral.
   const vis=m.ligs.map((g,i)=>({g,i,a:C[g.de],b:C[g.para]})).filter(e=>e.a&&e.b&&e.g.tipo!=="invis"&&e.a!==e.b);
-  const slot={}; const add=(c,l,e,ponta,outro)=>{ const k=c.n.id+":"+l; (slot[k]=slot[k]||[]).push({e,ponta,outro}); };
-  vis.forEach(e=>{ const [la,lb]=ladosSeta(e.a,e.b); e.la=la; e.lb=lb; add(e.a,la,e,"a",e.b); add(e.b,lb,e,"b",e.a); });
-  Object.entries(slot).forEach(([k,v])=>{ const l=k.split(":")[1], vert=l==="b"||l==="t"; v.sort((p,q)=>vert?p.outro.x-q.outro.x:p.outro.y-q.outro.y);
-    v.forEach((s,i)=>{ const f=v.length===1?.5:i/(v.length-1); const c=s.ponta==="a"?s.e.a:s.e.b; s.e[s.ponta==="a"?"pa":"pb"]=porta(c,l,v.length===1?.5:f); }); });
+  const par={}, usado={}; vis.forEach(({g})=>{ const k=[g.de,g.para].sort().join("|"); par[k]=(par[k]||0)+1; });
   const curvaP=m.curva||"basis", faixa={l:0,r:0}, rotulos=[];
-  // caixas no caminho de uma seta: ela contorna por um corredor ao lado
-  const bloqueio=(e)=>{ const [x1,y1]=e.pa,[x2,y2]=e.pb, bs=[]; Object.values(C).forEach(c=>{ if(c===e.a||c===e.b) return; const L=c.x-c.w/2-8,R=c.x+c.w/2+8,T=c.y-c.h/2-8,B=c.y+c.h/2+8;
-      for(let k=1;k<20;k++){ const t=k/20, x=x1+(x2-x1)*t, y=y1+(y2-y1)*t; if(x>L&&x<R&&y>T&&y<B){ bs.push(c); break; } } }); return bs; };
-  const setas=vis.map(e=>{ const g=e.g, cv=g.curva||curvaP, [x1,y1]=e.pa, [x2,y2]=e.pb, n1=NORMAL[e.la], n2=NORMAL[e.lb]; let d, lx, ly;
-    const bs=cv==="linear"?[]:bloqueio(e);
-    if(bs.length){ const dir=Math.sign(y2-y1)||1, dirX=Math.sign(x2-x1)||1;
-      const R=Math.max(...bs.map(c=>c.x+c.w/2),x1,x2)+26, L=Math.min(...bs.map(c=>c.x-c.w/2),x1,x2)-26, lado2=(Math.abs(R-x1)+Math.abs(R-x2))<=(Math.abs(L-x1)+Math.abs(L-x2))?"r":"l";
-      const lane=lado2==="r"?R+faixa.r++*14:L-faixa.l++*14, s1=[x1+n1[0]*16,y1+n1[1]*16], s2=[x2+n2[0]*16,y2+n2[1]*16];
-      const pts=[[x1,y1],s1,[lane,s1[1]],[lane,s2[1]],s2,[x2,y2]]; d=cantos(pts,cv==="step"?8:18); lx=lane; ly=(s1[1]+s2[1])/2; void dir; void dirX; }
-    else if(cv==="linear"){ d=`M${x1},${y1} L${x2},${y2}`; lx=(x1+x2)/2; ly=(y1+y2)/2; }
-    else if(cv==="step"){ const s=14; let pts;
-      if(n1[1]&&n2[1]){ // vertical: sai por baixo/cima
-        let my=(y1+y2)/2; if(Math.sign(y2-y1)!==n1[1]){ my=null; }
-        pts=my!==null?[[x1,y1],[x1,my],[x2,my],[x2,y2]]:[[x1,y1],[x1,y1+n1[1]*s],[x1+(x2>x1?1:-1)*Math.max(40,Math.abs(x2-x1)/2),y1+n1[1]*s],[x1+(x2>x1?1:-1)*Math.max(40,Math.abs(x2-x1)/2),y2+n2[1]*s],[x2,y2+n2[1]*s],[x2,y2]];
-        lx=(x1+x2)/2; ly=my!==null?my:(y1+y2)/2; }
-      else { const mx=(x1+x2)/2; pts=[[x1,y1],[mx,y1],[mx,y2],[x2,y2]]; lx=mx; ly=(y1+y2)/2; }
-      d=cantos(pts,8); }
-    else { const L=Math.max(30,Math.hypot(x2-x1,y2-y1)/2.6), c1=[x1+n1[0]*L,y1+n1[1]*L], c2=[x2+n2[0]*L,y2+n2[1]*L];
-      d=`M${x1},${y1} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${y2}`; lx=.125*x1+.375*c1[0]+.375*c2[0]+.125*x2; ly=.125*y1+.375*c1[1]+.375*c2[1]+.125*y2; }
+  const bloqueia=(p,q,a,b)=>Object.values(C).filter(c=>{ if(c===a||c===b) return false; const L=c.x-c.w/2-10,R=c.x+c.w/2+10,T=c.y-c.h/2-10,B=c.y+c.h/2+10;
+    for(let k=1;k<24;k++){ const t=k/24, x=p[0]+(q[0]-p[0])*t, y=p[1]+(q[1]-p[1])*t; if(x>L&&x<R&&y>T&&y<B) return true; } return false; });
+  const setas=vis.map(e=>{ const g=e.g, a=e.a, b=e.b, cv=g.curva||curvaP, dx=b.x-a.x, dy=b.y-a.y;
+    const k=[g.de,g.para].sort().join("|"), j=usado[k]=(usado[k]===undefined?0:usado[k]+1), off=(j-(par[k]-1)/2)*26*(g.de<g.para?1:-1);
+    const vert=Math.abs(dy)>(a.h+b.h)/2+10||Math.abs(dy)>Math.abs(dx);
+    let way;
+    if(vert){ const ya=a.y+Math.sign(dy)*a.h/2, yb=b.y-Math.sign(dy)*b.h/2; way=[[a.x+dx*0.72+off,(ya+yb)/2]]; }
+    else { const xa=a.x+Math.sign(dx)*a.w/2, xb=b.x-Math.sign(dx)*b.w/2; way=[[(xa+xb)/2,a.y+dy*0.72+off]]; }
+    const bs=bloqueia([a.x,a.y],way[0],a,b).concat(bloqueia(way[0],[b.x,b.y],a,b));
+    if(bs.length){ const R=Math.max(...bs.map(c=>c.x+c.w/2),a.x,b.x)+30, L=Math.min(...bs.map(c=>c.x-c.w/2),a.x,b.x)-30, dir=Math.sign(dy)||1;
+      const lado=(Math.abs(R-a.x)+Math.abs(R-b.x))<=(Math.abs(L-a.x)+Math.abs(L-b.x))?"r":"l", lane=lado==="r"?R+faixa.r++*16:L-faixa.l++*16;
+      const yIni=a.y+dir*(a.h/2+18), yFim=b.y-dir*(b.h/2+18); way=[[lane,yIni],[lane,yFim]]; }
+    const ini=borda(a,way[0][0]-a.x,way[0][1]-a.y), fim=borda(b,way[way.length-1][0]-b.x,way[way.length-1][1]-b.y);
+    const P=[[a.x+ini[0],a.y+ini[1]],...way,[b.x+fim[0],b.y+fim[1]]];
+    let d; if(cv==="linear") d="M"+P.map(p=>p.join(",")).join(" L");
+    else if(cv==="step"){ const Q=[P[0]]; for(let i=1;i<P.length;i++){ const [px,py]=Q[Q.length-1], [x,y]=P[i]; if(px!==x&&py!==y) Q.push(vert?[px,y]:[x,py]); Q.push([x,y]); } d=cantos(Q,8); }
+    else d=curvaBasis(P);
+    let [lx,ly]=way.length>1?[(way[0][0]+way[1][0])/2,(way[0][1]+way[1][1])/2]:way[0];
     const t=g.tipo||"seta", w=t==="grossa"?3.5:2, dash=t==="pont"?' stroke-dasharray="3 4"':"";
-    const fim=t==="linha"?"":' marker-end="url(#fxl-pt)"', ini=t==="dupla"?' marker-start="url(#fxl-pt)"':"";
+    const mf=t==="linha"?"":' marker-end="url(#fxl-pt)"', mi=t==="dupla"?' marker-start="url(#fxl-pt)"':"";
     const rot=String(g.rot||"").trim(), rw=rot?medir(rot,13)+10:0;
-    if(rot){ for(let k=0;k<6&&rotulos.some(r=>Math.abs(r[0]-lx)<(r[2]+rw)/2+4&&Math.abs(r[1]-ly)<22);k++) ly+=22; rotulos.push([lx,ly,rw]); }
-    return `<g class="fxl-lig" data-lig="${e.i}"><path d="${d}" fill="none" stroke="${K.s}" stroke-width="${w}"${dash}${fim}${ini}/>${rot?`<rect x="${lx-rw/2}" y="${ly-10}" width="${rw}" height="20" fill="${K.lb}"/><text x="${lx}" y="${ly+1}" fill="${K.lt}" font-size="13">${esc2(rot)}</text>`:""}</g>`; }).join("");
+    if(rot){ for(let n=0;n<6&&rotulos.some(r=>Math.abs(r[0]-lx)<(r[2]+rw)/2+4&&Math.abs(r[1]-ly)<22);n++) ly+=22; rotulos.push([lx,ly,rw]); }
+    return `<g class="fxl-lig" data-lig="${e.i}"><path d="${d}" fill="none" stroke="${K.s}" stroke-width="${w}"${dash}${mf}${mi}/>${rot?`<rect x="${lx-rw/2}" y="${ly-10}" width="${rw}" height="20" fill="${K.lb}"/><text x="${lx}" y="${ly+1}" fill="${K.lt}" font-size="13">${esc2(rot)}</text>`:""}</g>`; }).join("");
   const caixas=m.nos.map(n=>{ const c=C[n.id], th=c.tl.length*19, dh=c.dl.length?c.dl.length*16+4:0, y0=-(th+dh)/2+10;
     return `<g class="fxl-no" data-n="${n.id}" transform="translate(${c.x},${c.y})" fill="${n.forma==="decisao"?K.dec:K.no}" stroke="${K.nb}" stroke-width="1">${formaSVG(n.forma,c.w,c.h)}
       ${c.tl.map((l,j)=>`<text stroke="none" fill="${K.tx}" font-size="15" y="${y0+j*19}">${esc2(l)}</text>`).join("")}${c.dl.map((l,j)=>`<text stroke="none" fill="${K.d}" font-size="12.5" y="${y0+th+5+j*16}">${esc2(l)}</text>`).join("")}</g>`; }).join("");
