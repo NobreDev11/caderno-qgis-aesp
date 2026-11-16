@@ -179,3 +179,4 @@ Página estática única (`qgis.html`).
 - **Mover pontas das setas:** no modo Mover caixas, quadradinhos ■ laranja no início e no fim de cada seta; arrastar escolhe o ponto da borda onde ela sai/chega (`ligs[].pIni` / `pFim`, direção relativa ao centro da caixa, sempre presa à borda). Duplo clique volta ao automático.
 - **Caminho conforme a ponta:** a seta sai e entra perpendicular ao lado da caixa onde a ponta está (trecho de 24 px), e o meio do caminho é recalculado quando a ponta é movida; o ponto ● e o rótulo ficam em cima da curva (nó da B-spline) e arrastá-los move a curva exatamente para o ponteiro.
 - Fluxograma livre: guias de alinhamento (linhas rosa tracejadas) ao mover caixas e alças de setas; encaixa no centro/bordas de outras caixas quando perto.
+- Botão "✋ Mover caixas" renomeado para "✋ Ajustar layout"; layout livre, guias e setas ajustáveis valem para os cadernos QGIS e DIO (fluxo.js compartilhado).
