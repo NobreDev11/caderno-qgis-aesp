@@ -206,7 +206,7 @@ textarea.fx-seg{display:block;width:100%;box-sizing:border-box;border:0!importan
 textarea.fx-seg:last-child{flex:1 0 auto!important;min-height:3.2em!important}
 .fx-bloco{margin:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px;display:flex;flex-direction:column;gap:6px;cursor:default}
 .fx-bloco .fx-svg{display:flex;justify-content:center;overflow:auto}
-.fx-bloco .fx-svg svg{max-width:100%;max-height:340px;height:auto}
+.fx-bloco .fx-svg svg{max-width:100%;max-height:460px;height:auto}
 .fx-bloco-b{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:12.5px;color:var(--muted)}
 .fx-bloco-b span{margin-right:auto}
 .fx-bloco-b button{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:7px;padding:3px 10px;cursor:pointer;font:inherit;font-size:12.5px}
