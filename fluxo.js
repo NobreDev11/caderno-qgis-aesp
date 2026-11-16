@@ -170,40 +170,49 @@ function desenharEditor(){
     </header>
     <div class="fx-body">
       <div class="fx-col" data-fmt-unica>
-        <div class="fx-sec fx-info">
+        <div class="fx-sec fx-info"><div class="fx-sh"><b>Sobre o fluxograma</b></div>
           <label class="fx-campo">Título <input type="text" id="fx-tit" maxlength="80" value="${escH(ED.titulo)}" placeholder="Ex.: Georreferenciar uma imagem"></label>
           <label class="fx-campo">Descrição do fluxograma <textarea id="fx-desc" rows="2" data-rich="1" data-sem-abas="1" data-barra="unica" data-leve="1" data-fmt-so="neg,ita,mar,lis,num,rev" aria-label="Descrição do fluxograma" placeholder="Para que serve, quando usar, observações…">${escH(ED.desc)}</textarea></label>
         </div>
         ${ED.modoCodigo?`<p class="fx-dica">Modo código (Mermaid). <a href="https://mermaid.js.org/syntax/flowchart.html" target="_blank" rel="noopener">Guia da sintaxe</a>.${m?"":" Este fluxograma foi escrito à mão, por isso abre direto no código."}</p>
           <textarea id="fx-cod" spellcheck="false">${escH(ED.codigo)}</textarea>
           ${m?`<button class="btn sm" data-fxvisual>Voltar ao editor visual</button>`:""}`
-        :`<div class="fx-sec"><div class="row" style="justify-content:space-between"><b>Etapas</b><span class="row" style="gap:12px"><label class="fx-ck" title="Desmarcado: as descrições aparecem numa lista abaixo do desenho"><input type="checkbox" id="fx-dno" ${m.descNo!==false?"checked":""}> descrição dentro das formas</label><label class="fx-ck"><input type="checkbox" id="fx-liga" ${ED.liga?"checked":""}> ligar a nova etapa à anterior</label></span></div>
-          ${m.nos.map((n,i)=>`<div class="fx-no">
+        :`<div class="fx-sec"><div class="fx-sh"><b>Etapas <span class="fx-qt">${m.nos.length}</span></b><span class="row" style="gap:12px"><label class="fx-ck" title="Desmarcado: as descrições aparecem numa lista abaixo do desenho"><input type="checkbox" id="fx-dno" ${m.descNo!==false?"checked":""}> descrição dentro das formas</label><label class="fx-ck"><input type="checkbox" id="fx-liga" ${ED.liga?"checked":""}> ligar a nova etapa à anterior</label></span></div>
+          ${m.nos.map((n,i)=>`<div class="fx-no" data-forma="${n.forma}">
             <span class="fx-num">${i+1}</span>
             <select data-fxforma="${n.id}" aria-label="Forma da etapa ${i+1}">${Object.entries(FORMAS).map(([k,v])=>`<option value="${k}" ${n.forma===k?"selected":""}>${v.nome}</option>`).join("")}</select>
             <input type="text" data-fxtexto="${n.id}" value="${escH(n.texto)}" placeholder="Texto da etapa" aria-label="Texto da etapa ${i+1}">
-            <button class="btn sm" data-fxsobe="${n.id}" ${i?"":"disabled"} aria-label="Subir">↑</button><button class="btn sm" data-fxdesce="${n.id}" ${i<m.nos.length-1?"":"disabled"} aria-label="Descer">↓</button><button class="btn sm danger" data-fxdelno="${n.id}" aria-label="Apagar etapa">✕</button>
+            <span class="fx-acts"><button class="btn sm" data-fxsobe="${n.id}" ${i?"":"disabled"} aria-label="Subir" title="Subir">↑</button><button class="btn sm" data-fxdesce="${n.id}" ${i<m.nos.length-1?"":"disabled"} aria-label="Descer" title="Descer">↓</button><button class="btn sm danger" data-fxdelno="${n.id}" aria-label="Apagar etapa" title="Apagar etapa">✕</button></span>
             <textarea class="fx-nd" rows="1" data-rich="1" data-sem-abas="1" data-barra="unica" data-leve="1" data-fmt-so="neg,ita,mar,lis,num,rev" data-fxdesc="${n.id}" placeholder="Descrição ${n.forma==="inicio"?"do início/fim":n.forma==="decisao"?"da decisão":"da etapa"} (opcional)" aria-label="Descrição da etapa ${i+1}">${escH(n.desc||"")}</textarea>
           </div>`).join("")}
-          <div class="row"><button class="btn sm" data-fxaddno="etapa">+ Etapa</button><button class="btn sm" data-fxaddno="decisao">+ Decisão</button><button class="btn sm" data-fxaddno="nota">+ Comando</button><button class="btn sm" data-fxaddno="inicio">+ Início/Fim</button></div></div>
-          <div class="fx-sec"><b>Ligações (setas)</b>
+          <div class="row fx-add"><button class="btn sm" data-fxaddno="etapa">+ Etapa</button><button class="btn sm" data-fxaddno="decisao">+ Decisão</button><button class="btn sm" data-fxaddno="nota">+ Comando</button><button class="btn sm" data-fxaddno="inicio">+ Início/Fim</button></div></div>
+          <div class="fx-sec"><div class="fx-sh"><b>Ligações (setas) <span class="fx-qt">${m.ligs.length}</span></b></div>
           ${m.ligs.length?m.ligs.map((g,i)=>`<div class="fx-lig">
-            <select data-fxde="${i}" aria-label="De">${optNos(g.de)}</select><span>→</span>
+            <select data-fxde="${i}" aria-label="De">${optNos(g.de)}</select><span class="fx-seta" aria-hidden="true">→</span>
             <select data-fxpara="${i}" aria-label="Para">${optNos(g.para)}</select>
-            <input type="text" data-fxrot="${i}" value="${escH(g.rot)}" placeholder="rótulo (ex.: Sim)" aria-label="Rótulo da seta">
+            <input type="text" data-fxrot="${i}" value="${escH(g.rot)}" placeholder="rótulo (Sim, Não…)" aria-label="Rótulo da seta">
             <button class="btn sm danger" data-fxdellig="${i}" aria-label="Apagar ligação">✕</button></div>`).join(""):'<p class="fx-dica">Nenhuma seta ainda.</p>'}
           <div class="row"><button class="btn sm" data-fxaddlig ${m.nos.length<2?"disabled":""}>+ Ligação</button></div></div>
           <button class="btn sm" data-fxcodigo style="align-self:flex-start">Editar como código (avançado)</button>`}
       </div>
-      <div class="fx-col fx-prev"><b class="fx-lb">Prévia</b><div id="fx-prev" class="fx-pv"><p class="fx-dica">Desenhando…</p></div></div>
+      <div class="fx-col fx-prev"><div class="fx-pvh"><b class="fx-lb">Prévia ao vivo</b><span class="row" style="gap:4px"><button type="button" class="btn sm" data-fxzoom="-" aria-label="Diminuir" title="Diminuir">−</button><button type="button" class="btn sm" data-fxzoom="0" title="Ajustar ao espaço">Ajustar</button><button type="button" class="btn sm" data-fxzoom="+" aria-label="Aumentar" title="Aumentar">+</button></span></div><div id="fx-prev" class="fx-pv"><p class="fx-dica">Desenhando…</p></div></div>
     </div>
   </section>`;
 }
 let _pt=null;
 function prever(){ clearTimeout(_pt); _pt=setTimeout(async()=>{ if(!ED) return; const el=document.getElementById("fx-prev"); if(!el) return;
   const cod = ED.modoCodigo? ED.codigo : paraMermaid(ED.m);
-  try{ const svg=await desenharSVG(cod); if(ED&&el.isConnected) el.innerHTML=svg; }
+  try{ const svg=await desenharSVG(cod); if(ED&&el.isConnected){ el.innerHTML=svg; ajustarPrevia(); } }
   catch(e){ if(el.isConnected) el.innerHTML=`<p class="fx-erro">${escH((e&&e.message||"Não foi possível desenhar.").split("\n").slice(0,2).join(" "))}</p>`; } },250); }
+// Prévia: o desenho ocupa o espaço disponível (sem estourar), com zoom − / Ajustar / +
+let FX_ZOOM=0;
+function ajustarPrevia(){ const el=document.getElementById("fx-prev"), sv=el&&el.querySelector("svg"); if(!sv) return;
+  const vb=(sv.getAttribute("viewBox")||"").split(/[\s,]+/).map(Number); const w=vb[2]||sv.getBBox().width, h=vb[3]||sv.getBBox().height; if(!w||!h) return;
+  const W=el.clientWidth-24, H=el.clientHeight-24, fit=Math.max(.2,Math.min(W/w,H/h,1.3)), z=FX_ZOOM?Math.max(.3,Math.min(4,fit*Math.pow(1.25,FX_ZOOM))):fit;
+  sv.style.maxWidth="none"; sv.style.width=Math.round(w*z)+"px"; sv.style.height=Math.round(h*z)+"px";
+  el.classList.toggle("fx-grande",w*z>W+2||h*z>H+2); }
+addEventListener("resize",()=>{ if(ED) ajustarPrevia(); });
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-fxzoom]"); if(!b) return; const v=b.dataset.fxzoom; FX_ZOOM=v==="0"?0:FX_ZOOM+(v==="+"?1:-1); ajustarPrevia(); });
 function mudou(redesenhar){ if(!ED.modoCodigo) ED.codigo=paraMermaid(ED.m); if(redesenhar) desenharEditor(); prever(); }
 
 document.addEventListener("click",e=>{
@@ -266,42 +275,57 @@ const css=`
 .fx-lb{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
 .fx-body{flex:1;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);min-height:0}
 .fx-col{padding:14px 16px;overflow:auto;display:flex;flex-direction:column;gap:12px;min-height:0}
-.fx-prev{border-left:1px solid var(--line);background:var(--bg)}
-.fx-pv{flex:1;display:flex;align-items:flex-start;justify-content:center;overflow:auto}.fx-pv svg{max-width:100%;height:auto}
-.fx-sec{display:flex;flex-direction:column;gap:8px}
-.fx-no{display:grid;grid-template-columns:22px 150px minmax(0,1fr) auto auto auto;gap:6px;align-items:center}
-.fx-info{gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.fx-col:not(.fx-prev){background:var(--bg)}
+.fx-prev{border-left:1px solid var(--line);background:var(--surface);gap:8px}
+.fx-pvh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex:none}
+.fx-pv{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;min-height:0;border:1px dashed var(--line);border-radius:12px;background:var(--bg);padding:12px}
+.fx-pv.fx-grande{align-items:flex-start;justify-content:flex-start}
+.fx-pv svg{flex:none}
+.fx-sec{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.fx-sh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.fx-sh b{font:700 14.5px var(--display);display:flex;gap:6px;align-items:center}
+.fx-qt{font:600 11.5px var(--mono);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px}
+.fx-no{display:grid;grid-template-columns:24px 150px minmax(0,1fr) auto;gap:6px 8px;align-items:center;padding:8px 8px 8px 6px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;background:var(--bg)}
+.fx-no[data-forma="inicio"]{border-left-color:#2f9e44}.fx-no[data-forma="decisao"]{border-left-color:#c9871a}.fx-no[data-forma="nota"]{border-left-color:#62607a}.fx-no[data-forma="dado"]{border-left-color:#1592a3}.fx-no[data-forma="sub"]{border-left-color:#8a5cd0}
+.fx-acts{display:flex;gap:4px}.fx-acts .btn{padding:3px 8px}
+.fx-seta{color:var(--muted);text-align:center}
+.fx-add{gap:6px;flex-wrap:wrap}
+.fx-info{gap:8px}
 .fx-campo{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--muted)}
 .fx-campo input,.fx-campo textarea{font:inherit;font-size:14px;font-weight:400;color:var(--ink,inherit);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 .fx-campo textarea{resize:vertical;min-height:2.6em;field-sizing:content;max-height:30vh}
-.fx-nd{grid-column:3 / -1;font:inherit;font-size:13px;color:var(--ink,inherit);background:var(--bg);border:1px dashed var(--line);border-radius:7px;padding:4px 8px;resize:vertical;min-height:1.9em;field-sizing:content;max-height:30vh;margin-top:-2px}
+.fx-nd{grid-column:2 / -1;font:inherit;font-size:13px;color:var(--ink,inherit);background:var(--bg);border:1px dashed var(--line);border-radius:7px;padding:4px 8px;resize:vertical;min-height:1.9em;field-sizing:content;max-height:30vh;margin-top:-2px}
 .fx-nd:focus{border-style:solid}
-.fx-no .wys{grid-column:3 / -1;min-height:1.9em;padding:4px 8px;font-size:13px;border:1px dashed var(--line);border-radius:7px;margin-top:-2px;max-height:30vh;overflow:auto}
+.fx-no .wys{grid-column:2 / -1;min-height:1.9em;padding:4px 8px;font-size:13px;border:1px dashed var(--line);border-radius:7px;margin-top:0;max-height:30vh;overflow:auto;background:var(--surface)}
 .fx-no .wys:focus{border-style:solid}
 .fx-info .wys{min-height:2.6em;padding:6px 8px;font-size:14px;font-weight:400;max-height:30vh;overflow:auto}
-.fx-col>.fmt-unica{margin:-4px 0 0}
+.fx-col>.fmt-unica{margin:-4px 0 0;flex:none;border-radius:10px}
+.fx-col>.fmt-unica .fmt-alvo::before{content:"Formatando: ";font-weight:400}
 .fx-desc.md p{margin:0 0 4px}
 .fx-desc{margin:2px 4px 4px;font-size:13px;color:var(--muted);line-height:1.45;text-align:left}
 .fx-det{font-size:13px;margin:2px 4px;text-align:left}.fx-det summary{cursor:pointer;color:var(--muted);font-weight:600}
 .fx-det ol{margin:6px 0 0;padding-left:22px}.fx-det li{margin:3px 0}.fx-det .fx-fm{font-size:11.5px;color:var(--muted);margin-left:4px}.fx-det li div{color:var(--ink,inherit)}
 .fx-tit{margin:0 0 2px;font-size:14.5px;text-align:left}
-.fx-num{font:500 12px var(--mono);color:var(--muted);text-align:right}
-.fx-lig{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) 120px auto;gap:6px;align-items:center}
+.fx-num{font:600 12px var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:999px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center}
+.fx-lig{display:grid;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr) minmax(80px,130px) auto;gap:6px;align-items:center}
 .fx-ck{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
 .fx-dica{font-size:13px;color:var(--muted);margin:0}.fx-dica a{color:var(--accent)}
 #fx-cod{min-height:260px;font:13px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;flex:1}
 @media (max-width:820px){
   .fx-ed{inset:0;border-radius:0}
+  .fx-ed header{gap:6px;padding:10px 12px}.fx-ed header>.row:first-of-type{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}.fx-ed header .fx-lb{flex-direction:column;align-items:stretch;gap:2px}
   /* tela estreita (celular, janela por cima): prévia em cima com altura fixa, opções rolam embaixo */
   .fx-body{display:flex;flex-direction:column;min-height:0}
   .fx-prev{order:-1;flex:none;height:min(36vh,300px);border-left:0;border-bottom:1px solid var(--line);padding:8px 12px}
   .fx-col:not(.fx-prev){flex:1;min-height:0;overflow:auto}
-  .fx-no{grid-template-columns:18px minmax(0,1fr) auto auto auto;}
-  .fx-no select{grid-column:2 / -1}
-  .fx-no input{grid-column:2 / 3}
+  .fx-no{grid-template-columns:24px minmax(0,1fr) auto;}
+  .fx-no select{grid-column:2 / 3}
+  .fx-no input{grid-column:2 / -1}
+  .fx-no .fx-num{grid-row:1}.fx-no select{grid-row:1}.fx-acts{grid-column:3;grid-row:1}
   .fx-nd,.fx-no .wys{grid-column:2 / -1}
-  .fx-lig{grid-template-columns:1fr auto 1fr;}
+  .fx-lig{grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr);}
   .fx-lig input{grid-column:1 / 3}
+  .fx-pv{border:0;padding:4px}
 }`;
 const st=document.createElement("style"); st.textContent=css; document.head.appendChild(st);
 const host=document.createElement("div"); host.id="fxHost"; document.body.appendChild(host);
