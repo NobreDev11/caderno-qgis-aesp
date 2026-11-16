@@ -40,13 +40,25 @@ function mdRotulo(t){
       .replace(/\{\{([^{}]+)\}\}|\(\(([^()]+)\)\)/g,(x,a,b)=>a||b).replace(/&lt;|&gt;/g,""))
     .join("<br/>");
 }
+// Setas: tipo (seta, pontilhada, grossa, dupla, linha, invisível), comprimento 1–3 e curva própria; no fluxograma, curva e espaçamento padrão.
+const TIPOS_SETA={seta:"→ Seta",pont:"⇢ Pontilhada",grossa:"⇒ Grossa",dupla:"↔ Dupla",linha:"— Sem ponta",invis:"Invisível (só posiciona)"};
+const CURVAS={basis:"Curvas suaves",linear:"Retas",step:"Em ângulo reto"};
+const ESPACOS={compacto:"Compacto",normal:"Normal",amplo:"Amplo"};
+function opSeta(g){ const n=Math.max(1,Math.min(3,parseInt(g.tam,10)||1)), x=k=>k.repeat(n-1);
+  return {seta:"--"+x("-")+">", pont:"-."+x(".")+"->", grossa:"=="+x("=")+">", dupla:"<--"+x("-")+">", linha:"---"+x("-"), invis:"~~~"+x("~")}[g.tipo||"seta"]||"-->"; }
 function paraMermaid(m){
   const l=["flowchart "+(m.dir==="LR"?"LR":"TD")];
+  const cfg={}; if(m.curva&&m.curva!=="basis") cfg.curve=m.curva;
+  const E={compacto:[28,32],amplo:[85,95]}[m.esp]; if(E){ cfg.nodeSpacing=E[0]; cfg.rankSpacing=E[1]; }
+  if(Object.keys(cfg).length) l.unshift('%%{init: {"flowchart": '+JSON.stringify(cfg)+'}}%%');
   const comDesc=m.descNo!==false;
   for(const n of m.nos){ const f=FORMAS[n.forma]||FORMAS.etapa, dsc=comDesc&&String(n.desc||"").trim();
     l.push("  "+n.id+f.a+limpa(n.texto)+(dsc?"<br/><small>"+mdRotulo(dsc)+"</small>":"")+f.b); }
   const ids=new Set(m.nos.map(n=>n.id));
-  for(const g of m.ligs){ if(!ids.has(g.de)||!ids.has(g.para)) continue; const r=String(g.rot||"").replace(/["|]/g,"").trim(); l.push("  "+g.de+(r?' -->|"'+r+'"| ':" --> ")+g.para); }
+  const extra=[];
+  m.ligs.forEach((g,i)=>{ if(!ids.has(g.de)||!ids.has(g.para)) return; const r=g.tipo==="invis"?"":String(g.rot||"").replace(/["|]/g,"").trim(), op=opSeta(g), eid=g.curva&&g.tipo!=="invis"?"e"+i+"@":"";
+    l.push("  "+g.de+" "+eid+op+(r?'|"'+r+'"|':"")+" "+g.para); if(eid) extra.push("  e"+i+"@{ curve: "+g.curva+" }"); });
+  l.push(...extra);
   return l.join("\n");
 }
 function bloco(m, codigo){ return "```mermaid\n"+(m?"%% fluxo "+JSON.stringify(m)+"\n":"")+(m?paraMermaid(m):codigo.trim())+"\n```"; }
@@ -186,12 +198,21 @@ function desenharEditor(){
             <textarea class="fx-nd" rows="1" data-rich="1" data-sem-abas="1" data-barra="unica" data-leve="1" data-fmt-so="neg,ita,mar,lis,num,rev" data-fxdesc="${n.id}" placeholder="Descrição ${n.forma==="inicio"?"do início/fim":n.forma==="decisao"?"da decisão":"da etapa"} (opcional)" aria-label="Descrição da etapa ${i+1}">${escH(n.desc||"")}</textarea>
           </div>`).join("")}
           <div class="row fx-add"><button class="btn sm" data-fxaddno="etapa">+ Etapa</button><button class="btn sm" data-fxaddno="decisao">+ Decisão</button><button class="btn sm" data-fxaddno="nota">+ Comando</button><button class="btn sm" data-fxaddno="inicio">+ Início/Fim</button></div></div>
-          <div class="fx-sec"><div class="fx-sh"><b>Ligações (setas) <span class="fx-qt">${m.ligs.length}</span></b></div>
+          <div class="fx-sec"><div class="fx-sh"><b>Ligações (setas) <span class="fx-qt">${m.ligs.length}</span></b>
+            <span class="row" style="gap:8px"><label class="fx-lb">Setas <select id="fx-curva">${Object.entries(CURVAS).map(([k,v])=>`<option value="${k}" ${(m.curva||"basis")===k?"selected":""}>${v}</option>`).join("")}</select></label>
+            <label class="fx-lb">Espaço <select id="fx-esp">${Object.entries(ESPACOS).map(([k,v])=>`<option value="${k}" ${(m.esp||"normal")===k?"selected":""}>${v}</option>`).join("")}</select></label></span></div>
+          <p class="fx-dica">Para organizar o desenho: mude o <b>comprimento</b> da seta (empurra a caixa para baixo/longe), use uma seta <b>invisível</b> entre caixas que devem ficar alinhadas, troque a <b>curva</b> de uma seta ou a ordem das etapas.</p>
           ${m.ligs.length?m.ligs.map((g,i)=>`<div class="fx-lig">
             <select data-fxde="${i}" aria-label="De">${optNos(g.de)}</select><span class="fx-seta" aria-hidden="true">→</span>
             <select data-fxpara="${i}" aria-label="Para">${optNos(g.para)}</select>
             <input type="text" data-fxrot="${i}" value="${escH(g.rot)}" placeholder="rótulo (Sim/Não)" aria-label="Rótulo da seta">
-            <button class="btn sm danger" data-fxdellig="${i}" aria-label="Apagar ligação">✕</button></div>`).join(""):'<p class="fx-dica">Nenhuma seta ainda.</p>'}
+            <button class="btn sm danger" data-fxdellig="${i}" aria-label="Apagar ligação">✕</button>
+            <div class="fx-lig-op">
+              <select data-fxltipo="${i}" aria-label="Tipo da seta">${Object.entries(TIPOS_SETA).map(([k,v])=>`<option value="${k}" ${(g.tipo||"seta")===k?"selected":""}>${v}</option>`).join("")}</select>
+              <select data-fxltam="${i}" aria-label="Comprimento da seta" title="Seta mais longa afasta a caixa de destino">${[["1","Curta"],["2","Média"],["3","Longa"]].map(([k,v])=>`<option value="${k}" ${String(g.tam||1)===k?"selected":""}>${v}</option>`).join("")}</select>
+              <select data-fxlcurva="${i}" aria-label="Curva desta seta" ${g.tipo==="invis"?"disabled":""}><option value="">Curva padrão</option>${Object.entries(CURVAS).map(([k,v])=>`<option value="${k}" ${g.curva===k?"selected":""}>${v}</option>`).join("")}</select>
+              <button type="button" class="btn sm" data-fxlinv="${i}" title="Inverter o sentido (troca origem e destino)" aria-label="Inverter o sentido">⇄ Inverter</button>
+            </div></div>`).join(""):'<p class="fx-dica">Nenhuma seta ainda.</p>'}
           <div class="row"><button class="btn sm" data-fxaddlig ${m.nos.length<2?"disabled":""}>+ Ligação</button></div></div>
           <button class="btn sm" data-fxcodigo style="align-self:flex-start">Editar como código (avançado)</button>`}
       </div>
@@ -216,7 +237,7 @@ document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closes
 function mudou(redesenhar){ if(!ED.modoCodigo) ED.codigo=paraMermaid(ED.m); if(redesenhar) desenharEditor(); prever(); }
 
 document.addEventListener("click",e=>{
-  const b=e.target.closest("[data-fxnovo],[data-fxeditar],[data-fxfechar],[data-fxsalvar],[data-fxapagar],[data-fxaddno],[data-fxdelno],[data-fxsobe],[data-fxdesce],[data-fxaddlig],[data-fxdellig],[data-fxcodigo],[data-fxvisual]");
+  const b=e.target.closest("[data-fxnovo],[data-fxeditar],[data-fxfechar],[data-fxsalvar],[data-fxapagar],[data-fxaddno],[data-fxdelno],[data-fxsobe],[data-fxdesce],[data-fxaddlig],[data-fxdellig],[data-fxlinv],[data-fxcodigo],[data-fxvisual]");
   if(!b||b.disabled) return; const d=b.dataset;
   if(d.fxnovo!==undefined||d.fxeditar!==undefined){
     const alvo=typeof window.FLUXO_ALVO==="function"?window.FLUXO_ALVO():null;
@@ -238,6 +259,7 @@ document.addEventListener("click",e=>{
   if(d.fxsobe!==undefined||d.fxdesce!==undefined){ const id=d.fxsobe||d.fxdesce, i=m.nos.findIndex(n=>n.id===id), j=i+(d.fxsobe?-1:1); if(j<0||j>=m.nos.length) return; [m.nos[i],m.nos[j]]=[m.nos[j],m.nos[i]]; mudou(true); return; }
   if(d.fxaddlig!==undefined){ const n=m.nos; m.ligs.push({de:n[n.length-2].id,para:n[n.length-1].id,rot:""}); mudou(true); return; }
   if(d.fxdellig!==undefined){ m.ligs.splice(parseInt(d.fxdellig,10),1); mudou(true); return; }
+  if(d.fxlinv!==undefined){ const g=m.ligs[parseInt(d.fxlinv,10)]; if(g){ [g.de,g.para]=[g.para,g.de]; mudou(true); } return; }
 });
 document.addEventListener("input",e=>{
   if(!ED) return; const t=e.target, d=t.dataset;
@@ -258,6 +280,11 @@ document.addEventListener("change",e=>{
   if(d.fxforma!==undefined){ const n=ED.m.nos.find(n=>n.id===d.fxforma); if(n){ n.forma=t.value; mudou(false); } return; }
   if(d.fxde!==undefined){ ED.m.ligs[parseInt(d.fxde,10)].de=t.value; mudou(false); return; }
   if(d.fxpara!==undefined){ ED.m.ligs[parseInt(d.fxpara,10)].para=t.value; mudou(false); return; }
+  if(t.id==="fx-curva"){ ED.m.curva=t.value==="basis"?undefined:t.value; mudou(false); return; }
+  if(t.id==="fx-esp"){ ED.m.esp=t.value==="normal"?undefined:t.value; mudou(false); return; }
+  if(d.fxltipo!==undefined){ const g=ED.m.ligs[parseInt(d.fxltipo,10)]; if(g){ g.tipo=t.value==="seta"?undefined:t.value; mudou(true); } return; }
+  if(d.fxltam!==undefined){ const g=ED.m.ligs[parseInt(d.fxltam,10)]; if(g){ g.tam=t.value==="1"?undefined:+t.value; mudou(false); } return; }
+  if(d.fxlcurva!==undefined){ const g=ED.m.ligs[parseInt(d.fxlcurva,10)]; if(g){ g.curva=t.value||undefined; mudou(false); } return; }
 });
 document.addEventListener("keydown",e=>{ if(ED&&e.key==="Escape"){ e.stopImmediatePropagation(); fechar(); } },true);
 
@@ -307,7 +334,10 @@ const css=`
 .fx-det ol{margin:6px 0 0;padding-left:22px}.fx-det li{margin:3px 0}.fx-det .fx-fm{font-size:11.5px;color:var(--muted);margin-left:4px}.fx-det li div{color:var(--ink,inherit)}
 .fx-tit{margin:0 0 2px;font-size:14.5px;text-align:left}
 .fx-num{font:600 12px var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:999px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center}
-.fx-lig{display:grid;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr) minmax(80px,130px) auto;gap:6px;align-items:center}
+.fx-lig{display:grid;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr) minmax(80px,130px) auto;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.fx-lig-op{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fx-lig-op select{font-size:12.5px;padding:3px 6px!important;flex:1 1 120px}.fx-lig-op .btn{flex:none}
+.fx-sh .fx-lb select{padding:3px 6px}
 .fx-ck{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
 .fx-dica{font-size:13px;color:var(--muted);margin:0}.fx-dica a{color:var(--accent)}
 #fx-cod{min-height:260px;font:13px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;flex:1}
