@@ -138,7 +138,7 @@ function renderPaneAula(host){
       <div><label class="lb" for="prepo">Link do repositório ou da entrega (opcional) ${info("portfolio")}</label><input type="text" id="prepo" inputmode="url" placeholder="https://github.com/…" value="${esc(d.repo||"")}"></div>
       <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações do item</span>${info("markdown")}</div>
         <div class="row"><button class="btn sm" data-flabrir="${a.id}" title="Abre as anotações da fase num bloco que fica por cima das outras telas">Destacar</button><button class="btn sm" data-go="disciplinas" data-disc="${a.k}" title="Anotações, perguntas, prática e projeto da fase">Fase</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div></div>
-      ${PANE.prev? `<div class="md">${md(d.nota||"")}</div>` : `<textarea id="inota" data-rich="1" data-sem-abas="1" aria-label="Anotações do item" placeholder="O que aprendi, comandos, trechos de código, dúvidas…">${esc(d.nota||"")}</textarea>`}
+      ${PANE.prev? `<div class="md">${md(d.nota||"")}</div>` : `<textarea id="inota" data-rich="1" data-sem-abas="1" aria-label="Anotações do item" placeholder="O que aprendi, comandos, trechos de código, dúvidas…">${esc(d.nota||"")}</textarea>${acoesItemHTML(a.id)}${notaMatsHTML(a.k,"p:"+a.k)}`}
       <div class="row" style="justify-content:space-between">
         <button class="btn sm" ${i>0?`data-item="${ITENS[i-1].id}"`:"disabled"}>← Item anterior</button>
         <button class="btn sm" ${i<ITENS.length-1?`data-item="${ITENS[i+1].id}"`:"disabled"}>Próximo item →</button>
@@ -183,7 +183,7 @@ function vHoje(){
         <button class="btn sm" data-pcopiar="${a.id}">Copiar prompt de estudo</button> ${info("prompt")}
       </div>
       <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida deste item</label>${info("rapida")}</div>
-      <textarea id="qnota" data-qitem="${a.id}" data-sem-abas="1" placeholder="Digite enquanto estuda. Salva sozinho.">${esc(d.nota||"")}</textarea></div>
+      <textarea id="qnota" data-qitem="${a.id}" data-sem-abas="1" placeholder="Digite enquanto estuda. Salva sozinho.">${esc(d.nota||"")}</textarea>${acoesItemHTML(a.id)}${notaMatsHTML(a.k,"q:"+a.k)}</div>
       <div class="row" style="margin-top:8px">
         ${d.st!=="and"?`<button class="btn sm" data-hst="and" data-hid="${a.id}">Comecei</button>`:""}
         <button class="btn sm pri" data-hst="ok" data-hid="${a.id}">Concluí este item</button>
@@ -237,6 +237,28 @@ function vPortfolio(){
 }
 
 
+/* Salvar nota do item em Materiais (igual ao QGIS): 1ª linha = título, o texto vira material da fase ligado ao item e a nota fica limpa */
+function acoesItemHTML(id){ return `<div class="nota-acoes" data-nitem="${id}"><button type="button" class="btn sm pri" data-nai="salvar" title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button>${info("micro")}</div>`; }
+function salvarItemEmMateriais(id){
+  const it=AK[id]; if(!it) return false; const notas=String(itemD(id).nota||"").replace(/^\s+|\s+$/g,"");
+  if(!notas){ toast("A nota está vazia: escreva algo antes de salvar."); return false; }
+  const ls=notas.split("\n"); let i=ls.findIndex(l=>l.trim()&&!/^!\[[^\]]*\]\(fx:/.test(l)); if(i<0) i=0;
+  const titulo=(limparMd(ls[i])||"Nota").slice(0,100), corpo=ls.filter((l,n)=>n!==i).join("\n").replace(/^\s+|\s+$/g,""), texto=corpo||ls[i], x=novoId();
+  salvarDoc("mtx-"+x,{tipo:"mtx",texto,imgs:[]},50);
+  salvarDoc("mat-"+x,{tipo:"mat",titulo,disc:it.k,origem:"nota",criado:Date.now(),arquivos:[],questoes:[],resp:{},chars:texto.length,aula:id},80);
+  salvarDoc("item-"+id,{...itemD(id),tipo:"item",nota:""},50);
+  document.querySelectorAll(`textarea[data-qitem="${id}"]`).forEach(t=>{ t.value=""; });
+  const pn=document.getElementById("inota"); if(pn&&PANE&&PANE.id===id) pn.value="";
+  atualizarMatSec(it.k); document.querySelectorAll(`[data-nmk="${it.k}"]`).forEach(el=>{ const n=el.querySelector(".nm-tog .mono"); if(n) n.textContent=mats().filter(m=>m.disc===it.k).length; });
+  renderNav(); toast("Nota salva em Materiais: “"+titulo+"”. A nota do item ficou limpa.");
+  return true;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-nai]"); if(!b) return; const id=b.closest(".nota-acoes").dataset.nitem;
+  if(!b.dataset.conf){ if(!String(itemD(id).nota||"").trim()){ toast("A nota está vazia: escreva algo antes de salvar."); return; }
+    b.dataset.conf="1"; const o=b.textContent; b.textContent="Confirmar: mover para Materiais e limpar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.conf; b.textContent=o; } },4000); return; }
+  delete b.dataset.conf; b.textContent="Salvar nota em Materiais"; flushTudo(); salvarItemEmMateriais(id);
+});
 window.TELAS_EXTRA={trilha:vTrilha, portfolio:vPortfolio};
 let FASE_SEL="todas";
 Object.assign(ICONES,{

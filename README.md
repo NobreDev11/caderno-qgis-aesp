@@ -180,3 +180,4 @@ Página estática única (`qgis.html`).
 - **Caminho conforme a ponta:** a seta sai e entra perpendicular ao lado da caixa onde a ponta está (trecho de 24 px), e o meio do caminho é recalculado quando a ponta é movida; o ponto ● e o rótulo ficam em cima da curva (nó da B-spline) e arrastá-los move a curva exatamente para o ponteiro.
 - Fluxograma livre: guias de alinhamento (linhas rosa tracejadas) ao mover caixas e alças de setas; encaixa no centro/bordas de outras caixas quando perto.
 - Botão "✋ Mover caixas" renomeado para "✋ Ajustar layout"; layout livre, guias e setas ajustáveis valem para os cadernos QGIS e DIO (fluxo.js compartilhado).
+- DIO: "Salvar nota em Materiais" também nas anotações do item (Hoje e painel do item), com a lista "Materiais da fase" logo abaixo.
