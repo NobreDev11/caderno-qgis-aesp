@@ -167,3 +167,4 @@ Página estática única (`qgis.html`).
 - Cada item é uma "aula" para o app (`AULAS` gerado dos itens, doc `item-<id>`); o bloco por cima escolhe o item e escreve nas anotações da fase.
 - Sem presença, sem link de convidado e sem link público de prática (dependem das tabelas do QGIS). Textos "disciplina" viram "fase" só na interface (`trocarTermos`, nunca no que você escreve).
 - `prompts-dio.js` ganhou flashcards (`pedidoFlashcards`, `lerFlashcards`); `/api/ia` usa `curso:"dio"`.
+- **Editor do fluxograma reorganizado:** seções em cartões (Sobre o fluxograma, Etapas com contador, Ligações), cada etapa num cartão com número, cor da forma na borda, ações agrupadas e descrição embaixo; barra "Formatando: …" presa no topo; prévia ao vivo ajustada ao espaço, com − / Ajustar / + (`ajustarPrevia`, `FX_ZOOM`). No celular: Direção e Modelo lado a lado, prévia em cima.

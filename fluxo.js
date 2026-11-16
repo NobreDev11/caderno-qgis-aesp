@@ -190,7 +190,7 @@ function desenharEditor(){
           ${m.ligs.length?m.ligs.map((g,i)=>`<div class="fx-lig">
             <select data-fxde="${i}" aria-label="De">${optNos(g.de)}</select><span class="fx-seta" aria-hidden="true">→</span>
             <select data-fxpara="${i}" aria-label="Para">${optNos(g.para)}</select>
-            <input type="text" data-fxrot="${i}" value="${escH(g.rot)}" placeholder="rótulo (Sim, Não…)" aria-label="Rótulo da seta">
+            <input type="text" data-fxrot="${i}" value="${escH(g.rot)}" placeholder="rótulo (Sim/Não)" aria-label="Rótulo da seta">
             <button class="btn sm danger" data-fxdellig="${i}" aria-label="Apagar ligação">✕</button></div>`).join(""):'<p class="fx-dica">Nenhuma seta ainda.</p>'}
           <div class="row"><button class="btn sm" data-fxaddlig ${m.nos.length<2?"disabled":""}>+ Ligação</button></div></div>
           <button class="btn sm" data-fxcodigo style="align-self:flex-start">Editar como código (avançado)</button>`}
@@ -299,7 +299,7 @@ const css=`
 .fx-no .wys{grid-column:2 / -1;min-height:1.9em;padding:4px 8px;font-size:13px;border:1px dashed var(--line);border-radius:7px;margin-top:0;max-height:30vh;overflow:auto;background:var(--surface)}
 .fx-no .wys:focus{border-style:solid}
 .fx-info .wys{min-height:2.6em;padding:6px 8px;font-size:14px;font-weight:400;max-height:30vh;overflow:auto}
-.fx-col>.fmt-unica{margin:-4px 0 0;flex:none;border-radius:10px}
+.fx-col>.fmt-unica{margin:-4px 0 0;flex:none;border-radius:10px;top:-14px}
 .fx-col>.fmt-unica .fmt-alvo::before{content:"Formatando: ";font-weight:400}
 .fx-desc.md p{margin:0 0 4px}
 .fx-desc{margin:2px 4px 4px;font-size:13px;color:var(--muted);line-height:1.45;text-align:left}
