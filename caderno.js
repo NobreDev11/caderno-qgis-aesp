@@ -215,7 +215,7 @@ async function conectarConvite(){
 }
 
 /* ============ ACESSO AOS DADOS ============ */
-const aulaD = id => S.docs["aula-"+id] || {};
+const aulaD = id => S.docs[(CURSO.aulaDoc||"aula")+"-"+id] || {};
 const discD = k => S.docs["disc-"+k] || {};
 // Uma anotação por tema (disciplina): todas as aulas da mesma disciplina usam a anotação da disciplina (disc-<k>.nota).
 const notaDaAula = id => (discD(AK[id].k).nota||"");
@@ -302,9 +302,9 @@ const ICONES={
   projetos:'<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.5l2 2H16a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"/><path d="m7 11.5 2 2 4-4"/>',
 };
 const icone = k => `<svg class="ic" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[k]||""}</svg>`;
-const VIEWS=[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["projetos","Projetos"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["formatacao","Formatação"],["backup","Exportar"]];
+const VIEWS=CURSO.views||[["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["projetos","Projetos"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["formatacao","Formatação"],["backup","Exportar"]];
 let VIEW = "hoje", DIA_SEL=null, PANE=null;
-function lerHash(){ const h=location.hash.slice(1); if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
+function lerHash(){ let h=location.hash.slice(1); if(CURSO.alias&&CURSO.alias[h]) h=CURSO.alias[h]; if(VIEWS.some(v=>v[0]===h)) VIEW=h; }
 window.addEventListener("hashchange",()=>{ lerHash(); render(); });
 function ir(v){ VIEW=v; try{ history.replaceState(null,"","#"+v);}catch(e){ location.hash=v; } render(); document.querySelector("main").scrollTop=0; }
 
@@ -423,7 +423,7 @@ function vCronograma(){
 }
 
 function vDisciplinas(){
-  return `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.</p></div>
+  return `<div class="row" style="justify-content:space-between;align-items:flex-end"><div>${discIntro()}</div>
     <div class="row"><button class="btn sm" data-dtodas="0">Recolher todas</button><button class="btn sm" data-dtodas="1">Expandir todas</button></div></div>
   ${DISC.map(x=>{
     const aulas=AULAS.filter(a=>a.k===x.k); const pas=aulas.filter(a=>statusAula(a)==="past").length;
@@ -435,20 +435,16 @@ function vDisciplinas(){
       <div class="dhead">
         <button type="button" class="dtog" data-dtog="${x.k}" aria-expanded="${ab}" aria-controls="db-${x.k}" title="${ab?"Recolher":"Expandir"} disciplina"><span class="chev"></span></button>
         <div style="min-width:0;flex:1"><h3 data-nome="${x.k}">${esc(nomeDisc(x.k))}${dd.concluida?' <span class="chip" style="color:var(--ok)">✓ concluída</span>':""}</h3>
-        <div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
-        <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div></div>
+        ${discLinhas(x,aulas,dias)}</div>
         <div class="row" style="gap:6px;align-items:flex-start">
           <button type="button" class="btn sm dh-rec" data-dtog="${x.k}" title="Recolher esta disciplina">▴ Recolher</button>
-          <details class="pres-pop" data-prespop="${x.k}" ${PRES_POP===x.k?"open":""}><summary class="btn sm" title="Marcar presença ou falta em cada aula">Presença ${anot.length}/${aulas.length} <span aria-hidden="true">▾</span></summary>
-            <div class="pres-cx"><div class="row" style="justify-content:space-between;gap:6px;margin-bottom:6px"><span class="lb" style="margin:0">Presença (${anot.length} de ${aulas.length})</span>${info("discaulas")}</div>
-            <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
-            </div></details>
+          ${discPres(x,aulas,anot)}
           <button class="btn sm" data-editnome="${x.k}">Editar nome</button></div>
       </div>
-      <div style="margin:10px 0 4px">${barraMarcos(aulas,x.cor)}</div>
+      <div style="margin:10px 0 4px">${discBarra(x,aulas)}</div>
       <div class="dbody" id="db-${x.k}" ${ab?"":"hidden"}><div class="dcol" style="margin-top:10px">
         <div><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="dn-${x.k}" style="margin:0">Anotações da disciplina</label>${info("discres")}</div>
-          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="Conceitos-chave, atalhos do QGIS, links de material…">${esc(dd.nota||"")}</textarea>${acoesNotaHTML(x.k)}</div>
+          <textarea id="dn-${x.k}" data-dnota="${x.k}" placeholder="${esc(CURSO.phDisc||"Conceitos-chave, atalhos do QGIS, links de material…")}">${esc(dd.nota||"")}</textarea>${acoesNotaHTML(x.k)}</div>
         <div class="notes">
           ${nts.length?`<span class="lb" style="margin-top:6px">Notas do caderno</span>`+nts.map(notaItem).join(""):""}
           <details class="sec" data-sec="mat-${x.k}" ${secAberta("mat-"+x.k)?"open":""}><summary><span class="lb" style="margin:0" data-matcont="${x.k}">Materiais (${mats().filter(m=>m.disc===x.k).length})</span></summary>
@@ -462,6 +458,15 @@ function vDisciplinas(){
   }).join("")}`;
 }
 
+// Partes do cartão da disciplina que mudam por curso (o caderno DIO troca estas funções)
+function discIntro(){ return `<h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.</p>`; }
+function discLinhas(x,aulas,dias){ return `<div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
+        <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div>`; }
+function discPres(x,aulas,anot){ return `<details class="pres-pop" data-prespop="${x.k}" ${PRES_POP===x.k?"open":""}><summary class="btn sm" title="Marcar presença ou falta em cada aula">Presença ${anot.length}/${aulas.length} <span aria-hidden="true">▾</span></summary>
+            <div class="pres-cx"><div class="row" style="justify-content:space-between;gap:6px;margin-bottom:6px"><span class="lb" style="margin:0">Presença (${anot.length} de ${aulas.length})</span>${info("discaulas")}</div>
+            <div class="pres-lista">${aulas.map(a=>{const ad=aulaD(a.id);return `<div class="pres-l"><span class="mono">${a.n} · ${fmtData(a.data)} ${a.ini}</span><button type="button" class="btn sm pres-p ${ad.pres==="p"?"on":""}" data-dpres="${a.id}" data-v="p" aria-pressed="${ad.pres==="p"}">Presente</button><button type="button" class="btn sm pres-f ${ad.pres==="f"?"on":""}" data-dpres="${a.id}" data-v="f" aria-pressed="${ad.pres==="f"}">Falta</button></div>`}).join("")}</div>
+            </div></details>`; }
+function discBarra(x,aulas){ return barraMarcos(aulas,x.cor); }
 let PRES_POP=null; // presença aberta continua aberta quando a tela redesenha (marcar várias aulas seguidas)
 document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset||!d.dataset.prespop) return; if(d.open) PRES_POP=d.dataset.prespop; else if(PRES_POP===d.dataset.prespop) PRES_POP=null; },true);
 document.addEventListener("click",e=>{ document.querySelectorAll("details.pres-pop[open]").forEach(d=>{ if(!d.contains(e.target)&&e.target.isConnected) d.open=false; }); });
@@ -683,6 +688,7 @@ const DEPOIS_MIN=10;
 let AVISADO_SO={};
 function docsMarco(){ const l=[document]; try{ if(PIP&&!PIP.closed) l.push(PIP.document); }catch(e){} return l; }
 function checarMarcos(){
+  if(CURSO.presenca===false) return;
   const t=Date.now(), hoje=agoraFor().data;
   // aulas de hoje que já terminaram, sem presença marcada e ainda não respondidas (ou com "Depois" vencido)
   const a=AULAS.filter(x=>x.data===hoje&&msDe(x.data,x.fim)<=t&&!aulaD(x.id).pres&&!(PERGUNTADAS[x.id]>t)).pop();
@@ -777,10 +783,11 @@ function vBusca(){
   <div id="res" class="notes">${resultados()}</div>`;
 }
 function trecho(txt,q){ const i=txt.toLowerCase().indexOf(q); if(i<0) return esc(txt.slice(0,140)); const a=Math.max(0,i-60); const s=txt.slice(a,i+q.length+80); const j=s.toLowerCase().indexOf(q); return (a?"…":"")+esc(s.slice(0,j))+"<mark>"+esc(s.slice(j,j+q.length))+"</mark>"+esc(s.slice(j+q.length))+"…"; }
+function rotAula(a){ return CURSO.rotAula?CURSO.rotAula(a):"aula "+a.n+"/"+a.tot; }
 function resultados(){
   const q=BUSCA.trim().toLowerCase(); if(q.length<2) return '<p class="empty">Digite pelo menos 2 letras.</p>';
   const r=[];
-  AULAS.forEach(a=>{const t=aulaD(a.id).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-aula="${a.id}"><strong>${esc(nomeDisc(a.k))} · aula ${a.n}/${a.tot}</strong> <span class="mono muted" style="font-size:12px">${fmtData(a.data)} ${a.ini}</span><div class="ex">${trecho(t,q)}</div></button>`)});
+  AULAS.forEach(a=>{const t=aulaD(a.id).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-aula="${a.id}"><strong>${esc(nomeDisc(a.k))} · ${rotAula(a)}</strong> <span class="mono muted" style="font-size:12px">${fmtData(a.data)} ${CURSO.aulas===false?"":a.ini}</span><div class="ex">${trecho(t,q)}</div></button>`)});
   DISC.forEach(d=>{const t=discD(d.k).nota||""; if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-go="disciplinas" data-disc="${d.k}"><strong>Anotações: ${esc(nomeDisc(d.k))}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
   notas().forEach(n=>{const t=(n.titulo||"")+"\n"+(n.texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-nota="${n.id}"><strong>${esc(n.titulo||"Sem título")}</strong><div class="ex">${trecho(n.texto||n.titulo||"",q)}</div></button>`)});
   mats().forEach(m=>{const t=(m.titulo||"")+"\n"+(m.resumo||"")+"\n"+(mtx(m.id).texto||""); if(t.toLowerCase().includes(q)) r.push(`<button class="ni" data-mat="${m.id}"><strong>Material: ${esc(m.titulo)}</strong><div class="ex">${trecho(t,q)}</div></button>`)});
@@ -791,7 +798,7 @@ function resultados(){
 }
 
 function exportarMD(){
-  let o=`# Uso do QGIS como Estratégia de Segurança Pública\nAESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11/2026\n\n`;
+  let o=`# ${CURSO.tituloMD}\n\n`;
   DISC.forEach(d=>{
     o+=`## ${nomeDisc(d.k)}\n${d.inst.join(" · ")} · ${d.ha} h/a\n\n`;
     const dn=discD(d.k).nota; if(dn&&dn.trim()) o+=`${dn.trim()}\n\n`;
@@ -843,7 +850,22 @@ function renderPane(){
   if(PANE.tipo==="login") return;
   if(PANE.tipo==="addmat"){ host.innerHTML=paneAddMat(); return; }
   if(PANE.tipo==="mat"){ host.innerHTML=paneMat(); if(!PANE) host.innerHTML=""; return; }
-  if(PANE.tipo==="aula"){
+  if(PANE.tipo==="aula"){ renderPaneAula(host); return; }
+  {
+    const n=S.docs[PANE.id]||{tipo:"nota",titulo:"",texto:"",disc:"",criado:Date.now()};
+    host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Nota">
+      <header><div style="flex:1"><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="ntit" style="margin:0">Título</label>${info("markdown")}</div><input type="text" id="ntit" value="${esc(n.titulo)}" placeholder="Ex.: Reprojetar camadas para SIRGAS 2000"></div>
+        <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
+      <div class="body">
+        <div class="row"><label class="lb" for="ndisc" style="margin:0">Disciplina</label><select id="ndisc" style="width:auto;flex:1;min-width:0"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${n.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select>
+          <button class="btn sm" data-fxnovo title="Inserir um fluxograma na nota">Fluxograma</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div>
+        ${PANE.prev? `<div class="md">${md(n.texto)}</div>` : `<textarea id="ntxt" placeholder="# Passo a passo&#10;- Abrir camada…&#10;- **Atenção:** …">${esc(n.texto)}</textarea>`}
+        <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">${S.docs[PANE.id]?"Salva automaticamente":"Será salva ao digitar"}</span><button class="btn sm danger" data-delnota>Apagar nota</button></div>
+      </div></section>`;
+    if(!PANE.prev && !n.titulo) document.getElementById("ntit").focus();
+  }
+}
+function renderPaneAula(host){
     const a=AK[PANE.id]; const d=aulaD(a.id); const x=DK[a.k];
     const i=AULAS.indexOf(a);
     host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Aula">
@@ -867,19 +889,6 @@ function renderPane(){
         </div>
       </div></section>`;
     if(!PANE.prev){ const ta=document.getElementById("pnota"); ta.focus(); ta.selectionStart=ta.value.length; }
-  } else {
-    const n=S.docs[PANE.id]||{tipo:"nota",titulo:"",texto:"",disc:"",criado:Date.now()};
-    host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Nota">
-      <header><div style="flex:1"><div class="row" style="gap:6px;margin-bottom:4px"><label class="lb" for="ntit" style="margin:0">Título</label>${info("markdown")}</div><input type="text" id="ntit" value="${esc(n.titulo)}" placeholder="Ex.: Reprojetar camadas para SIRGAS 2000"></div>
-        <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
-      <div class="body">
-        <div class="row"><label class="lb" for="ndisc" style="margin:0">Disciplina</label><select id="ndisc" style="width:auto;flex:1;min-width:0"><option value="">Geral</option>${DISC.map(d=>`<option value="${d.k}" ${n.disc===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select>
-          <button class="btn sm" data-fxnovo title="Inserir um fluxograma na nota">Fluxograma</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div>
-        ${PANE.prev? `<div class="md">${md(n.texto)}</div>` : `<textarea id="ntxt" placeholder="# Passo a passo&#10;- Abrir camada…&#10;- **Atenção:** …">${esc(n.texto)}</textarea>`}
-        <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">${S.docs[PANE.id]?"Salva automaticamente":"Será salva ao digitar"}</span><button class="btn sm danger" data-delnota>Apagar nota</button></div>
-      </div></section>`;
-    if(!PANE.prev && !n.titulo) document.getElementById("ntit").focus();
-  }
 }
 function salvarNotaDoForm(){
   const id=PANE.id; const old=S.docs[id]||{tipo:"nota",criado:Date.now()};
@@ -1490,7 +1499,6 @@ window.FORMATO_EXPLICA={ dica:dicaExplica, abrir:o=>abrirExplica(o) };
 /* Pesquisa/explicação rápida: trecho conceitual da Wikipédia em português (API aberta, com fonte e link),
    escolhendo o resultado mais ligado ao curso (cartografia, geoprocessamento, segurança). */
 const RAP_CACHE={};
-const RAP_DOM=/cartogra|geod[eé]s|geogr[aá]f|mapa|georrefer|coordenad|proje[cç][aã]o|\bsig\b|geoprocess|sat[eé]lit|sensoriament|vetor|raster|camada|software|seguran[cç]a|crim|pol[ií]cia|estat[ií]stic|dados|topogra|gps|altitude|latitude|longitude/i;
 async function rapCandidatos(termo){
   const n=normT(termo); if(RAP_CACHE[n]) return RAP_CACHE[n];
   const r=await fetch("https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch="+encodeURIComponent(termo)+"&srlimit=8&srprop=snippet&format=json&origin=*");
@@ -1870,10 +1878,12 @@ function abrirFlutuante(id){
 }
 function fecharFlutuante(){ flushTudo(); FL.aberto=false; salvarFL(); if(PIP){ const w=PIP; PIP=null; PIP_COMUM=false; w.close(); } renderFlutuante(); }
 function focoAula(){ const t=Date.now(); return AULAS.find(a=>statusAula(a)==="cur") || AULAS.find(a=>msDe(a.data,a.ini)>t) || AULAS[AULAS.length-1]; }
+function flOpcoes(a){ return DIAS_AULA.map(dia=>`<optgroup label="${fmtData(dia)}">${AULAS.filter(x=>x.data===dia).map(x=>`<option value="${x.id}" ${x.id===a.id?"selected":""}>${x.ini} · ${esc(nomeDisc(x.k))} ${x.n}/${x.tot}</option>`).join("")}</optgroup>`).join(""); }
+function flRodape(a){ return `${fmtData(a.data)} ${a.ini}–${a.fim}`; }
 function htmlFlutuante(){
   const a=AK[FL.id]||focoAula(), d=aulaD(a.id);
   if(FL.mat&&(!S.docs[FL.mat]||S.docs[FL.mat].disc!==a.k)){ FL.mat=null; if(FL.tamAntes&&!PIP){ FL.w=FL.tamAntes.w; FL.h=FL.tamAntes.h; } FL.tamAntes=null; }
-  const grupos=DIAS_AULA.map(dia=>`<optgroup label="${fmtData(dia)}">${AULAS.filter(x=>x.data===dia).map(x=>`<option value="${x.id}" ${x.id===a.id?"selected":""}>${x.ini} · ${esc(nomeDisc(x.k))} ${x.n}/${x.tot}</option>`).join("")}</optgroup>`).join("");
+  const grupos=flOpcoes(a);
   return `<div class="fl-h" data-flarrastar title="${PIP?"":"Arraste para mover"}"><span class="sw" style="background:${DK[a.k].cor}"></span>
     <select id="fl-item" aria-label="Aula">${grupos}</select>
     ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
@@ -1882,7 +1892,7 @@ function htmlFlutuante(){
     ${PIP&&!PIP_COMUM?`<button type="button" class="btn sm" data-flcomum title="Abrir numa janela comum com a altura da tela inteira (não fica por cima das outras janelas)" aria-label="Janela com altura total">⬍</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
    ${FL.min?"":`<textarea id="fl-txt" aria-label="Anotações da disciplina" placeholder="Anote aqui durante a aula. Uma anotação para a disciplina toda; salva sozinho.">${esc(notaDaAula(a.id))}</textarea>
-   <div class="fl-p"><span class="mono" title="${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}">${fmtData(a.data)} ${a.ini}–${a.fim} · salva sozinho</span><button type="button" class="btn sm pri" data-flsalvar title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button></div>
+   <div class="fl-p"><span class="mono" title="${PIP?"Por cima das outras janelas · salva sozinho":"Salva sozinho na disciplina"}">${flRodape(a)} · salva sozinho</span><button type="button" class="btn sm pri" data-flsalvar title="Move o texto desta nota para Materiais (1ª linha = título) e limpa a nota">Salvar nota em Materiais</button></div>
    ${flMatsHTML(a.k)}${FL.mat&&S.docs[FL.mat]&&!S.docs[FL.mat].apagado?flVerHTML():""}`}`;
 }
 /* Materiais dentro do bloco de anotações (e da janela por cima): lista embaixo da nota; "abrir" troca a nota pelo material */
@@ -2024,15 +2034,6 @@ document.addEventListener("input",e=>{ const t=e.target; if(!FL.aberto||!AK[FL.i
    pjd-<x>-<disc>: parte de cada disciplina no projeto ({texto, liga:[disc], modo}).
    Ligação entre disciplinas é dos dois lados: ligar A a B também liga B a A. */
 const PJ_STATUS=[["ideia","Ideia"],["andamento","Em andamento"],["revisao","Em revisão"],["concluido","Concluído"]];
-const PJ_CAMPOS=[
-  ["objetivo","Objetivo","O que o projeto quer responder ou entregar. Ex.: identificar as áreas com maior concentração de CVLI no bairro X em 2025."],
-  ["problema","Problema e justificativa","Qual situação de segurança pública motiva o projeto e por que ela importa."],
-  ["area","Área de estudo e recorte","Município, bairros ou AIS; período analisado; escala do mapa."],
-  ["dados","Dados e fontes","Camadas e bases (IBGE, SSPDS, OpenStreetMap, ocorrências), formato e sistema de coordenadas (SRC)."],
-  ["metodo","Metodologia e ferramentas","Passo a passo no QGIS: geocodificação, junções, kernel, buffers, consultas espaciais…"],
-  ["produtos","Produtos e resultados esperados","Mapas, tabelas, relatório, apresentação."],
-];
-const CURTO={cart:"Cartografia",sig:"SIG",gmaps:"Google Maps",qgis:"QGIS",edic:"Edição de dados",bases:"Bases de dados",anal:"Análises espaciais",prod:"Produtos cartográficos",proj:"Projeto Prático"};
 const curto = k => CURTO[k]||nomeDisc(k);
 const projetos = () => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="prj"&&!b.apagado).map(([id,b])=>({id,...b})).sort((a,b)=>(a.criado||0)-(b.criado||0));
 const projPrincipal = () => { const ps=projetos(); return ps.find(p=>p.principal)||ps[0]||null; };
@@ -2056,14 +2057,11 @@ function progProj(p){ const et=p.etapas||[]; const f=et.filter(e=>e.feito).lengt
 const fmtPrazo = d => d?d.slice(8,10)+"/"+d.slice(5,7)+"/"+d.slice(0,4):"";
 function novoProjeto(modelo){
   const pid="prj-"+novoId(), primeiro=!projetos().length;
-  const base={tipo:"prj",titulo:modelo?"Diagnóstico Territorial":"Novo projeto",status:"ideia",prazo:modelo?"2026-11-18":"",principal:primeiro,criado:Date.now(),etapas:[],links:[],mats:[],texto:""};
-  if(modelo){
-    base.objetivo="Produzir um diagnóstico territorial da criminalidade numa área de estudo, usando o QGIS, para apoiar o planejamento operacional.";
-    const E=[["Definir a pergunta, a área de estudo e o recorte de tempo","proj"],["Escolher escala, projeção (SRC) e elementos do mapa","cart"],["Estruturar o SIG: vetor x raster, camadas e atributos","sig"],
-      ["Levantar bases cartográficas (limites, bairros, setores censitários)","bases"],["Obter e organizar os dados de ocorrências","bases"],["Geocodificar e conferir pontos no Google Maps / My Maps","gmaps"],
-      ["Montar o projeto no QGIS com as camadas de base","qgis"],["Tratar dados: tabela de atributos, junções, correções","edic"],["Análises espaciais: densidade (kernel), hotspots, buffers","anal"],
-      ["Elaborar mapas temáticos e o layout de impressão","prod"],["Interpretar resultados e propor ações","proj"],["Preparar a apresentação final","proj"]];
-    base.etapas=E.map(([t,disc])=>({id:novoId(),t,disc,feito:false,prazo:""}));
+  const M=modelo&&CURSO.modeloProjeto;
+  const base={tipo:"prj",titulo:M?M.titulo:"Novo projeto",status:"ideia",prazo:M?(M.prazo||""):"",principal:primeiro,criado:Date.now(),etapas:[],links:[],mats:[],texto:""};
+  if(M){
+    base.objetivo=M.objetivo||"";
+    base.etapas=M.etapas.map(([t,disc])=>({id:novoId(),t,disc,feito:false,prazo:""}));
   }
   salvarDoc(pid,base,50); PRJ_SEL=pid; return pid;
 }
@@ -2267,7 +2265,6 @@ ligarAbaProj(document); window.ligarAbaProj=ligarAbaProj;
    prt-<x>: {disc, titulo, objetivo, passos:[{id,t,feito}], texto (anotações ricas), feita, criado, aula} */
 const praticas = k => Object.entries(S.docs).filter(([id,b])=>b&&b.tipo==="prt"&&!b.apagado&&(!k||b.disc===k)).map(([id,b])=>({id,...b})).sort((a,b)=>(a.criado||0)-(b.criado||0));
 const PRT_ABERTA={}; // prática aberta por disciplina
-const PASSOS_QGIS=["Criar o projeto no QGIS e conferir o SRC","Carregar as camadas e conferir os atributos","Executar a ferramenta / análise","Conferir o resultado (simbologia, tabela, mapa)","Salvar o projeto e exportar o resultado"];
 // Passo a passo em blocos: blocos:[{id,titulo,rec,liga:[blocoId],passos:[{id,t,feito,liga:[passoId]}]}].
 // Práticas antigas (passos soltos) viram um bloco "Parte 1".
 function blocosDe(p){ if(Array.isArray(p.blocos)) return p.blocos; const pa=p.passos||[]; return pa.length?[{id:"b0",titulo:"Parte 1",rec:false,liga:[],passos:pa.map(x=>({liga:[],...x}))}]:[]; }
@@ -2481,7 +2478,7 @@ function ligarAbaPrat(doc){
     if(op==="dobrarnotas"){ salvarPrt(id,{notasRec:!p.notasRec},50); redesenharPrats(k); return; }
     const bs=JSON.parse(JSON.stringify(blocosDe(p))), bel=b.closest(".pr-bl"), bid=bel&&bel.dataset.bid, bi=bs.findIndex(x=>x.id===bid);
     const av=t=>{ const f=c.pr.ownerDocument===document?toast:(c.pr.ownerDocument.defaultView.toast||toast); f(t); };
-    if(op==="modelo"){ bs.push({id:novoId(),titulo:"Prática no QGIS",rec:false,liga:[],passos:PASSOS_QGIS.map(t=>({id:novoId(),t,feito:false,liga:[]}))}); salvarBlocos(id,bs); redesenharPrats(k); return; }
+    if(op==="modelo"){ bs.push({id:novoId(),titulo:CURSO.praticaModelo||"Prática no QGIS",rec:false,liga:[],passos:PASSOS_QGIS.map(t=>({id:novoId(),t,feito:false,liga:[]}))}); salvarBlocos(id,bs); redesenharPrats(k); return; }
     if(op==="seq"){ abrirSequencia(id); return; }
     if(op==="bloco"){ const nb={id:novoId(),titulo:"",rec:false,liga:[],passos:[]}; bs.push(nb); salvarBlocos(id,bs); redesenharPrats(k); setTimeout(()=>c.pr.querySelector(`.pr-bl[data-bid="${nb.id}"] [data-prbl=titulo]`)?.focus(),30); return; }
     if(op==="dobrarbloco"&&bi>=0){ bs[bi].rec=!bs[bi].rec; salvarBlocos(id,bs); redesenharPrats(k); return; }
@@ -2617,7 +2614,7 @@ document.addEventListener("keydown",e=>{ const g=e.target.closest&&e.target.clos
 function render(){
   lerHash();
   renderNav();
-  const V={hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,projetos:vProjetos,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,formatacao:()=>`<div><h2>Índice de formatação</h2></div><div class="card">${window.FORMATO&&FORMATO.indice?FORMATO.indice():""}</div>`,backup:vBackup}[VIEW];
+  const V=(window.TELAS_EXTRA&&TELAS_EXTRA[VIEW])||{hoje:vHoje,cronograma:vCronograma,disciplinas:vDisciplinas,materiais:vMateriais,projetos:vProjetos,estudar:vEstudar,caderno:vCaderno,tarefas:vTarefas,busca:vBusca,formatacao:()=>`<div><h2>Índice de formatação</h2></div><div class="card">${window.FORMATO&&FORMATO.indice?FORMATO.indice():""}</div>`,backup:vBackup}[VIEW];
   document.getElementById("view").innerHTML=(S.faltaSQL?`<div class="card" role="alert" style="border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface))"><div class="row" style="gap:8px"><strong>⚠ Falta rodar o SQL do caderno no Supabase</strong>${info("sql")}</div><p style="margin:6px 0 0;font-size:14px">Sem ele, a sincronização na nuvem, os PDFs e as fotos não funcionam (suas notas continuam salvas neste navegador). Supabase do Checklist → SQL Editor → cole <span class="mono">supabase/${CURSO.tabela}.sql</span> → Run → recarregue esta página.</p></div>`:"")+V();
   if(VIEW==="backup") ligarBackup();
   if(VIEW==="disciplinas") montarNavs();
