@@ -1,13 +1,14 @@
 /* Cadernos de Estudo: funciona sem internet.
    - Páginas (/, /qgis, /dio): tenta a rede (até 4 s) e, sem conexão, usa a cópia guardada.
-   - Scripts do app (prompts, timer, fluxo, formato): rede primeiro (3 s), cópia se não houver conexão.
+   - Scripts e estilos do app (caderno.js/.css, curso-*.js, prompts, timer, fluxo, formato): rede primeiro (3 s), cópia se não houver conexão.
    - vendor/, ícones: usa a cópia e atualiza em segundo plano.
    - Fontes do Google: cópia guardada.
    - /api e Supabase: nunca guardados (sempre rede). As anotações em si ficam no localStorage e sobem ao voltar a internet. */
-const VERSAO = "cadernos-v2";
+const VERSAO = "cadernos-v3";
 const PAGINAS = ["/", "/qgis", "/dio"];
 const ARQUIVOS = [
   "/prompts.js", "/prompts-dio.js", "/timer.js", "/fluxo.js", "/formato.js",
+  "/caderno.js", "/caderno.css", "/curso-qgis.js", "/curso-dio.js",
   "/vendor/supabase.js", "/vendor/pdf.min.mjs", "/vendor/pdf.worker.min.mjs", "/vendor/mermaid.min.js", "/vendor/palavras-pt-br.txt",
   "/manifest.webmanifest", "/icons/icon.svg", "/icons/favicon-32.png", "/icons/apple-touch-icon.png",
   "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png",
@@ -83,7 +84,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin === location.origin) {
     if (url.pathname.startsWith("/api/") || url.pathname === "/sw.js") return;
     if (req.mode === "navigate") return e.respondWith(pagina(req));
-    if (/\.m?js$/.test(url.pathname) && !url.pathname.startsWith("/vendor/")) return e.respondWith(script(req));
+    if (/\.(m?js|css)$/.test(url.pathname) && !url.pathname.startsWith("/vendor/")) return e.respondWith(script(req));
     return e.respondWith(arquivo(req));
   }
   if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") return e.respondWith(fonte(req));
