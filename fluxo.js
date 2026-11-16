@@ -120,63 +120,99 @@ function medir(t,px,peso){ _cv.font=(peso||400)+" "+px+"px "+(getComputedStyle(d
 function quebrar(t,px,max,peso){ const out=[]; String(t||"").split("\n").forEach(par=>{ let l=""; par.split(/\s+/).filter(Boolean).forEach(w=>{ const n=l?l+" "+w:w; if(l&&medir(n,px,peso)>max){ out.push(l); l=w; } else l=n; }); out.push(l); }); return out.filter((x,i,a)=>x||a.length===1); }
 const semMd=t=>String(t||"").split(/\r?\n/).map(l=>l.replace(/^\s*#{1,3}\s+/,"").replace(/^(\s*)[-*]\s+(?:\[[ xX]\]\s*)?/,"• ").replace(/^>\s?/,"").replace(/!\[[^\]]*\]\([^)]*\)/g,"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*|==|`/g,"").replace(/(^|\s)\*(\S)/g,"$1$2").replace(/(\S)\*(\s|$)/g,"$1$2").replace(/\{\{([^{}]+)\}\}|\(\(([^()]+)\)\)/g,(x,a,b)=>a||b)).filter(l=>l.trim()).join("\n");
 function caixa(n,comDesc){
-  const tl=quebrar(n.texto||" ",14,190,600), dl=comDesc&&String(n.desc||"").trim()?quebrar(semMd(n.desc),11.5,200):[];
-  const w0=Math.max(...tl.map(l=>medir(l,14,600)),...dl.map(l=>medir(l,11.5)),40), h0=tl.length*18+(dl.length?dl.length*15+4:0);
-  let w=Math.max(96,w0+32), h=Math.max(42,h0+20);
-  if(n.forma==="decisao"){ w=w*1.45; h=h*1.55; } if(n.forma==="dado") w+=24; if(n.forma==="sub") w+=16; if(n.forma==="nota") w+=14; if(n.forma==="inicio") w+=12;
+  const tl=quebrar(n.texto||" ",15,200), dl=comDesc&&String(n.desc||"").trim()?quebrar(semMd(n.desc),12.5,210):[];
+  const w0=Math.max(...tl.map(l=>medir(l,15)),...dl.map(l=>medir(l,12.5)),40), h0=tl.length*19+(dl.length?dl.length*16+4:0);
+  let w=Math.max(100,w0+34), h=Math.max(44,h0+24);
+  if(n.forma==="decisao"){ w=w*1.45; h=h*1.55; } if(n.forma==="dado") w+=24; if(n.forma==="sub") w+=16; if(n.forma==="nota") w+=14; if(n.forma==="inicio") w+=14;
   return {w:Math.round(w),h:Math.round(h),tl,dl};
 }
 function formaSVG(f,w,h){ const x=-w/2,y=-h/2;
   if(f==="inicio") return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h/2}"/>`;
   if(f==="decisao") return `<polygon points="0,${y} ${w/2},0 0,${h/2} ${x},0"/>`;
   if(f==="dado") return `<polygon points="${x+14},${y} ${w/2},${y} ${w/2-14},${h/2} ${x},${h/2}"/>`;
-  if(f==="sub") return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3"/><line x1="${x+8}" y1="${y}" x2="${x+8}" y2="${h/2}"/><line x1="${w/2-8}" y1="${y}" x2="${w/2-8}" y2="${h/2}"/>`;
+  if(f==="sub") return `<rect x="${x}" y="${y}" width="${w}" height="${h}"/><line x1="${x+8}" y1="${y}" x2="${x+8}" y2="${h/2}"/><line x1="${w/2-8}" y1="${y}" x2="${w/2-8}" y2="${h/2}"/>`;
   if(f==="nota") return `<polygon points="${x},${y} ${w/2},${y} ${w/2},${h/2} ${x},${h/2} ${x+12},0"/>`;
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4"/>`;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`;
 }
-// ponto na borda da caixa na direção (dx,dy)
-function borda(c,dx,dy){ const hw=c.w/2, hh=c.h/2; if(!dx&&!dy) return [0,0];
-  if(c.forma==="decisao"){ const k=1/(Math.abs(dx)/hw+Math.abs(dy)/hh); return [dx*k,dy*k]; }
-  const k=Math.min(dx?hw/Math.abs(dx):1e9, dy?hh/Math.abs(dy):1e9); return [dx*k,dy*k]; }
-function lado(c,s){ return {b:[0,c.h/2],t:[0,-c.h/2],l:[-c.w/2,0],r:[c.w/2,0]}[s]; }
-function rotaSeta(a,b,curva,off){
-  off=off||0; const dx=b.x-a.x, dy=b.y-a.y, vert=Math.abs(dy)>=Math.abs(dx)*0.8;
-  // setas paralelas (mesmo par de caixas) são afastadas para os lados
-  if(off){ const L=Math.hypot(dx,dy)||1, ox=-dy/L*off, oy=dx/L*off; a={...a,x:a.x+ox,y:a.y+oy}; b={...b,x:b.x+ox,y:b.y+oy}; }
-  if(curva==="step"){
-    if(vert){ const sa=lado(a,dy>0?"b":"t"), sb=lado(b,dy>0?"t":"b"), x1=a.x+sa[0], y1=a.y+sa[1], x2=b.x+sb[0], y2=b.y+sb[1], my=(y1+y2)/2;
-      return {d:`M${x1},${y1} V${my} H${x2} V${y2}`, lx:(x1+x2)/2, ly:my}; }
-    const sa=lado(a,dx>0?"r":"l"), sb=lado(b,dx>0?"l":"r"), x1=a.x+sa[0], y1=a.y+sa[1], x2=b.x+sb[0], y2=b.y+sb[1], mx=(x1+x2)/2;
-    return {d:`M${x1},${y1} H${mx} V${y2} H${x2}`, lx:mx, ly:(y1+y2)/2}; }
-  const pa=borda(a,dx,dy), pb=borda(b,-dx,-dy), x1=a.x+pa[0], y1=a.y+pa[1], x2=b.x+pb[0], y2=b.y+pb[1];
-  if(curva==="linear") return {d:`M${x1},${y1} L${x2},${y2}`, lx:(x1+x2)/2, ly:(y1+y2)/2};
-  const k=0.45; const c1=vert?[x1,y1+(y2-y1)*k]:[x1+(x2-x1)*k,y1], c2=vert?[x2,y2-(y2-y1)*k]:[x2-(x2-x1)*k,y2];
-  return {d:`M${x1},${y1} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${y2}`, lx:(x1+x2)/2, ly:(y1+y2)/2};
-}
+// Cores iguais às do desenho automático (Mermaid, tema claro/escuro)
+function corLivre(){ return escuro()
+  ? {no:"#1f2020",nb:"#cccccc",tx:"#cccccc",d:"#b8b8b8",s:"#d3d3d3",lb:"#585858",lt:"#e6e6e6",gf:"#474949",gb:"rgba(255,255,255,.25)",gt:"#f9fffe",dec:"#1f2020"}
+  : {no:"#ECECFF",nb:"#9370DB",tx:"#333333",d:"#555555",s:"#333333",lb:"rgba(232,232,232,.92)",lt:"#333333",gf:"#ffffde",gb:"#aaaa33",gt:"#333333",dec:"#ECECFF"}; }
+// Lados de saída/chegada de cada seta pela posição das caixas; várias setas no mesmo lado são espalhadas.
+function ladosSeta(a,b){ const dx=b.x-a.x, dy=b.y-a.y;
+  if(Math.abs(dy)>(a.h+b.h)/2+16||Math.abs(dy)>Math.abs(dx)*0.6) return dy>0?["b","t"]:["t","b"];
+  return dx>0?["r","l"]:["l","r"]; }
+const NORMAL={b:[0,1],t:[0,-1],l:[-1,0],r:[1,0]};
+function porta(c,lado,f){ // f entre 0 e 1 ao longo do lado
+  if(lado==="b"||lado==="t"){ const span=c.forma==="decisao"?0:c.w*0.7; return [c.x-span/2+span*f, c.y+(lado==="b"?c.h/2:-c.h/2)]; }
+  const span=c.forma==="decisao"?0:c.h*0.6; return [c.x+(lado==="r"?c.w/2:-c.w/2), c.y-span/2+span*f]; }
+function cantos(pts,r){ // polilinha com cantos arredondados
+  let d=`M${pts[0][0]},${pts[0][1]}`;
+  for(let i=1;i<pts.length-1;i++){ const [x0,y0]=pts[i-1],[x1,y1]=pts[i],[x2,y2]=pts[i+1];
+    const l1=Math.hypot(x1-x0,y1-y0), l2=Math.hypot(x2-x1,y2-y1), k=Math.min(r,l1/2,l2/2);
+    if(!k){ d+=` L${x1},${y1}`; continue; }
+    d+=` L${x1-(x1-x0)/l1*k},${y1-(y1-y0)/l1*k} Q${x1},${y1} ${x1+(x2-x1)/l2*k},${y1+(y2-y1)/l2*k}`; }
+  const u=pts[pts.length-1]; return d+` L${u[0]},${u[1]}`; }
 function svgLivre(m, vbFixo){
-  const comDesc=m.descNo!==false, pos=m.pos||{}, C={};
+  const comDesc=m.descNo!==false, pos=m.pos||{}, C={}, K=corLivre();
   m.nos.forEach((n,i)=>{ const c=caixa(n,comDesc), p=pos[n.id]||{x:120+(i%3)*240,y:60+Math.floor(i/3)*140}; C[n.id]={...c,x:p.x,y:p.y,forma:n.forma,n}; });
-  const esc2=escH, grupos=gruposDe(m), G=[];
-  grupos.forEach(g=>{ const ms=m.nos.filter(n=>grupoNorm(n.grupo)===g).map(n=>C[n.id]); if(!ms.length) return;
-    const x1=Math.min(...ms.map(c=>c.x-c.w/2))-18, x2=Math.max(...ms.map(c=>c.x+c.w/2))+18, y1=Math.min(...ms.map(c=>c.y-c.h/2))-32, y2=Math.max(...ms.map(c=>c.y+c.h/2))+18; G.push({g,x1,x2,y1,y2}); });
-  const xs=[...Object.values(C).flatMap(c=>[c.x-c.w/2,c.x+c.w/2]),...G.flatMap(g=>[g.x1,g.x2])], ys=[...Object.values(C).flatMap(c=>[c.y-c.h/2,c.y+c.h/2]),...G.flatMap(g=>[g.y1,g.y2])];
-  let vb=vbFixo||[Math.min(...xs)-30,Math.min(...ys)-30,Math.max(...xs)-Math.min(...xs)+60,Math.max(...ys)-Math.min(...ys)+60];
-  const curvaP=m.curva||"basis";
-  const par={}, vis=m.ligs.map((g,i)=>({g,i})).filter(({g})=>C[g.de]&&C[g.para]&&g.tipo!=="invis"&&g.de!==g.para);
-  vis.forEach(({g})=>{ const k=[g.de,g.para].sort().join("|"); par[k]=(par[k]||0)+1; }); const usado={};
-  const setas=m.ligs.map((g,i)=>{ const a=C[g.de], b=C[g.para]; if(!a||!b||g.tipo==="invis"||a===b) return "";
-    const k=[g.de,g.para].sort().join("|"), j=usado[k]=(usado[k]===undefined?0:usado[k]+1), tot=par[k], sinal=g.de<g.para?1:-1;
-    const r=rotaSeta(a,b,g.curva||curvaP,(j-(tot-1)/2)*22*sinal), t=g.tipo||"seta", cls="fxl-s"+(t==="pont"?" fxl-pont":"")+(t==="grossa"?" fxl-grossa":"");
+  const esc2=escH, G=[];
+  gruposDe(m).forEach(g=>{ const ms=m.nos.filter(n=>grupoNorm(n.grupo)===g).map(n=>C[n.id]); if(!ms.length) return;
+    G.push({g,x1:Math.min(...ms.map(c=>c.x-c.w/2))-20,x2:Math.max(...ms.map(c=>c.x+c.w/2))+20,y1:Math.min(...ms.map(c=>c.y-c.h/2))-34,y2:Math.max(...ms.map(c=>c.y+c.h/2))+20}); });
+  // setas: lados e portas
+  const vis=m.ligs.map((g,i)=>({g,i,a:C[g.de],b:C[g.para]})).filter(e=>e.a&&e.b&&e.g.tipo!=="invis"&&e.a!==e.b);
+  const slot={}; const add=(c,l,e,ponta,outro)=>{ const k=c.n.id+":"+l; (slot[k]=slot[k]||[]).push({e,ponta,outro}); };
+  vis.forEach(e=>{ const [la,lb]=ladosSeta(e.a,e.b); e.la=la; e.lb=lb; add(e.a,la,e,"a",e.b); add(e.b,lb,e,"b",e.a); });
+  Object.entries(slot).forEach(([k,v])=>{ const l=k.split(":")[1], vert=l==="b"||l==="t"; v.sort((p,q)=>vert?p.outro.x-q.outro.x:p.outro.y-q.outro.y);
+    v.forEach((s,i)=>{ const f=v.length===1?.5:i/(v.length-1); const c=s.ponta==="a"?s.e.a:s.e.b; s.e[s.ponta==="a"?"pa":"pb"]=porta(c,l,v.length===1?.5:f); }); });
+  const curvaP=m.curva||"basis", faixa={l:0,r:0}, rotulos=[];
+  // caixas no caminho de uma seta: ela contorna por um corredor ao lado
+  const bloqueio=(e)=>{ const [x1,y1]=e.pa,[x2,y2]=e.pb, bs=[]; Object.values(C).forEach(c=>{ if(c===e.a||c===e.b) return; const L=c.x-c.w/2-8,R=c.x+c.w/2+8,T=c.y-c.h/2-8,B=c.y+c.h/2+8;
+      for(let k=1;k<20;k++){ const t=k/20, x=x1+(x2-x1)*t, y=y1+(y2-y1)*t; if(x>L&&x<R&&y>T&&y<B){ bs.push(c); break; } } }); return bs; };
+  const setas=vis.map(e=>{ const g=e.g, cv=g.curva||curvaP, [x1,y1]=e.pa, [x2,y2]=e.pb, n1=NORMAL[e.la], n2=NORMAL[e.lb]; let d, lx, ly;
+    const bs=cv==="linear"?[]:bloqueio(e);
+    if(bs.length){ const dir=Math.sign(y2-y1)||1, dirX=Math.sign(x2-x1)||1;
+      const R=Math.max(...bs.map(c=>c.x+c.w/2),x1,x2)+26, L=Math.min(...bs.map(c=>c.x-c.w/2),x1,x2)-26, lado2=(Math.abs(R-x1)+Math.abs(R-x2))<=(Math.abs(L-x1)+Math.abs(L-x2))?"r":"l";
+      const lane=lado2==="r"?R+faixa.r++*14:L-faixa.l++*14, s1=[x1+n1[0]*16,y1+n1[1]*16], s2=[x2+n2[0]*16,y2+n2[1]*16];
+      const pts=[[x1,y1],s1,[lane,s1[1]],[lane,s2[1]],s2,[x2,y2]]; d=cantos(pts,cv==="step"?8:18); lx=lane; ly=(s1[1]+s2[1])/2; void dir; void dirX; }
+    else if(cv==="linear"){ d=`M${x1},${y1} L${x2},${y2}`; lx=(x1+x2)/2; ly=(y1+y2)/2; }
+    else if(cv==="step"){ const s=14; let pts;
+      if(n1[1]&&n2[1]){ // vertical: sai por baixo/cima
+        let my=(y1+y2)/2; if(Math.sign(y2-y1)!==n1[1]){ my=null; }
+        pts=my!==null?[[x1,y1],[x1,my],[x2,my],[x2,y2]]:[[x1,y1],[x1,y1+n1[1]*s],[x1+(x2>x1?1:-1)*Math.max(40,Math.abs(x2-x1)/2),y1+n1[1]*s],[x1+(x2>x1?1:-1)*Math.max(40,Math.abs(x2-x1)/2),y2+n2[1]*s],[x2,y2+n2[1]*s],[x2,y2]];
+        lx=(x1+x2)/2; ly=my!==null?my:(y1+y2)/2; }
+      else { const mx=(x1+x2)/2; pts=[[x1,y1],[mx,y1],[mx,y2],[x2,y2]]; lx=mx; ly=(y1+y2)/2; }
+      d=cantos(pts,8); }
+    else { const L=Math.max(30,Math.hypot(x2-x1,y2-y1)/2.6), c1=[x1+n1[0]*L,y1+n1[1]*L], c2=[x2+n2[0]*L,y2+n2[1]*L];
+      d=`M${x1},${y1} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${y2}`; lx=.125*x1+.375*c1[0]+.375*c2[0]+.125*x2; ly=.125*y1+.375*c1[1]+.375*c2[1]+.125*y2; }
+    const t=g.tipo||"seta", w=t==="grossa"?3.5:2, dash=t==="pont"?' stroke-dasharray="3 4"':"";
     const fim=t==="linha"?"":' marker-end="url(#fxl-pt)"', ini=t==="dupla"?' marker-start="url(#fxl-pt)"':"";
-    const rot=String(g.rot||"").trim(), rw=rot?medir(rot,12)+10:0;
-    return `<g class="fxl-lig" data-lig="${i}"><path class="${cls}" d="${r.d}"${fim}${ini}/>${rot?`<rect class="fxl-rb" x="${r.lx-rw/2}" y="${r.ly-10}" width="${rw}" height="18" rx="4"/><text class="fxl-rt" x="${r.lx}" y="${r.ly+3}">${esc2(rot)}</text>`:""}</g>`; }).join("");
-  const caixas=m.nos.map(n=>{ const c=C[n.id], th=c.tl.length*18, dh=c.dl.length?c.dl.length*15+4:0, y0=-(th+dh)/2+13;
-    return `<g class="fxl-no fxl-${n.forma}" data-n="${n.id}" transform="translate(${c.x},${c.y})">${formaSVG(n.forma,c.w,c.h)}
-      ${c.tl.map((l,j)=>`<text class="fxl-t" y="${y0+j*18}">${esc2(l)}</text>`).join("")}${c.dl.map((l,j)=>`<text class="fxl-d" y="${y0+th+4+j*15}">${esc2(l)}</text>`).join("")}</g>`; }).join("");
-  const gs=m.molduras===false?"":G.map(g=>`<g class="fxl-gr" data-g="${esc2(g.g)}"><rect x="${g.x1}" y="${g.y1}" width="${g.x2-g.x1}" height="${g.y2-g.y1}" rx="10"/><text x="${g.x1+12}" y="${g.y1+19}">${esc2(g.g)}</text></g>`).join("");
+    const rot=String(g.rot||"").trim(), rw=rot?medir(rot,13)+10:0;
+    if(rot){ for(let k=0;k<6&&rotulos.some(r=>Math.abs(r[0]-lx)<(r[2]+rw)/2+4&&Math.abs(r[1]-ly)<22);k++) ly+=22; rotulos.push([lx,ly,rw]); }
+    return `<g class="fxl-lig" data-lig="${e.i}"><path d="${d}" fill="none" stroke="${K.s}" stroke-width="${w}"${dash}${fim}${ini}/>${rot?`<rect x="${lx-rw/2}" y="${ly-10}" width="${rw}" height="20" fill="${K.lb}"/><text x="${lx}" y="${ly+1}" fill="${K.lt}" font-size="13">${esc2(rot)}</text>`:""}</g>`; }).join("");
+  const caixas=m.nos.map(n=>{ const c=C[n.id], th=c.tl.length*19, dh=c.dl.length?c.dl.length*16+4:0, y0=-(th+dh)/2+10;
+    return `<g class="fxl-no" data-n="${n.id}" transform="translate(${c.x},${c.y})" fill="${n.forma==="decisao"?K.dec:K.no}" stroke="${K.nb}" stroke-width="1">${formaSVG(n.forma,c.w,c.h)}
+      ${c.tl.map((l,j)=>`<text stroke="none" fill="${K.tx}" font-size="15" y="${y0+j*19}">${esc2(l)}</text>`).join("")}${c.dl.map((l,j)=>`<text stroke="none" fill="${K.d}" font-size="12.5" y="${y0+th+5+j*16}">${esc2(l)}</text>`).join("")}</g>`; }).join("");
+  const gs=m.molduras===false?"":G.map(g=>`<g class="fxl-gr" data-g="${esc2(g.g)}"><rect x="${g.x1}" y="${g.y1}" width="${g.x2-g.x1}" height="${g.y2-g.y1}" fill="${K.gf}" stroke="${K.gb}"/><text x="${(g.x1+g.x2)/2}" y="${g.y1+18}" fill="${K.gt}" font-size="14">${esc2(g.g)}</text></g>`).join("");
+  const xs=[...Object.values(C).flatMap(c=>[c.x-c.w/2,c.x+c.w/2]),...G.flatMap(g=>[g.x1,g.x2])], ys=[...Object.values(C).flatMap(c=>[c.y-c.h/2,c.y+c.h/2]),...G.flatMap(g=>[g.y1,g.y2])];
+  const vb=vbFixo||[Math.min(...xs)-40,Math.min(...ys)-30,Math.max(...xs)-Math.min(...xs)+80,Math.max(...ys)-Math.min(...ys)+60];
   return `<svg class="fxl" xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(v=>Math.round(v)).join(" ")}" width="${Math.round(vb[2])}" height="${Math.round(vb[3])}" role="img" aria-label="Fluxograma">
-    <defs><marker id="fxl-pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <defs><marker id="fxl-pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${K.s}"/></marker></defs>
     ${gs}${setas}${caixas}</svg>`;
+}
+// "Salvar posições": alinha as caixas em linhas e colunas e abre espaço entre elas (desenho organizado)
+function organizar(m){
+  const comDesc=m.descNo!==false, P=m.pos||{}, cx=Object.fromEntries(m.nos.map(n=>[n.id,caixa(n,comDesc)]));
+  const agrupar=(eixo,tol)=>{ const ids=m.nos.map(n=>n.id).filter(id=>P[id]).sort((a,b)=>P[a][eixo]-P[b][eixo]); const faixas=[];
+    ids.forEach(id=>{ const f=faixas[faixas.length-1]; if(f&&Math.abs(P[id][eixo]-f.v)<=tol){ f.ids.push(id); f.v=f.ids.reduce((s,x)=>s+P[x][eixo],0)/f.ids.length; } else faixas.push({v:P[id][eixo],ids:[id]}); });
+    return faixas; };
+  // linhas (y): alinhadas e com espaço mínimo entre elas
+  let y=null; agrupar("y",45).forEach(f=>{ const h=Math.max(...f.ids.map(id=>cx[id].h)); let v=Math.round(f.v/10)*10; if(y!==null) v=Math.max(v,y+h/2+70); f.ids.forEach(id=>P[id].y=v); y=v+h/2; });
+  // colunas (x): alinha caixas quase na mesma vertical
+  agrupar("x",60).forEach(f=>{ const v=Math.round(f.v/10)*10; f.ids.forEach(id=>P[id].x=v); });
+  // na mesma linha, afasta caixas que se encostam
+  agrupar("y",5).forEach(f=>{ const ids=f.ids.sort((a,b)=>P[a].x-P[b].x); for(let i=1;i<ids.length;i++){ const a=ids[i-1], b=ids[i], min=cx[a].w/2+cx[b].w/2+50; if(P[b].x-P[a].x<min) P[b].x=Math.round((P[a].x+min)/10)*10; } });
+  m.pos=P; return m;
 }
 // lê do código: "%% livre {json}"
 function livreDoCodigo(cod){ const x=String(cod||"").match(/^%% livre (\{.*\})\s*$/m); if(!x) return null; try{ const m=JSON.parse(x[1]); return m&&m.livre&&m.pos?m:null; }catch(e){ return null; } }
@@ -237,6 +273,7 @@ function fechar(){ ED=null; document.getElementById("fxHost").innerHTML=""; }
 function salvar(){
   const txt=ED.alvo.get(), bs=blocos(txt);
   if(temDocs()){
+    if(ED.movendo&&ED.m&&ED.m.livre){ organizar(ED.m); ED.movendo=false; }
     const modelo=ED.modoCodigo?null:{...ED.m,titulo:ED.titulo.trim(),desc:ED.desc.trim()}, codigo=ED.modoCodigo?ED.codigo.trim():paraMermaid(ED.m), info={titulo:ED.titulo,desc:ED.desc};
     const b=ED.idx!=null?bs[ED.idx]:null;
     if(b&&b.fx){ gravarFx(b.fx, modelo, codigo, info); ED.alvo.set(txt); fechar(); document.dispatchEvent(new CustomEvent("caderno:fx",{detail:{id:b.fx}})); aviso("Fluxograma salvo."); return; }
@@ -267,7 +304,7 @@ function desenharEditor(){
   const m=ED.m, host=document.getElementById("fxHost"), velho={col:host.querySelector(".fx-col:not(.fx-prev)")?.scrollTop||0, pv:host.querySelector("#fx-prev")?.innerHTML||"", pvs:[host.querySelector("#fx-prev")?.scrollTop||0,host.querySelector("#fx-prev")?.scrollLeft||0]};
   desenharEditorHTML(m);
   const c=host.querySelector(".fx-col:not(.fx-prev)"); if(c) c.scrollTop=velho.col;
-  const pv=host.querySelector("#fx-prev"); if(pv&&velho.pv){ pv.innerHTML=velho.pv; pv.classList.toggle("fx-livre",!!(m&&m.livre)); pv.scrollTop=velho.pvs[0]; pv.scrollLeft=velho.pvs[1]; }
+  const pv=host.querySelector("#fx-prev"); if(pv&&velho.pv){ pv.innerHTML=velho.pv; pv.classList.toggle("fx-livre",!!(m&&m.livre)); pv.classList.toggle("fx-movendo",!!ED.movendo); pv.scrollTop=velho.pvs[0]; pv.scrollLeft=velho.pvs[1]; }
 }
 function desenharEditorHTML(m){
   document.getElementById("fxHost").innerHTML=`<div class="fx-shade" data-fxfechar></div>
@@ -319,7 +356,7 @@ function desenharEditorHTML(m){
           <div class="row"><button class="btn sm" data-fxaddlig ${m.nos.length<2?"disabled":""}>+ Ligação</button></div></div>
           <button class="btn sm" data-fxcodigo style="align-self:flex-start">Editar como código (avançado)</button>`}
       </div>
-      <div class="fx-col fx-prev"><div class="fx-pvh"><b class="fx-lb">Prévia ao vivo</b>${ED.modoCodigo?"":(m.livre?`<button type="button" class="btn sm" data-fxauto title="Volta ao desenho automático (as posições arrastadas são descartadas)">↺ Automático</button>`:`<button type="button" class="btn sm pri" data-fxlivre title="Arrastar as caixas para onde quiser; as setas acompanham">✋ Mover caixas</button>`)}<span class="row" style="gap:4px"><button type="button" class="btn sm" data-fxzoom="-" aria-label="Diminuir" title="Diminuir">−</button><button type="button" class="btn sm" data-fxzoom="0" title="Ajustar ao espaço">Ajustar</button><button type="button" class="btn sm" data-fxzoom="+" aria-label="Aumentar" title="Aumentar">+</button></span></div><div id="fx-prev" class="fx-pv"><p class="fx-dica">Desenhando…</p></div></div>
+      <div class="fx-col fx-prev"><div class="fx-pvh"><b class="fx-lb">Prévia ao vivo</b>${ED.modoCodigo?"":`<span class="row" style="gap:4px">${ED.movendo?`<button type="button" class="btn sm pri" data-fxposok title="Alinha as caixas e organiza as setas">✓ Salvar posições</button>`:`<button type="button" class="btn sm ${m.livre?"":"pri"}" data-fxlivre title="Arrastar as caixas para onde quiser; as setas acompanham">✋ Mover caixas</button>`}${m.livre?`<button type="button" class="btn sm" data-fxauto title="Volta ao desenho automático (as posições arrastadas são descartadas)">↺ Automático</button>`:""}</span>`}<span class="row" style="gap:4px"><button type="button" class="btn sm" data-fxzoom="-" aria-label="Diminuir" title="Diminuir">−</button><button type="button" class="btn sm" data-fxzoom="0" title="Ajustar ao espaço">Ajustar</button><button type="button" class="btn sm" data-fxzoom="+" aria-label="Aumentar" title="Aumentar">+</button></span></div><div id="fx-prev" class="fx-pv"><p class="fx-dica">Desenhando…</p></div></div>
     </div>
   </section>`;
 }
@@ -329,11 +366,11 @@ function prever(){ clearTimeout(_pt); _pt=setTimeout(async()=>{ if(!ED) return; 
   if(!ED.modoCodigo&&ED.m.livre){ desenharLivreEd(); return; }
   try{ const svg=await desenharSVG(cod); if(ED&&el.isConnected){ const st=el.scrollTop, sl=el.scrollLeft; el.innerHTML=svg; ajustarPrevia(); el.scrollTop=st; el.scrollLeft=sl; } }
   catch(e){ if(el.isConnected) el.innerHTML=`<p class="fx-erro">${escH((e&&e.message||"Não foi possível desenhar.").split("\n").slice(0,2).join(" "))}</p>`; } },250); }
-function desenharLivreEd(vb){ const el=document.getElementById("fx-prev"); if(!el||!ED) return; const st=el.scrollTop, sl=el.scrollLeft; el.innerHTML=svgLivre(ED.m,vb); el.classList.add("fx-livre"); ajustarPrevia(); el.scrollTop=st; el.scrollLeft=sl; }
+function desenharLivreEd(vb){ const el=document.getElementById("fx-prev"); if(!el||!ED) return; const st=el.scrollTop, sl=el.scrollLeft; el.innerHTML=svgLivre(ED.m,vb); el.classList.add("fx-livre"); el.classList.toggle("fx-movendo",!!ED.movendo); ajustarPrevia(); el.scrollTop=st; el.scrollLeft=sl; }
 // Arrastar caixas (e grupos) na prévia
 (function(){ let arr=null;
   const ponto=(sv,e)=>{ const pt=sv.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; return pt.matrixTransform(sv.getScreenCTM().inverse()); };
-  document.addEventListener("pointerdown",e=>{ if(!ED||!ED.m||!ED.m.livre) return; const el=document.getElementById("fx-prev"); if(!el||!el.contains(e.target)) return;
+  document.addEventListener("pointerdown",e=>{ if(!ED||!ED.m||!ED.m.livre||!ED.movendo) return; const el=document.getElementById("fx-prev"); if(!el||!el.contains(e.target)) return;
     const sv=el.querySelector("svg.fxl"); if(!sv) return; const no=e.target.closest("[data-n]"), gr=!no&&e.target.closest("[data-g]"); if(!no&&!gr) return;
     e.preventDefault(); const p=ponto(sv,e), ids=no?[no.dataset.n]:ED.m.nos.filter(n=>grupoNorm(n.grupo)===gr.dataset.g).map(n=>n.id);
     arr={sv,el,ids,p0:p,ini:ids.map(id=>({...ED.m.pos[id]})),vb:sv.getAttribute("viewBox").split(" ").map(Number),moveu:false}; try{ el.setPointerCapture(e.pointerId); }catch(x){} el.classList.add("arrastando"); });
@@ -355,7 +392,7 @@ document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closes
 function mudou(redesenhar){ if(!ED.modoCodigo) ED.codigo=paraMermaid(ED.m); if(redesenhar) desenharEditor(); prever(); }
 
 document.addEventListener("click",e=>{
-  const b=e.target.closest("[data-fxnovo],[data-fxeditar],[data-fxfechar],[data-fxsalvar],[data-fxapagar],[data-fxaddno],[data-fxdelno],[data-fxsobe],[data-fxdesce],[data-fxaddlig],[data-fxdellig],[data-fxlinv],[data-fxlivre],[data-fxauto],[data-fxcodigo],[data-fxvisual]");
+  const b=e.target.closest("[data-fxnovo],[data-fxeditar],[data-fxfechar],[data-fxsalvar],[data-fxapagar],[data-fxaddno],[data-fxdelno],[data-fxsobe],[data-fxdesce],[data-fxaddlig],[data-fxdellig],[data-fxlinv],[data-fxlivre],[data-fxauto],[data-fxposok],[data-fxcodigo],[data-fxvisual]");
   if(!b||b.disabled) return; const d=b.dataset;
   if(d.fxnovo!==undefined||d.fxeditar!==undefined){
     const alvo=typeof window.FLUXO_ALVO==="function"?window.FLUXO_ALVO():null;
@@ -377,8 +414,9 @@ document.addEventListener("click",e=>{
   if(d.fxsobe!==undefined||d.fxdesce!==undefined){ const id=d.fxsobe||d.fxdesce, i=m.nos.findIndex(n=>n.id===id), j=i+(d.fxsobe?-1:1); if(j<0||j>=m.nos.length) return; [m.nos[i],m.nos[j]]=[m.nos[j],m.nos[i]]; mudou(true); return; }
   if(d.fxaddlig!==undefined){ const n=m.nos; m.ligs.push({de:n[n.length-2].id,para:n[n.length-1].id,rot:""}); mudou(true); return; }
   if(d.fxdellig!==undefined){ m.ligs.splice(parseInt(d.fxdellig,10),1); mudou(true); return; }
-  if(d.fxlivre!==undefined){ const sv=document.querySelector("#fx-prev svg"); m.pos=posDoMermaid(sv,m); m.livre=true; mudou(true); aviso("Arraste as caixas (ou o nome de um grupo) na prévia. As setas acompanham."); return; }
-  if(d.fxauto!==undefined){ delete m.livre; delete m.pos; document.getElementById("fx-prev")?.classList.remove("fx-livre"); mudou(true); return; }
+  if(d.fxlivre!==undefined){ if(!m.livre){ const sv=document.querySelector("#fx-prev svg"); m.pos=posDoMermaid(sv,m); m.livre=true; } ED.movendo=true; mudou(true); aviso("Arraste as caixas (ou o nome de um grupo). Depois clique em ✓ Salvar posições."); return; }
+  if(d.fxposok!==undefined){ organizar(m); ED.movendo=false; mudou(true); aviso("Posições salvas e setas organizadas."); return; }
+  if(d.fxauto!==undefined){ delete m.livre; delete m.pos; ED.movendo=false; document.getElementById("fx-prev")?.classList.remove("fx-livre"); mudou(true); return; }
   if(d.fxlinv!==undefined){ const g=m.ligs[parseInt(d.fxlinv,10)]; if(g){ [g.de,g.para]=[g.para,g.de]; mudou(true); } return; }
 });
 document.addEventListener("input",e=>{
@@ -434,22 +472,11 @@ const css=`
 .fx-pv{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;min-height:0;border:1px dashed var(--line);border-radius:12px;background:var(--bg);padding:12px}
 .fx-pv.fx-grande{align-items:flex-start;justify-content:flex-start}
 .fx-pv svg{flex:none}
-.fx-pv.fx-livre svg [data-n],.fx-pv.fx-livre svg [data-g] text,.fx-pv.fx-livre svg [data-g] rect{cursor:grab}
-.fx-pv.fx-livre.arrastando,.fx-pv.fx-livre.arrastando *{cursor:grabbing!important;user-select:none}
-.fx-pv.fx-livre{touch-action:none;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:20px 20px}
+.fx-pv.fx-movendo svg [data-n],.fx-pv.fx-movendo svg [data-g] text,.fx-pv.fx-movendo svg [data-g] rect{cursor:grab}
+.fx-pv.fx-movendo.arrastando,.fx-pv.fx-movendo.arrastando *{cursor:grabbing!important;user-select:none}
+.fx-pv.fx-movendo{touch-action:none;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:20px 20px;outline:2px dashed var(--accent);outline-offset:-2px}
 svg.fxl{font-family:inherit;overflow:visible}
-svg.fxl .fxl-no>rect,svg.fxl .fxl-no>polygon{fill:var(--accent-soft,#ece8fb);stroke:var(--accent,#5b3cc4);stroke-width:1.3}
-svg.fxl .fxl-no>line{stroke:var(--accent,#5b3cc4);stroke-width:1.3}
-svg.fxl .fxl-inicio>rect{fill:color-mix(in srgb,var(--accent,#5b3cc4) 18%,var(--surface,#fff))}
-svg.fxl .fxl-decisao>polygon{fill:color-mix(in srgb,#c9871a 14%,var(--surface,#fff));stroke:#c9871a}
-svg.fxl .fxl-nota>polygon{fill:var(--surface,#fff);stroke:var(--muted,#777)}
-svg.fxl text{fill:var(--ink,#222);text-anchor:middle;dominant-baseline:middle}
-svg.fxl .fxl-t{font-size:14px;font-weight:600}svg.fxl .fxl-d{font-size:11.5px;fill:var(--muted,#666)}
-svg.fxl .fxl-gr rect{fill:color-mix(in srgb,#e6c84d 14%,transparent);stroke:color-mix(in srgb,#b8962e 70%,transparent);stroke-width:1.2}
-svg.fxl .fxl-gr text{text-anchor:start;font-size:12.5px;font-weight:700;fill:var(--muted,#666)}
-svg.fxl .fxl-s{fill:none;stroke:var(--ink,#333);stroke-width:1.5;opacity:.8}svg.fxl .fxl-pont{stroke-dasharray:5 4}svg.fxl .fxl-grossa{stroke-width:3.2}
-svg.fxl marker path{fill:var(--ink,#333)}
-svg.fxl .fxl-rb{fill:var(--surface,#fff);stroke:var(--line,#ccc)}svg.fxl .fxl-rt{font-size:12px}
+svg.fxl text{text-anchor:middle;dominant-baseline:middle}
 .fx-sec{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .fx-sh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:2px}
 .fx-sh b{font:700 14.5px var(--display);display:flex;gap:6px;align-items:center}
