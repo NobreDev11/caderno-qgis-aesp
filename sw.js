@@ -4,7 +4,7 @@
    - vendor/, ícones: usa a cópia e atualiza em segundo plano.
    - Fontes do Google: cópia guardada.
    - /api e Supabase: nunca guardados (sempre rede). As anotações em si ficam no localStorage e sobem ao voltar a internet. */
-const VERSAO = "cadernos-v4";
+const VERSAO = "cadernos-v5";
 const PAGINAS = ["/", "/qgis", "/dio"];
 const ARQUIVOS = [
   "/prompts.js", "/prompts-dio.js", "/timer.js", "/fluxo.js", "/formato.js",

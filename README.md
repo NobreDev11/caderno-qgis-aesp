@@ -181,3 +181,4 @@ Página estática única (`qgis.html`).
 - Fluxograma livre: guias de alinhamento (linhas rosa tracejadas) ao mover caixas e alças de setas; encaixa no centro/bordas de outras caixas quando perto.
 - Botão "✋ Mover caixas" renomeado para "✋ Ajustar layout"; layout livre, guias e setas ajustáveis valem para os cadernos QGIS e DIO (fluxo.js compartilhado).
 - DIO: "Salvar nota em Materiais" também nas anotações do item (Hoje e painel do item), com a lista "Materiais da fase" logo abaixo.
+- DIO padronizado com o QGIS: termo <pesquisa> nas anotações do item (Hoje e painel) abre o mininavegador logo abaixo da anotação (seção Pesquisa), não mais em tela cheia; barra de formatação completa (inclui Flashcard) na anotação do item; flashcards/explicações usam a fase certa; textos e pedidos à IA falam da trilha DIO (não do QGIS).

@@ -5,7 +5,7 @@
    Atalhos: Ctrl+B negrito, Ctrl+I itálico, Ctrl+K link, Ctrl+Shift+X tarefa ☐,
    Enter continua a lista (Enter numa linha de lista vazia encerra a lista). */
 (function(){
-  const ALVOS='#qnota,#pnota,#ntxt,#fl-txt,textarea[data-dnota],textarea[data-rich]';
+  const ALVOS='#qnota,#pnota,#inota,#ntxt,#fl-txt,textarea[data-dnota],textarea[data-rich]';
   const BOTOES=[
     ["cheia",'<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5"/></svg><span class="fmt-tx">Tela cheia</span>',"Escrever em tela cheia (Esc para sair)"],
     ["dest",'<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2.5" y="4" width="11" height="9" rx="1.5"/><rect x="8.5" y="9" width="9" height="7" rx="1.5" fill="var(--surface,#fff)"/></svg><span class="fmt-tx">Destacar</span>',"Destacar: abre esta anotação num bloco por cima da tela (no bloco, ⧉ deixa por cima de outras janelas)"],
@@ -246,7 +246,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   const st=document.createElement("style"); st.id="fmt-css"; st.textContent=CSS; document.head.appendChild(st);
 
   function barra(doc,ta){
-    const pip=doc!==document, semDest=pip||!window.FORMATO_DESTACAR||!ta||ta.id==="fl-txt"||ta.dataset.rich;
+    const pip=doc!==document, semDest=pip||!window.FORMATO_DESTACAR||!ta||ta.id==="fl-txt"||ta.dataset.rich||ta.dataset.semDest;
     const d=doc.createElement("div"); d.className="fmt"; d.setAttribute("role","toolbar"); d.setAttribute("aria-label","Formatação rápida");
     d.innerHTML=BOTOES.filter(([k])=>!(pip&&(k==="flx"||k==="cheia"||k==="rev"))&&!(k==="dest"&&semDest)&&!(k==="fla"&&(pip||!window.FORMATO_FLASH||(ta&&ta.dataset.rich)))&&!(k==="mrc"&&!window.FORMATO_FLASH_MARCA)&&!(k==="exp"&&!window.FORMATO_EXPLICA)&&!(ta&&ta.dataset.leve&&/^(flx|cheia|dest|fla|mrc|exp)$/.test(k))&&!(ta&&ta.dataset.fmtSo&&!ta.dataset.fmtSo.split(",").includes(k))).map(([k,h,t],i)=>((k==="neg"&&!pip)||k==="tit"||k==="cit"||k==="img"||k==="rev"?'<span class="fmt-sep"></span>':"")+`<button type="button" data-fmt="${k}" title="${t}" aria-label="${t}">${h}</button>`).join("");
     return d;

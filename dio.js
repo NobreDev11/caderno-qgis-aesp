@@ -138,7 +138,7 @@ function renderPaneAula(host){
       <div><label class="lb" for="prepo">Link do repositório ou da entrega (opcional) ${info("portfolio")}</label><input type="text" id="prepo" inputmode="url" placeholder="https://github.com/…" value="${esc(d.repo||"")}"></div>
       <div class="row" style="justify-content:space-between"><div class="row" style="gap:6px"><span class="lb" style="margin:0">Anotações do item</span>${info("markdown")}</div>
         <div class="row"><button class="btn sm" data-flabrir="${a.id}" title="Abre as anotações da fase num bloco que fica por cima das outras telas">Destacar</button><button class="btn sm" data-go="disciplinas" data-disc="${a.k}" title="Anotações, perguntas, prática e projeto da fase">Fase</button><button class="btn sm" data-prev>${PANE.prev?"Editar":"Visualizar"}</button></div></div>
-      ${PANE.prev? `<div class="md">${md(d.nota||"")}</div>` : `<textarea id="inota" data-rich="1" data-sem-abas="1" aria-label="Anotações do item" placeholder="O que aprendi, comandos, trechos de código, dúvidas…">${esc(d.nota||"")}</textarea>${acoesItemHTML(a.id)}${notaMatsHTML(a.k,"p:"+a.k)}`}
+      ${PANE.prev? `<div class="md">${md(d.nota||"")}</div>` : `<textarea id="inota" data-sem-abas="1" data-sem-dest="1" aria-label="Anotações do item" placeholder="O que aprendi, comandos, trechos de código, dúvidas…">${esc(d.nota||"")}</textarea>${acoesItemHTML(a.id)}${notaMatsHTML(a.k,"p:"+a.k)}${navSecHTML(a.k,"p")}`}
       <div class="row" style="justify-content:space-between">
         <button class="btn sm" ${i>0?`data-item="${ITENS[i-1].id}"`:"disabled"}>← Item anterior</button>
         <button class="btn sm" ${i<ITENS.length-1?`data-item="${ITENS[i+1].id}"`:"disabled"}>Próximo item →</button>
@@ -183,7 +183,7 @@ function vHoje(){
         <button class="btn sm" data-pcopiar="${a.id}">Copiar prompt de estudo</button> ${info("prompt")}
       </div>
       <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida deste item</label>${info("rapida")}</div>
-      <textarea id="qnota" data-qitem="${a.id}" data-sem-abas="1" placeholder="Digite enquanto estuda. Salva sozinho.">${esc(d.nota||"")}</textarea>${acoesItemHTML(a.id)}${notaMatsHTML(a.k,"q:"+a.k)}</div>
+      <textarea id="qnota" data-qitem="${a.id}" data-sem-abas="1" data-sem-dest="1" placeholder="Digite enquanto estuda. Salva sozinho.">${esc(d.nota||"")}</textarea>${acoesItemHTML(a.id)}${notaMatsHTML(a.k,"q:"+a.k)}${navSecHTML(a.k,"q")}</div>
       <div class="row" style="margin-top:8px">
         ${d.st!=="and"?`<button class="btn sm" data-hst="and" data-hid="${a.id}">Comecei</button>`:""}
         <button class="btn sm pri" data-hst="ok" data-hid="${a.id}">Concluí este item</button>

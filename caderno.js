@@ -729,14 +729,23 @@ document.addEventListener("click",responderMarco);
 function discDoContexto(el){
   const ed=el.closest&&el.closest(".wys"), ta=ed&&ed._ta;
   if(ta){ if(ta.dataset.dnota&&DK[ta.dataset.dnota]) return ta.dataset.dnota; if(ta.dataset.qaula&&AK[ta.dataset.qaula]) return AK[ta.dataset.qaula].k;
-    if(ta.id==="pnota"&&PANE&&AK[PANE.id]) return AK[PANE.id].k; if(ta.id==="fl-txt"&&AK[FL.id]) return AK[FL.id].k;
+    if(ta.id==="pnota"&&PANE&&AK[PANE.id]) return AK[PANE.id].k; if(ta.dataset.qitem&&AK[ta.dataset.qitem]) return AK[ta.dataset.qitem].k; if(ta.id==="inota"&&PANE&&AK[PANE.id]) return AK[PANE.id].k; if(ta.id==="fl-txt"&&AK[FL.id]) return AK[FL.id].k;
     if(ta.id==="ntxt"&&PANE){ const n=S.docs[PANE.id]; const d=document.getElementById("ndisc"); const k=(d&&d.value)||(n&&n.disc); if(DK[k]) return k; } }
   const c=el.closest&&el.closest(".dcard"); if(c) return c.id.slice(2);
   if(el.closest&&el.closest(".pane")&&PANE){ if(PANE.tipo==="aula"&&AK[PANE.id]) return AK[PANE.id].k; const n=S.docs[PANE.id]; if(n&&DK[n.disc]) return n.disc; }
   return focoAula().k;
 }
-function abrirPesquisa(q,k){
+// Seção "Pesquisa" recolhível para pôr logo abaixo de uma anotação fora do cartão da disciplina (painel do item, Hoje)
+function navSecHTML(k,ctx){ const id="nav-"+ctx+"-"+k; return `<details class="sec" data-sec="${id}" data-navk="${k}" ${secAberta(id)?"open":""}><summary><span class="lb" style="margin:0">Pesquisa</span>${info("mnav")}</summary><div data-navslot="${k}"></div></details>`; }
+function abrirPesquisa(q,k,orig){
   let el=NAVS.get(k);
+  const box=orig&&orig.closest&&orig.closest(".pane,.hero"), sec=box&&box.querySelector(`details[data-navk="${k}"]`);
+  if(sec&&!document.querySelector(".fmt-cheia")){ // abre no mininavegador logo abaixo da anotação (como no cartão da disciplina)
+    sec.open=true; el=el||criarNav(k); if(el.classList.contains("solto")){ el.classList.remove("cheio","solto"); document.body.style.overflow=""; el._volta=null; }
+    const slot=sec.querySelector("[data-navslot]"); if(slot) slot.replaceWith(el); else if(!sec.contains(el)) sec.appendChild(el);
+    el.classList.remove("cheio"); const b=el.querySelector('[data-nv="cheio"]'); if(b) b.textContent="⛶ Expandir";
+    el.scrollIntoView({behavior:"smooth",block:"center"}); el.querySelector(".mnav-q").value=q; navIr(el,q); return;
+  }
   if(!(el&&el.isConnected)){ const card=document.getElementById("d-"+k);
     if(card){ abrirCard(k,true); const d=card.querySelector(`details[data-sec="nav-${k}"]`); if(d) d.open=true; montarNavs(); el=NAVS.get(k); } }
   if(!el) el=criarNav(k);
@@ -746,7 +755,7 @@ function abrirPesquisa(q,k){
   const b=el.querySelector('[data-nv="cheio"]'); if(b) b.textContent=el.classList.contains("solto")?"✕ Fechar pesquisa":el.classList.contains("cheio")?"⤡ Reduzir":"⛶ Expandir";
 }
 function soltarNav(el){ el.classList.remove("cheio","solto"); document.body.style.overflow=document.querySelector(".fmt-cheia")?"hidden":""; const v=el._volta; el._volta=null; if(v&&v.isConnected) v.appendChild(el); else el.remove(); const b=el.querySelector('[data-nv="cheio"]'); if(b) b.textContent="⛶ Expandir"; }
-document.addEventListener("caderno:pesquisar",e=>{ e.preventDefault(); abrirPesquisa(e.detail.q, discDoContexto(e.detail.el)); });
+document.addEventListener("caderno:pesquisar",e=>{ e.preventDefault(); abrirPesquisa(e.detail.q, discDoContexto(e.detail.el), e.detail.el); });
 
 function notaItem(n){
   const ex=(n.texto||"").replace(/[#*`>\-\[\]]/g,"").slice(0,180);
@@ -756,10 +765,10 @@ function notaItem(n){
 let FILTRO_NOTA="";
 function vCaderno(){
   const ns=notas().filter(n=>!FILTRO_NOTA||n.disc===FILTRO_NOTA);
-  return `<div class="row" style="justify-content:space-between"><div><h2>Caderno ${info("caderno")}</h2><p class="sub">Notas livres: resumos, passo a passo do QGIS, dúvidas para levar ao instrutor.</p></div>
+  return `<div class="row" style="justify-content:space-between"><div><h2>Caderno ${info("caderno")}</h2><p class="sub">${esc(CURSO.subCaderno||"Notas livres: resumos, passo a passo do QGIS, dúvidas para levar ao instrutor.")}</p></div>
     <button class="btn pri" data-novanota="${FILTRO_NOTA}">Nova nota</button></div>
     <div class="row"><label class="lb" for="fnd" style="margin:0">Disciplina</label><select id="fnd" style="width:auto;flex:1;min-width:0;max-width:100%"><option value="">Todas</option>${DISC.map(d=>`<option value="${d.k}" ${FILTRO_NOTA===d.k?"selected":""}>${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
-    <div class="notes">${ns.length?ns.map(notaItem).join(""):'<p class="empty">Nenhuma nota ainda. Crie a primeira: por exemplo, “Instalação do QGIS” ou “Dúvidas da semana”.</p>'}</div>`;
+    <div class="notes">${ns.length?ns.map(notaItem).join(""):'<p class="empty">Nenhuma nota ainda. ${esc(CURSO.exCaderno||"Crie a primeira: por exemplo, “Instalação do QGIS” ou “Dúvidas da semana”.")}</p>'}</div>`;
 }
 
 function tarefaHTML(t){
@@ -769,7 +778,7 @@ function vTarefas(){
   const ts=tarefas();
   return `<div><h2>Tarefas ${info("tarefas")}</h2><p class="sub">Trabalhos, leituras, softwares a instalar e entregas do Projeto Prático.</p></div>
   <form class="card ftk" id="ftk">
-    <div><label class="lb" for="tk-t">Tarefa</label><input type="text" id="tk-t" placeholder="Ex.: instalar QGIS 3.40 LTR no notebook" required></div>
+    <div><label class="lb" for="tk-t">Tarefa</label><input type="text" id="tk-t" placeholder="${esc(CURSO.exTarefa||"Ex.: instalar QGIS 3.40 LTR no notebook")}" required></div>
     <div><label class="lb" for="tk-d">Disciplina</label><select id="tk-d"><option value="">Nenhuma</option>${DISC.map(d=>`<option value="${d.k}">${esc(nomeDisc(d.k))}</option>`).join("")}</select></div>
     <div><label class="lb" for="tk-p">Prazo</label><input type="date" id="tk-p" min="2026-11-01" max="2026-12-31"></div>
     <button class="btn pri" type="submit">Adicionar</button>
@@ -1494,7 +1503,7 @@ function explicacoes(){ const o=[]; Object.entries(S.docs).forEach(([id,b])=>{ i
 function acharExp(t,k){ const n=normT(t); if(!n) return null; const l=explicacoes().filter(e=>normT(e.termo)===n); return l.find(e=>e.disc===k&&(e.texto||"").trim())||l.find(e=>(e.texto||"").trim())||l[0]||null; }
 function dicaExplica(t){ const e=acharExp(t); const x=e?mdPlano(e.texto||""):""; return x?(x.length>220?x.slice(0,217)+"…":x):""; }
 function pedidoExplica(termo,k,ctx){
-  return `Explique de forma curta e didática, em português do Brasil, o termo abaixo, no contexto do curso "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE)${k&&DK[k]?`, disciplina "${nomeDisc(k)}"`:""}.\n\nTermo: "${termo}"\n${ctx&&normT(ctx)!==normT(termo)?`Trecho da anotação onde aparece: "${ctx}"\n`:""}\nResponda em 2 a 5 frases: o que é; se for sigla, o significado; e um exemplo prático de uso no QGIS ou na segurança pública. Sem introdução e sem títulos.`;
+  return `Explique de forma curta e didática, em português do Brasil, o termo abaixo, no contexto ${CURSO.nomeCurso||'do curso "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE)'}${k&&DK[k]?`, disciplina "${nomeDisc(k)}"`:""}.\n\nTermo: "${termo}"\n${ctx&&normT(ctx)!==normT(termo)?`Trecho da anotação onde aparece: "${ctx}"\n`:""}\nResponda em 2 a 5 frases: o que é; se for sigla, o significado; e um exemplo prático de uso no QGIS ou na segurança pública. Sem introdução e sem títulos.`;
 }
 window.FORMATO_EXPLICA={ dica:dicaExplica, abrir:o=>abrirExplica(o) };
 /* Pesquisa/explicação rápida: trecho conceitual da Wikipédia em português (API aberta, com fonte e link),
@@ -1797,7 +1806,7 @@ const AJUDA={
   discaulas:{t:"Presença nas aulas",o:"Cada linha é uma aula (sessão de 50 min) da disciplina, com número, dia e horário.",c:"Toque em Presente ou Falta para marcar. Tocar de novo no mesmo botão desmarca."},
   materiais:{t:"Materiais",o:"Biblioteca do curso: PDFs, slides, fotos do quadro, links e textos, separados por disciplina.",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo e questões, ou para corrigir o texto extraído."},
   addmat:{t:"Novo material",o:"Formas de trazer conteúdo para o caderno.",c:"Arquivo: PDF ou texto (o app lê o texto do PDF). Fotos: até 8 de slides ou do quadro. Link: site, PDF, Google Drive/Docs/Slides (precisa estar como “Qualquer pessoa com o link”); YouTube fica só como link. Colar texto: conteúdo copiado de qualquer lugar."},
-  matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo no QGIS, aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
+  matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo "+(CURSO.id==="dio"?"prático":"no QGIS")+", aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
   matq:{t:"Questões",o:"Questões de múltipla escolha geradas do material, com gabarito e explicação.",c:"Escolha a quantidade e clique em Gerar (automático) ou use Copiar pedido / Colar resposta (cole a resposta inteira do Claude; o app acha o JSON). “Gerar mais” acrescenta sem repetir. Clique numa questão para ver o gabarito, ou use “Estudar estas questões”."},
   mattx:{t:"Texto do material",o:"O texto que o app extraiu do PDF, link ou que você colou. É ele que vai para a IA.",c:"Corrija erros, apague partes irrelevantes ou cole conteúdo extra (por exemplo, a transcrição de um vídeo). PDF escaneado vem sem texto: use fotos ou cole o conteúdo."},
   estudar:{t:"Estudar",o:"Duas abas: Questões (múltipla escolha geradas dos materiais) e Flashcards (cartões com revisão espaçada).",c:"Escolha filtros e clique em Começar. Toque na alternativa: verde é a correta, vermelho a sua se errou, e aparece a explicação. Cada resposta fica guardada."},
@@ -1888,7 +1897,7 @@ function htmlFlutuante(){
   return `<div class="fl-h" data-flarrastar title="${PIP?"":"Arraste para mover"}"><span class="sw" style="background:${DK[a.k].cor}"></span>
     <select id="fl-item" aria-label="Aula">${grupos}</select>
     ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
-    ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: o QGIS ou os slides)" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
+    ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: ${CURSO.id==="dio"?"o editor de código ou a aula":"o QGIS ou os slides"})" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
     ${PIP?`<button type="button" class="btn sm" data-flmax title="${PIP_COMUM?"Altura da tela inteira / metade":"Aumentar até o máximo que o Chrome permite (cerca de 80% da tela)"}" aria-label="Aumentar janela">↕</button>`:`<button type="button" class="btn sm" data-flalto title="${FL.alto?"Voltar ao tamanho anterior":"Ocupar a altura da tela"}" aria-label="Altura da tela">↕</button>`}
     ${PIP&&!PIP_COMUM?`<button type="button" class="btn sm" data-flcomum title="Abrir numa janela comum com a altura da tela inteira (não fica por cima das outras janelas)" aria-label="Janela com altura total">⬍</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
@@ -1967,7 +1976,7 @@ async function destacarFlutuante(comum){
     catch(e){ if(ss.href){ const l=w.document.createElement("link"); l.rel="stylesheet"; l.href=ss.href; w.document.head.appendChild(l); } }
   }
   if(document.documentElement.dataset.theme) w.document.documentElement.dataset.theme=document.documentElement.dataset.theme;
-  w.document.title="Anotações · QGIS";
+  w.document.title="Anotações · "+(CURSO.curto||"QGIS");
   w.document.body.innerHTML='<section class="flut pip" id="pipbox" aria-label="Bloco de anotações"></section>';
   ligarFlutuante(w.document);
   w.addEventListener("pagehide",()=>{ if(PIP===w){ flushTudo(); PIP=null; PIP_COMUM=false; renderFlutuante(); } });
@@ -2159,7 +2168,7 @@ function projetoMD(p){
   return window.FLUXO&&FLUXO.expandir ? FLUXO.expandir(o) : o;
 }
 function pedidoIAProjeto(p){
-  return `Sou aluno do curso "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE). Abaixo está o meu projeto, com a parte de cada disciplina e as ligações entre elas.
+  return `Sou aluno ${CURSO.nomeCurso||'do curso "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE)'}. Abaixo está o meu projeto, com a parte de cada disciplina e as ligações entre elas.
 
 Por favor:
 1. Aponte lacunas no planejamento (objetivo, dados, método, produtos) e sugira como resolver.
@@ -2227,10 +2236,12 @@ function atualizarRotulosProj(){ document.querySelectorAll(".fmt-abas").forEach(
 window.FORMATO_DESTACAR=ta=>{ let id=null;
   if(ta.id==="pnota"&&PANE&&PANE.tipo==="aula") id=PANE.id;
   else if(ta.dataset.qaula) id=ta.dataset.qaula;
+  else if(ta.dataset.qitem) id=ta.dataset.qitem;
+  else if(ta.id==="inota"&&PANE) id=PANE.id;
   else { const k=ta.dataset.dnota; if(k){ const t=Date.now(), as=AULAS.filter(a=>a.k===k); const a=as.find(a=>statusAula(a)==="cur")||as.find(a=>msDe(a.data,a.ini)>t)||as[as.length-1]; id=a&&a.id; } }
   flushTudo(); abrirFlutuante(id); };
 window.FORMATO_PROJ={
-  disc(ta){ if(ta.dataset.dnota) return ta.dataset.dnota; if(ta.id==="fl-txt") return AK[FL.id]?AK[FL.id].k:null; const id=ta.id==="pnota"&&PANE&&PANE.tipo==="aula"?PANE.id:ta.dataset.qaula; const a=id&&AULAS.find(x=>x.id===id); return a?a.k:null; },
+  disc(ta){ if(ta.dataset.dnota) return ta.dataset.dnota; if(ta.id==="fl-txt") return AK[FL.id]?AK[FL.id].k:null; const id=(ta.id==="pnota"||ta.id==="inota")&&PANE&&PANE.tipo==="aula"?PANE.id:(ta.dataset.qaula||ta.dataset.qitem); const a=id&&AULAS.find(x=>x.id===id); return a?a.k:null; },
   desenhar(pj,k){ desenharAbaProj(pj,k); },
   rotulo: rotuloProj,
 };

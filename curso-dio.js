@@ -8,6 +8,8 @@ const CURSO={ id:"dio", tabela:"caderno_dio", lsp:"caderno-dio:", lsp2:"caderno-
   tituloMD:"Trilha DIO: agentes de IA e dados\nDo zero ao avançado · 1 h por dia · desde 09/11/2026",
   phDisc:"Conceitos-chave, comandos, trechos de código, links de repositório…",
   praticaModelo:"Prática de código",
+  nomeCurso:'da trilha da DIO "Do zero aos agentes de IA para dados" (Python, SQL/NoSQL, LLMs, agentes, engenharia de dados e RAG)', curto:"DIO",
+  subCaderno:"Notas livres: resumos, comandos, trechos de código, dúvidas para revisar.", exCaderno:"Crie a primeira: por exemplo, “Comandos do Git” ou “Dúvidas da semana”.", exTarefa:"Ex.: instalar Python 3.12 e o VS Code",
   rotAula:a=>"item "+a.nG+" · "+a.nome,
   modeloProjeto:{ titulo:"Agente de IA para dados (projeto final do portfólio)", prazo:"",
     objetivo:"Construir um agente de IA que responde perguntas sobre dados (SQL e documentos), explica as fontes e roda numa API, publicado no GitHub com README.",
