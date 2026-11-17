@@ -175,7 +175,37 @@ label.dz:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .md ul ul{list-style:circle}.md ul ul ul{list-style:square}
 .wys ul ul{list-style:circle}.wys ul ul ul{list-style:square}
 .wys blockquote{margin:.4em 0;padding:4px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 6px 6px 0}
-.wys pre{background:var(--accent-soft);padding:8px 10px;border-radius:8px;font:13px/1.5 var(--mono,monospace);white-space:pre-wrap;margin:.4em 0}
+.wys pre,pre[data-rot]{position:relative;background:var(--hl-bg);color:var(--hl-ink);border:1px solid var(--line);padding:30px 12px 10px;border-radius:10px;font:13px/1.55 var(--mono,ui-monospace,monospace);white-space:pre-wrap;margin:.5em 0;tab-size:4}
+.wys pre::before,pre[data-rot]::before{content:attr(data-rot);position:absolute;top:0;left:0;right:0;height:24px;padding:0 12px;display:flex;align-items:center;font:600 11px/1 var(--body,system-ui,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);background:var(--hl-head);border-radius:10px 10px 0 0;user-select:none;pointer-events:none}
+.wys pre::after{content:"Linguagem ▾";position:absolute;top:3px;right:6px;height:18px;padding:0 8px;display:flex;align-items:center;font:600 11px/1 var(--body,system-ui,sans-serif);color:var(--accent);border:1px solid var(--line);border-radius:999px;background:var(--surface);cursor:pointer;user-select:none}
+.wys pre:not([data-rot])::before{content:"Código"}
+.wys pre:hover::after{border-color:var(--accent)}
+:root{--hl-bg:#f6f8f7;--hl-head:#eef2f0;--hl-ink:#1f2a27;--hl-c:#7b8a85;--hl-s:#18794e;--hl-n:#b4560b;--hl-k:#7c3aed;--hl-f:#1d4ed8;--hl-p:#0e7490;--hl-t:#c0262d}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--hl-bg:#101a17;--hl-head:#14211d;--hl-ink:#dfe9e5;--hl-c:#7f938c;--hl-s:#8bd5a6;--hl-n:#f0a868;--hl-k:#c4a1ff;--hl-f:#82aaff;--hl-p:#5fd3e0;--hl-t:#ff8b8b}}
+:root[data-theme="dark"]{--hl-bg:#101a17;--hl-head:#14211d;--hl-ink:#dfe9e5;--hl-c:#7f938c;--hl-s:#8bd5a6;--hl-n:#f0a868;--hl-k:#c4a1ff;--hl-f:#82aaff;--hl-p:#5fd3e0;--hl-t:#ff8b8b}
+.hl-c{color:var(--hl-c);font-style:italic}.hl-s{color:var(--hl-s)}.hl-n{color:var(--hl-n)}.hl-k{color:var(--hl-k);font-weight:600}.hl-f{color:var(--hl-f)}.hl-p{color:var(--hl-p)}.hl-t{color:var(--hl-t)}
+.cod-bl{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:.6em 0;background:var(--hl-bg)}
+.cod-h{display:flex;align-items:center;justify-content:space-between;gap:8px;height:30px;padding:0 6px 0 12px;background:var(--hl-head);border-bottom:1px solid var(--line)}
+.cod-l{font:600 11px/1 var(--body,system-ui,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.cod-cp{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:3px 10px;font:600 12px/1.2 var(--body,system-ui,sans-serif);cursor:pointer}
+.cod-cp:hover{border-color:var(--accent);color:var(--accent)}.cod-cp.ok{color:var(--ok,#2f9e44);border-color:currentColor}
+.md .cod-bl pre,.cod-bl pre{margin:0;border:0;border-radius:0;background:transparent;color:var(--hl-ink);padding:10px 12px;font:13px/1.55 var(--mono,ui-monospace,monospace);overflow-x:auto;white-space:pre;tab-size:4}
+.cod-bl pre code{background:none;padding:0;font:inherit;color:inherit}
+.lg-pop{width:min(380px,calc(100vw - 12px));gap:8px;max-height:min(70vh,520px);overflow:auto}
+.lg-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.lg-dica{font-size:11px;color:var(--muted)}
+.lg-pop .lg-q{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:inherit;font:inherit}
+.lg-pop .lg-q:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.lg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.lg-pop .lg-b{text-align:center;padding:6px 6px;font-size:12.5px;border-radius:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-pop .lg-b.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lg-pop .lg-b:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.lg-pop .lg-outra{text-align:left}
+.lg-sub{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.lg-pop .lg-inl{display:flex;align-items:center;gap:10px;padding:8px 10px}
+.lg-inl code{font:12px var(--mono,monospace);background:var(--accent-soft);padding:2px 6px;border-radius:4px}
+.lg-inl span{display:flex;flex-direction:column}.lg-inl small{color:var(--muted);font-size:11.5px}
+.lg-acoes{display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:8px}
+.lg-aviso{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1f2a27;color:#fff;padding:8px 14px;border-radius:8px;font:13px system-ui,sans-serif;z-index:99999}
 .wys code{font-family:var(--mono,monospace);background:var(--accent-soft);padding:0 4px;border-radius:4px}
 .wys mark{background:#fde68a;color:#3b2f00;padding:0 2px;border-radius:3px}
 .wys hr{border:0;border-top:1px solid var(--line);margin:.8em 0}
@@ -237,7 +267,7 @@ textarea.fx-seg:last-child{flex:1 0 auto!important;min-height:3.2em!important}
 .md ol{margin:.3em 0;padding-left:1.5em}
 .md li.tk{list-style:none;margin-left:-1.1em}
 .md li.tk.ok{color:var(--muted);text-decoration:line-through}
-.md pre{background:var(--accent-soft);padding:8px 10px;border-radius:8px;overflow-x:auto}
+.md pre:not([data-rot]):not(.hl){background:var(--hl-bg);border:1px solid var(--line);padding:10px 12px;border-radius:10px;overflow-x:auto}
 .md pre code{background:none;padding:0}
 .md img.md-img{display:block;max-width:100%;height:auto;margin:8px 0;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:var(--accent-soft)}
 .md img.md-img:not([src]){min-height:80px;min-width:160px}
@@ -351,7 +381,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const fecha=()=>{ if(lista){ o+=`</${lista.tag}>`; lista=null; } };
     const abre=(tag,tk)=>{ if(!lista||lista.tag!==tag||lista.tk!==tk){ fecha(); o+=`<${tag}${tk?' class="tk"':""}>`; lista={tag,tk}; } };
     for(let i=0;i<ls.length;i++){ const l=ls[i]; const eraFx=ultFx; ultFx=false;
-      if(/^```/.test(l)){ fecha(); let j=i+1; const c=[]; while(j<ls.length&&!/^```\s*$/.test(ls[j])){ c.push(ls[j]); j++; } o+=`<pre>${escH(c.join("\n"))||"<br>"}</pre>`; i=j; continue; }
+      if(/^```/.test(l)){ fecha(); const lg=(l.match(/^```\s*([\w#+.-]*)/)||[])[1]||""; let j=i+1; const c=[]; while(j<ls.length&&!/^```\s*$/.test(ls[j])){ c.push(ls[j]); j++; } o+=`<pre${preAttrs(lg)}>${realcar(c.join("\n"),lg)||"<br>"}</pre>`; i=j; continue; }
       let m=l.match(RE_LFX); if(m){ fecha(); if(eraFx||!o) o+=AUX; o+=fxHtml(m[1], l.trim()); ultFx=true; continue; }
       if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fecha(); o+="<hr>"; continue; }
       m=l.match(/^(#{1,3})\s+(.*)$/); if(m){ fecha(); o+=`<h${m[1].length}>${inlineHtml(m[2])||"<br>"}</h${m[1].length}>`; continue; }
@@ -406,7 +436,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
       if(/^H[1-6]$/.test(t)){ out.push("#".repeat(Math.min(3,+t[1]))+" "+inl(n).replace(/\n/g," ").trim()); continue; }
       if(t==="UL"||t==="OL"){ itens(n,0,out); continue; }
       if(t==="BLOCKQUOTE"){ linhasDe(n).forEach(x=>out.push("> "+x)); continue; }
-      if(t==="PRE"){ out.push("```", ...n.textContent.replace(/\n$/,"").split("\n"), "```"); continue; }
+      if(t==="PRE"){ out.push("```"+(n.dataset.lang||""), ...preTexto(n).replace(/\n+$/,"").split("\n"), "```"); continue; }
       if(t==="HR"){ out.push("---"); continue; }
       if(t==="TABLE"){ const trs=[...n.querySelectorAll("tr")]; if(!trs.length) continue;
         const cel=c=>inl(c).replace(/\n+/g," ").replace(/[\u200b]/g,"").trim().replace(/\|/g,"\\|")||" ";
@@ -518,7 +548,9 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
   function blocoAtual(ed){ const s=getSelection(); if(!s.rangeCount) return null; let n=s.anchorNode; if(n&&n.nodeType===3) n=n.parentNode; while(n&&n!==ed&&!(n.nodeType===1&&/^(DIV|P|H1|H2|H3|LI|PRE|BLOCKQUOTE)$/.test(n.tagName))) n=n.parentNode; return n&&n!==ed?n:null; }
   function dentroDe(ed,tag){ const s=getSelection(); if(!s.rangeCount) return null; let n=s.anchorNode; while(n&&n!==ed){ if(n.nodeType===1&&n.tagName===tag) return n; n=n.parentNode; } return null; }
   function restaurar(ed){ ed.focus(); if(ed._range&&ed.contains(ed._range.startContainer)){ const s=getSelection(); s.removeAllRanges(); s.addRange(ed._range); } }
-  document.addEventListener("selectionchange",()=>{ const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, ed=n&&(n.nodeType===1?n:n.parentNode).closest&&(n.nodeType===1?n:n.parentNode).closest(".wys"); if(ed){ ed._range=s.getRangeAt(0).cloneRange(); agendarEstado(ed); } });
+  document.addEventListener("selectionchange",()=>{ const s=getSelection(); if(!s.rangeCount) return; const n=s.anchorNode, ed=n&&(n.nodeType===1?n:n.parentNode).closest&&(n.nodeType===1?n:n.parentNode).closest(".wys"); if(ed){ ed._range=s.getRangeAt(0).cloneRange(); agendarEstado(ed); }
+    const el=n&&(n.nodeType===1?n:n.parentNode), pre=el&&el.closest&&el.closest(".wys pre"); if(PRE_AT&&PRE_AT!==pre){ const v=PRE_AT; PRE_AT=null; realcarPre(v); } PRE_AT=pre||null; });
+  let PRE_AT=null;
   /* Mostra na barra o que está em uso onde está o cursor (negrito, lista, título…) */
   let _estT=0;
   function agendarEstado(ed){ cancelAnimationFrame(_estT); _estT=requestAnimationFrame(()=>estadoBarra(ed)); }
@@ -860,6 +892,159 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     p.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.tagName==="INPUT"){ e.preventDefault(); p.querySelector(".tb-pri").click(); } });
     const inp=p.querySelector("input"); if(inp) inp.select(); else p.querySelector("button").focus();
   }
+  /* ---- Código: linguagens, realce de sintaxe e escolha da linguagem do bloco ---- */
+  const LINGS=[
+    ["python","Python","py pyqgis"],["sql","SQL","postgres postgis sqlite mysql"],["javascript","JavaScript","js node"],["typescript","TypeScript","ts"],
+    ["bash","Terminal","sh shell zsh console cmd git"],["powershell","PowerShell","ps ps1 windows"],["json","JSON",""],["yaml","YAML","yml compose"],
+    ["html","HTML",""],["css","CSS",""],["xml","XML","qml sld gml kml"],["dockerfile","Dockerfile","docker"],["markdown","Markdown","md"],
+    ["java","Java",""],["csharp","C#","cs c#"],["r","R","rstats"],["cypher","Cypher","neo4j grafo"],["qgis","Expressão QGIS","expressao calculadora campo"],
+    ["ini",".env / INI","env toml conf"],["text","Texto puro","texto txt plain saida"]];
+  const LMAP={}; LINGS.forEach(([id,r,al])=>{ LMAP[id]=id; LMAP[r.toLowerCase()]=id; al.split(" ").filter(Boolean).forEach(a=>{ LMAP[a]=id; }); });
+  Object.assign(LMAP,{js:"javascript",ts:"typescript",sh:"bash",shell:"bash",py:"python",yml:"yaml",md:"markdown",cs:"csharp",ps1:"powershell",txt:"text",texto:"text",plain:"text",docker:"dockerfile",env:"ini",toml:"ini"});
+  const normLing=x=>{ x=String(x||"").trim().toLowerCase(); return x?(LMAP[x]||x.replace(/[^\w#+.-]/g,"")):""; };
+  const rotLing=x=>{ const id=normLing(x); if(!id) return "Código"; const l=LINGS.find(l=>l[0]===id); return l?l[1]:id; };
+  const reE=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  const pal=s=>new Set(s.split(" "));
+  const KW_JS="break case catch class const continue debugger default delete do else export extends finally for function if import in instanceof let new return super switch this throw try typeof var void while with yield async await of from static get set";
+  const SPEC={
+    python:{lc:["#"],str:["\"\"\"","'''","\"","'"],kw:pal("and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield match case self"),lit:pal("True False None"),dec:true},
+    sql:{lc:["--"],bc:[["/*","*/"]],str:["'","\""],ci:true,kw:pal("select from where and or not insert into values update set delete create table view index drop alter add column join inner left right full outer cross on as group by order having limit offset distinct union all in is like ilike between case when then else end primary key foreign references default with returning asc desc exists cast if replace grant begin commit rollback using over partition"),lit:pal("null true false"),typ:pal("integer int bigint smallint varchar char text date timestamp numeric decimal boolean serial float real geometry geography json jsonb uuid")},
+    javascript:{lc:["//"],bc:[["/*","*/"]],str:["`","\"","'"],kw:pal(KW_JS),lit:pal("true false null undefined NaN Infinity")},
+    typescript:{lc:["//"],bc:[["/*","*/"]],str:["`","\"","'"],kw:pal(KW_JS+" interface type enum implements private public protected readonly namespace declare as keyof"),lit:pal("true false null undefined"),typ:pal("string number boolean any unknown never void object Record Promise Array")},
+    bash:{lc:["#"],str:["\"","'"],kw:pal("if then else elif fi for while until do done case esac in function return export local echo cd ls sudo source exit set unset alias"),vars:/\$\{?[\w@#?*!-]+\}?/y,flag:true},
+    powershell:{lc:["#"],bc:[["<#","#>"]],str:["\"","'"],ci:true,kw:pal("if else elseif foreach for while do function return param try catch finally switch begin process end in"),vars:/\$[\w:]+/y,flag:true},
+    json:{str:["\""],lit:pal("true false null"),chave:true},
+    yaml:{lc:["#"],str:["\"","'"],lit:pal("true false null yes no on off"),ychave:true},
+    css:{bc:[["/*","*/"]],str:["\"","'"],cchave:true,kw:pal("important media import root")},
+    dockerfile:{lc:["#"],str:["\"","'"],kw:pal("FROM RUN CMD COPY ADD ENV EXPOSE WORKDIR ENTRYPOINT ARG VOLUME USER LABEL HEALTHCHECK SHELL ONBUILD STOPSIGNAL AS"),vars:/\$\{?\w+\}?/y},
+    java:{lc:["//"],bc:[["/*","*/"]],str:["\"","'"],kw:pal("abstract break case catch class continue default do else enum extends final finally for if implements import instanceof interface new package private protected public return static super switch this throw throws try void while var record"),lit:pal("true false null"),typ:pal("int long short byte double float char boolean String List Map")},
+    csharp:{lc:["//"],bc:[["/*","*/"]],str:["\"","'"],kw:pal("abstract as async await base break case catch class const continue default do else enum foreach for if in interface internal is namespace new out override private protected public readonly ref return sealed static struct switch this throw try using var virtual void while get set"),lit:pal("true false null"),typ:pal("int long double float decimal bool string char object")},
+    r:{lc:["#"],str:["\"","'"],kw:pal("if else for while repeat function return in next break library require"),lit:pal("TRUE FALSE NULL NA Inf NaN T F")},
+    cypher:{lc:["//"],bc:[["/*","*/"]],str:["\"","'","`"],ci:true,kw:pal("match optional where return create merge set delete detach remove with unwind order by limit skip as and or not in is distinct call yield on case when then else end exists"),lit:pal("null true false"),rotulo:true},
+    qgis:{lc:["--"],bc:[["/*","*/"]],str:["'"],ci:true,kw:pal("and or not case when then else end is like ilike in"),lit:pal("null true false"),campo:true},
+    ini:{lc:["#",";"],str:["\"","'"],ychave:true,secao:true},
+    markdown:{md:true}
+  };
+  function realcar(code,lang){
+    code=String(code||""); const L=normLing(lang); if(!code) return "";
+    if(L==="html"||L==="xml") return realcarTags(code);
+    const S=SPEC[L]; if(!S) return escH(code);
+    if(S.md) return code.split("\n").map(l=>/^\s*#{1,6}\s/.test(l)?`<span class="hl-k">${escH(l)}</span>`:escH(l).replace(/(`[^`]+`)/g,'<span class="hl-s">$1</span>').replace(/(\*\*[^*]+\*\*)/g,'<span class="hl-n">$1</span>')).join("\n");
+    let o="", i=0; const n=code.length, sp=(c,t)=>`<span class="hl-${c}">${escH(t)}</span>`;
+    const ini=()=>{ let j=i-1; while(j>=0&&code[j]!=="\n"){ if(!/\s/.test(code[j])) return false; j--; } return true; };
+    while(i<n){
+      const r=code.slice(i); let m;
+      const bc=S.bc&&S.bc.find(([a])=>r.startsWith(a)); if(bc){ let e=code.indexOf(bc[1],i+bc[0].length); e=e<0?n:e+bc[1].length; o+=sp("c",code.slice(i,e)); i=e; continue; }
+      if(S.lc&&S.lc.some(c=>r.startsWith(c))&&!(L==="bash"&&r[0]==="#"&&i>0&&/[\w$]/.test(code[i-1]))){ let e=code.indexOf("\n",i); e=e<0?n:e; o+=sp("c",code.slice(i,e)); i=e; continue; }
+      if(S.secao&&ini()&&(m=/^\[[^\]\n]*\]/.exec(r))){ o+=sp("k",m[0]); i+=m[0].length; continue; }
+      if(S.ychave&&ini()&&(m=/^-?\s*[\w.$-][\w .$-]*?(?=\s*[:=](\s|$))/.exec(r))){ o+=sp("p",m[0]); i+=m[0].length; continue; }
+      const q=S.str&&S.str.find(s=>r.startsWith(s));
+      if(q){ let e=i+q.length; while(e<n){ if(code[e]==="\\"&&q.length===1&&q!=="`"&&L!=="sql"){ e+=2; continue; } if(code.startsWith(q,e)){ e+=q.length; break; } if(q.length===1&&q!=="`"&&code[e]==="\n") break; e++; }
+        const t=code.slice(i,e); let cls="s";
+        if(S.chave&&/^\s*:/.test(code.slice(e))) cls="p";
+        if(S.campo&&q==="\"") cls="p";
+        o+=sp(cls,t); i=e; continue; }
+      if(S.campo&&r[0]==="\""){ let e=code.indexOf("\"",i+1); e=e<0?n:e+1; o+=sp("p",code.slice(i,e)); i=e; continue; }
+      if(S.vars){ S.vars.lastIndex=i; m=S.vars.exec(code); if(m&&m.index===i){ o+=sp("p",m[0]); i+=m[0].length; continue; } }
+      if(S.dec&&r[0]==="@"&&(m=/^@[\w.]+/.exec(r))){ o+=sp("f",m[0]); i+=m[0].length; continue; }
+      if(S.rotulo&&r[0]===":"&&(m=/^:[A-Za-z_]\w*/.exec(r))){ o+=sp("t",m[0]); i+=m[0].length; continue; }
+      if(S.flag&&(i===0||/\s/.test(code[i-1]))&&(m=/^--?[A-Za-z][\w-]*/.exec(r))){ o+=sp("p",m[0]); i+=m[0].length; continue; }
+      if(S.cchave&&(m=/^[\w-]+(?=\s*:[^:])/.exec(r))){ let j=i-1; while(j>=0&&/[ \t]/.test(code[j])) j--; if(j<0||"{;\n".includes(code[j])){ o+=sp("p",m[0]); i+=m[0].length; continue; } }
+      if((m=/^(?:0x[\da-fA-F]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(r))&&!(i>0&&/[\w$]/.test(code[i-1]))){ o+=sp("n",m[0]); i+=m[0].length; continue; }
+      if((m=/^[A-Za-z_$][\w$]*/.exec(r))){ const w=m[0], k=S.ci?w.toLowerCase():w;
+        if(S.kw&&S.kw.has(k)) o+=sp("k",w);
+        else if(S.lit&&(S.lit.has(k)||S.lit.has(w))) o+=sp("n",w);
+        else if(S.typ&&(S.typ.has(k)||S.typ.has(w))) o+=sp("t",w);
+        else if(/^\s*\(/.test(code.slice(i+w.length))) o+=sp("f",w);
+        else o+=escH(w);
+        i+=w.length; continue; }
+      o+=escH(code[i]); i++;
+    }
+    return o;
+  }
+  function realcarTags(code){
+    return code.replace(/(<!--[\s\S]*?(?:-->|$))|(<\/?)([\w:.-]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?>)|([^<]+|<)/g,(t,com,ab,tag,attrs,fe,txt)=>{
+      if(com) return `<span class="hl-c">${escH(com)}</span>`;
+      if(txt!==undefined) return escH(txt);
+      const at=attrs.replace(/([\w:.-]+)(\s*=\s*)?("[^"]*"|'[^']*')?|[^\w]+/g,(x,nm,eq,val)=>nm?`<span class="hl-p">${escH(nm)}</span>${eq?escH(eq):""}${val?`<span class="hl-s">${escH(val)}</span>`:""}`:escH(x));
+      return `<span class="hl-k">${escH(ab)}</span><span class="hl-t">${escH(tag)}</span>${at}<span class="hl-k">${escH(fe)}</span>`; });
+  }
+  // bloco de código para leitura: cabeçalho com a linguagem e botão Copiar
+  function blocoCodigo(c,lang){ const id=normLing(lang); return `<div class="cod-bl"><div class="cod-h"><span class="cod-l">${escH(rotLing(id))}</span><button type="button" class="cod-cp" data-codcp title="Copiar o código">Copiar</button></div><pre class="hl"${id?` data-lang="${escH(id)}"`:""}><code>${realcar(c,id)}</code></pre></div>`; }
+  function preAttrs(lang){ const id=normLing(lang); return `${id?` data-lang="${escH(id)}"`:""} data-rot="${escH(rotLing(id))}"`; }
+  // texto do bloco de código: <br> e blocos internos (que o navegador cria ao digitar) viram quebras de linha
+  function preTexto(pre){ let o=""; const ir=n=>{ if(n.nodeType===3){ o+=n.nodeValue.replace(/\u200b/g,""); return; } if(n.nodeType!==1) return; if(n.tagName==="BR"){ o+="\n"; return; }
+      const bl=/^(DIV|P)$/.test(n.tagName); if(bl&&o&&!o.endsWith("\n")) o+="\n"; n.childNodes.forEach(ir); if(bl&&!o.endsWith("\n")) o+="\n"; };
+    pre.childNodes.forEach(ir); return o; }
+  function realcarPre(pre){ if(!pre||!pre.isConnected) return; const t=preTexto(pre).replace(/\n+$/,""); const h=realcar(t,pre.dataset.lang); if(pre.innerHTML!==h) pre.innerHTML=h||"<br>"; }
+  // linguagens usadas por último (aparecem primeiro)
+  const LG_KEY="fmt:lings";
+  function lingsRecentes(){ try{ return JSON.parse(localStorage.getItem(LG_KEY)||"[]").filter(x=>typeof x==="string").slice(0,4); }catch(e){ return []; } }
+  function usarLing(id){ try{ const r=[id,...lingsRecentes().filter(x=>x!==id)].slice(0,4); localStorage.setItem(LG_KEY,JSON.stringify(r)); }catch(e){} }
+  function ordemLings(){ const qg=typeof CURSO!=="undefined"&&CURSO&&CURSO.id==="qgis"; const pri=qg?["python","sql","qgis","json","xml","bash"]:["python","sql","bash","javascript","json","yaml","dockerfile","cypher"]; return [...pri.map(id=>LINGS.find(l=>l[0]===id)),...LINGS.filter(l=>!pri.includes(l[0]))]; }
+  /* Janelinha de escolha da linguagem. o: {doc, ancora (elemento ou rect), atual, inline:bool, bloco:bool (bloco já existe), escolher(id|"__inline"|"__copiar"|"__tirar")} */
+  function popLing(o){
+    const doc=o.doc||document; doc.querySelectorAll(".tb-pop").forEach(x=>x.remove());
+    const p=doc.createElement("div"); p.className="tb-pop lg-pop"; p.setAttribute("role","dialog"); p.setAttribute("aria-label","Linguagem do código");
+    const rec=lingsRecentes().filter(id=>LINGS.some(l=>l[0]===id)), atual=normLing(o.atual);
+    const bt=([id,r,al])=>`<button type="button" class="lg-b${id===atual?" on":""}" data-lg="${id}" data-busca="${escH((r+" "+id+" "+al).toLowerCase())}">${escH(r)}</button>`;
+    p.innerHTML=`<div class="lg-top"><span class="tb-t">${o.bloco?"Linguagem do bloco":"Inserir código"}</span><span class="lg-dica">Enter escolhe · Esc fecha</span></div>
+      ${o.inline?`<button type="button" class="lg-inl" data-lg="__inline"><code>a = 1</code><span><b>Código na linha</b><small>trecho curto dentro do texto</small></span></button><div class="lg-sub">Bloco de código em…</div>`:""}
+      <input type="search" class="lg-q" placeholder="Buscar linguagem (ex.: python, sql, docker)" aria-label="Buscar linguagem" autocomplete="off" spellcheck="false">
+      ${rec.length&&!o.bloco?`<div class="lg-grid lg-rec">${rec.map(id=>bt(LINGS.find(l=>l[0]===id))).join("")}</div><div class="lg-sub">Todas</div>`:""}
+      <div class="lg-grid lg-all">${ordemLings().map(bt).join("")}</div>
+      <button type="button" class="lg-b lg-outra" data-lg="" hidden></button>
+      ${o.bloco?`<div class="lg-acoes"><button type="button" data-lg="__copiar">Copiar código</button><button type="button" class="tb-rm" data-lg="__tirar">Voltar a texto</button></div>`:""}`;
+    doc.body.appendChild(p);
+    const an=o.ancora, r=an&&an.getBoundingClientRect?an.getBoundingClientRect():(an||{left:20,bottom:60,top:60}), W=doc.documentElement.clientWidth, H=doc.documentElement.clientHeight, w=p.offsetWidth, h=p.offsetHeight;
+    p.style.left=Math.max(6,Math.min(r.left,W-w-6))+"px"; p.style.top=Math.max(6,(r.bottom+4+h>H&&r.top-h-4>0)?r.top-h-4:Math.min(r.bottom+4,H-h-6))+"px";
+    const q=p.querySelector(".lg-q"), outra=p.querySelector(".lg-outra");
+    const fechar=()=>{ p.remove(); doc.removeEventListener("mousedown",fora,true); doc.removeEventListener("keydown",tecla,true); };
+    const fora=e=>{ if(!p.contains(e.target)&&!(o.ancora&&o.ancora.contains&&o.ancora.contains(e.target))){ fechar(); o.cancelar&&o.cancelar(); } };
+    const visiveis=()=>[...p.querySelectorAll(".lg-b")].filter(b=>!b.hidden&&b.offsetParent!==null);
+    const tecla=e=>{ if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); fechar(); o.cancelar&&o.cancelar(); return; }
+      if(e.key==="Enter"&&p.contains(e.target)&&e.target===q){ e.preventDefault(); const v=visiveis()[0]; if(v) v.click(); }
+      if((e.key==="ArrowDown"||e.key==="ArrowUp"||e.key==="ArrowRight"||e.key==="ArrowLeft")&&p.contains(e.target)){ const vs=visiveis(), k=vs.indexOf(e.target); if(e.target===q&&e.key==="ArrowDown"){ e.preventDefault(); vs[0]&&vs[0].focus(); return; } if(k<0) return; e.preventDefault(); const d=e.key==="ArrowDown"?3:e.key==="ArrowUp"?-3:e.key==="ArrowRight"?1:-1; const nx=vs[k+d]; if(nx) nx.focus(); else if(d<0) q.focus(); } };
+    doc.addEventListener("mousedown",fora,true); doc.addEventListener("keydown",tecla,true);
+    q.addEventListener("input",()=>{ const t=q.value.trim().toLowerCase(); p.querySelectorAll(".lg-rec,.lg-rec+.lg-sub").forEach(x=>{ x.hidden=!!t; });
+      p.querySelectorAll(".lg-all .lg-b").forEach(b=>{ b.hidden=!!t&&!b.dataset.busca.split(" ").some(x=>x.startsWith(t))&&!b.dataset.busca.includes(t); });
+      const nada=t&&!p.querySelector(".lg-all .lg-b:not([hidden])"); outra.hidden=!nada; if(nada){ const id=t.replace(/[^\w#+.-]/g,"").slice(0,20); outra.dataset.lg=id; outra.textContent="Usar “"+id+"”"; } });
+    p.addEventListener("click",e=>{ const b=e.target.closest("[data-lg]"); if(!b||b.hidden) return; const v=b.dataset.lg; if(!v&&b.classList.contains("lg-outra")) return; fechar(); if(!v.startsWith("__")) usarLing(normLing(v)); o.escolher(v.startsWith("__")?v:normLing(v)); });
+    (p.querySelector(".lg-b.on")||q).focus();
+  }
+  function lingNoEditor(ed,bt){
+    const pre=dentroDe(ed,"PRE"), s=getSelection(), t=s.rangeCount&&ed.contains(s.anchorNode)?s.toString():"";
+    if(pre) return editarLingPre(ed,pre,bt);
+    const inline=!t.includes("\n");
+    popLing({doc:ed.ownerDocument, ancora:bt||ed, inline, cancelar:()=>restaurar(ed), escolher:v=>{
+      restaurar(ed);
+      if(v==="__inline"){ envolverEd(ed,"code","código"); return; }
+      cmd("insertHTML",`<pre data-novo="1"${preAttrs(v)}>${realcar(t,v)||"<br>"}</pre><div><br></div>`);
+      const p=ed.querySelector("pre[data-novo]"); if(p){ p.removeAttribute("data-novo"); if(!t) cursorEm(p); }
+      sincronizar(ed); agendarEstado(ed); } });
+  }
+  function editarLingPre(ed,pre,ancora){
+    popLing({doc:ed.ownerDocument, ancora:ancora||pre, atual:pre.dataset.lang||"", bloco:true, cancelar:()=>restaurar(ed), escolher:v=>{
+      if(v==="__copiar"){ copiarTexto(ed.ownerDocument, preTexto(pre).replace(/\n$/,"")); restaurar(ed); return; }
+      if(v==="__tirar"){ const f=ed.ownerDocument.createDocumentFragment(); preTexto(pre).replace(/\n$/,"").split("\n").forEach(l=>{ const d=ed.ownerDocument.createElement("div"); if(l) d.textContent=l; else d.innerHTML="<br>"; f.appendChild(d); }); pre.replaceWith(f); sincronizar(ed); return; }
+      if(v) pre.dataset.lang=v; else delete pre.dataset.lang; pre.dataset.rot=rotLing(v); realcarPre(pre); sincronizar(ed); } });
+  }
+  // Enter no bloco de código: nova linha mantendo o recuo; numa linha vazia no fim, sai do bloco
+  function enterNoPre(ed,pre){
+    const s=getSelection(); if(!s.rangeCount) return; const r=s.getRangeAt(0);
+    const a=document.createRange(); a.selectNodeContents(pre); a.setEnd(r.startContainer,r.startOffset); const antes=preTexto(a.cloneContents());
+    const d=document.createRange(); d.selectNodeContents(pre); d.setStart(r.endContainer,r.endOffset); const depois=preTexto(d.cloneContents());
+    const linha=antes.slice(antes.lastIndexOf("\n")+1);
+    const ls=antes.split("\n"); if(!depois.trim()&&ls.length>2&&!linha.trim()&&!ls[ls.length-2].trim()){ // Enter numa 2ª linha vazia no fim: sai do bloco
+      pre.textContent=preTexto(pre).replace(/\s+$/,""); realcarPre(pre);
+      let nx=pre.nextElementSibling; if(!nx||nx.tagName==="PRE"||nx.tagName==="TABLE"){ nx=document.createElement("div"); nx.innerHTML="<br>"; pre.after(nx); }
+      cursorEm(nx); return; }
+    const rec=(linha.match(/^[ \t]*/)||[""])[0]+(/[:{(\[]\s*$/.test(linha)?"    ":"");
+    cmd("insertText","\n"+rec);
+    if(!depois){ const t=pre.lastChild; if(!(t&&t.nodeType===3&&t.nodeValue.endsWith("\n"))||!rec){ /* garante que a linha nova apareça */ const z=document.createTextNode(""); pre.appendChild(z); } }
+  }
+  function copiarTexto(doc,t){ const w=doc.defaultView||window; try{ w.navigator.clipboard.writeText(t).then(()=>avisoLg(doc,"Código copiado."),()=>avisoLg(doc,"Não consegui copiar.")); }catch(e){ avisoLg(doc,"Não consegui copiar."); } }
+  function avisoLg(doc,t){ if(doc===document&&typeof window.toast==="function"){ window.toast(t); return; } const d=doc.createElement("div"); d.className="lg-aviso"; d.textContent=t; doc.body.appendChild(d); setTimeout(()=>d.remove(),1600); }
   function aplicarEd(ed,k){
     const ta=ed._ta;
     if(k==="idx") return abrirIndice(ta.ownerDocument);
@@ -882,7 +1067,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     else if(k==="num") cmd("insertOrderedList");
     else if(k==="tar") tarefa(ed);
     else if(k==="cit") cmd("formatBlock", dentroDe(ed,"BLOCKQUOTE")?"div":"blockquote");
-    else if(k==="cod"){ const s=getSelection(), t=s.toString(), b=blocoAtual(ed); if(t.includes("\n")||(!t&&b&&!b.textContent.trim())) cmd("insertHTML",`<pre>${escH(t||"código aqui")}</pre><div><br></div>`); else envolverEd(ed,"code","código"); }
+    else if(k==="cod"){ if(dentroDe(ed,"CODE")){ envolverEd(ed,"code","código"); } else { lingNoEditor(ed,BT_ULT); return; } }
     else if(k==="lnk"){ const u=prompt("Endereço do link (começando com https://):","https://"); if(!u||!/^https?:\/\/\S+$/.test(u.trim())) return; const s=getSelection(); if(s.toString()) cmd("createLink",u.trim()); else cmd("insertHTML",`<a href="${escH(u.trim())}">${escH(u.trim())}</a>&#8203;`); }
     else if(k==="div"){ cmd("insertHorizontalRule"); }
     sincronizar(ed);
@@ -960,7 +1145,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const b=blocoAtual(ed); if(!b||!/^(DIV|P)$/.test(b.tagName)||b.parentNode!==ed) return false;
     const t=b.textContent.replace(/[\u200b\u00a0]/g," ").trim();
     if(/^(-{3,}|\*{3,}|_{3,})$/.test(t)){ const hr=document.createElement("hr"), d=document.createElement("div"); d.innerHTML="<br>"; b.replaceWith(hr); hr.after(d); cursorEm(d); ULT_CONV={ed,nos:[hr,d],txt:t}; return true; }
-    if(/^```[\w-]*$/.test(t)){ const pre=document.createElement("pre"); pre.innerHTML="<br>"; b.replaceWith(pre); const nos=[pre]; if(!pre.nextSibling){ const d=document.createElement("div"); d.innerHTML="<br>"; pre.after(d); nos.push(d); } cursorEm(pre); ULT_CONV={ed,nos,txt:t,bloco:true}; return true; }
+    if(/^```[\w#+.-]*$/.test(t)){ const pre=document.createElement("pre"); pre.innerHTML="<br>"; { const lg=normLing(t.slice(3)); if(lg) pre.dataset.lang=lg; pre.dataset.rot=rotLing(lg); } b.replaceWith(pre); const nos=[pre]; if(!pre.nextSibling){ const d=document.createElement("div"); d.innerHTML="<br>"; pre.after(d); nos.push(d); } cursorEm(pre); ULT_CONV={ed,nos,txt:t,bloco:true}; return true; }
     return false;
   }
   function blocoTexto(el){ let b=el; while(b&&b.parentNode&&!(b.nodeType===1&&/^(DIV|P|LI|H1|H2|H3|BLOCKQUOTE|TD|TH)$/.test(b.tagName)&&b!==el)) b=b.parentNode; return ((b&&b.textContent)||"").replace(/\u200b/g,"").trim().slice(0,600); }
@@ -1111,6 +1296,8 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     const ed=e.target; if(!ed.classList||!ed.classList.contains("wys")) return;
     if(e.key==="Tab"&&celAtual(ed)){ e.preventDefault(); const c=celAtual(ed), cs=[...c.closest("table").querySelectorAll("th,td")], i=cs.indexOf(c);
       if(e.shiftKey){ focarCel(cs[i-1]||c); return; } if(i===cs.length-1){ opTabela(ed,"linha"); focarCel(c.closest("table").rows[c.closest("table").rows.length-1].children[0]); return; } focarCel(cs[i+1]); return; }
+    if(e.key==="Enter"&&!e.isComposing&&!e.ctrlKey&&!e.metaKey&&dentroDe(ed,"PRE")){ e.preventDefault(); enterNoPre(ed,dentroDe(ed,"PRE")); sincronizar(ed); return; }
+    if(e.key==="Tab"&&!e.ctrlKey&&!e.altKey&&dentroDe(ed,"PRE")){ e.preventDefault(); if(!e.shiftKey) cmd("insertText","    "); return; }
     if(e.key==="Tab"&&dentroDe(ed,"LI")){ e.preventDefault(); if(e.shiftKey) desrecuar(ed); else recuar(ed); return; }
     if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&e.key.toLowerCase()==="z"&&ULT_CONV&&desfazerConv(ed)){ e.preventDefault(); return; }
     if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&blocoDigitado(ed)){ e.preventDefault(); sincronizar(ed); return; }
@@ -1210,10 +1397,12 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     trocar(ta,a,a+l.length,t,a+t.length);
   }
   function codigo(ta){
+    if(!ta._lg){ const a0=ta.selectionStart, b0=ta.selectionEnd, um=!ta.value.slice(a0,b0).includes("\n"); return popLing({doc:ta.ownerDocument, ancora:BT_ULT||ta, inline:um, cancelar:()=>ta.focus(), escolher:v=>{ ta.focus(); ta.setSelectionRange(a0,b0); if(v==="__inline"){ envolver(ta,"`","`","código"); return; } ta._lg=v; try{ codigo(ta); } finally{ ta._lg=null; } } }); }
+    const lgT=ta._lg==="__bloco"?"":ta._lg;
     const v=ta.value, a=ta.selectionStart, b=ta.selectionEnd, sel=v.slice(a,b);
-    if(sel.includes("\n") || (!sel && (v.slice(v.lastIndexOf("\n",a-1)+1, (v.indexOf("\n",a)+1||v.length+1)-1).trim()===""))){
-      const antes=a>0&&v[a-1]!=="\n"?"\n":"", s=sel||"código aqui", t=antes+"```\n"+s+"\n```\n";
-      trocar(ta,a,b,t,a+antes.length+4,a+antes.length+4+s.length); return;
+    if(lgT!==undefined || sel.includes("\n") || (!sel && (v.slice(v.lastIndexOf("\n",a-1)+1, (v.indexOf("\n",a)+1||v.length+1)-1).trim()===""))){
+      const antes=a>0&&v[a-1]!=="\n"?"\n":"", s=sel||"código aqui", t=antes+"```"+lgT+"\n"+s+"\n```\n";
+      trocar(ta,a,b,t,a+antes.length+4+lgT.length,a+antes.length+4+lgT.length+s.length); return;
     }
     envolver(ta,"`","`","código");
   }
@@ -1365,7 +1554,7 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     ["## Subtítulo","Título médio","T T"],
     ["### Seção","Título pequeno","T T T"],
     ["> texto","Citação ou destaque (> e espaço)","❝"],
-    ["```\ncódigo\n```","Bloco de código (digite ``` e Enter)","</> em linha vazia"],
+    ["```python\ncódigo\n```","Bloco de código com linguagem e cores (digite ```python e Enter, ou use </> e escolha a linguagem; Tab recua; Enter em duas linhas vazias no fim sai do bloco)","</>"],
     ["---","Linha divisória (digite --- e Enter)","―"],
     ["Listas"],
     ["- item","Lista (- e espaço, ou * e espaço)","•"],
@@ -1477,6 +1666,13 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     if(doc.__fmt) return; doc.__fmt=true;
     // mousedown sem tirar o foco da caixa de texto
     doc.addEventListener("mousedown",e=>{ if(e.target.closest(".fmt button")) e.preventDefault(); });
+    // etiqueta da linguagem no canto do bloco de código (no editor): clique troca a linguagem
+    doc.addEventListener("mousedown",e=>{ const pre=e.target.closest&&e.target.closest(".wys pre"); if(!pre) return; const r=pre.getBoundingClientRect();
+      if(e.clientY-r.top>24||e.clientX<r.right-150) return; e.preventDefault(); const ed=pre.closest(".wys");
+      editarLingPre(ed,pre,{getBoundingClientRect:()=>({left:r.right-260,top:r.top,bottom:r.top+26})}); },true);
+    // botão Copiar dos blocos de código na leitura
+    doc.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-codcp]"); if(!b) return; e.preventDefault(); const pre=b.closest(".cod-bl")&&b.closest(".cod-bl").querySelector("pre"); if(!pre) return;
+      const w=doc.defaultView||window; Promise.resolve().then(()=>w.navigator.clipboard.writeText(pre.textContent)).then(()=>{ b.textContent="Copiado ✓"; b.classList.add("ok"); setTimeout(()=>{ b.textContent="Copiar"; b.classList.remove("ok"); },1500); },()=>{ b.textContent="Não copiou"; setTimeout(()=>{ b.textContent="Copiar"; },1500); }); });
     doc.addEventListener("click",e=>{
       const bt=e.target.closest(".fmt button[data-fmt]"); if(!bt) return;
       setTimeout(()=>{ const fb=bt.closest(".fmt"), t=fb&&(fb.classList.contains("fmt-unica")?taDaBarra(fb):fb.nextElementSibling); if(t&&t._ed) estadoBarra(t._ed); },0);
@@ -1534,5 +1730,5 @@ textarea.fmt-drop{outline:2px dashed var(--accent);outline-offset:-4px}`;
     carregar("/fluxo.js").then(()=>carregar("/formato.js")).then(()=>{ if(!w.FORMATO){ // sem script na janela: volta à caixa simples
       const s=doc.createElement("style"); s.textContent=CSS; doc.head.appendChild(s); ligar(doc); ligarRev(doc); } });
   }
-  window.FORMATO={indice, abrirIndice, ampliar, lerPergs, listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
+  window.FORMATO={realcar, blocoCodigo, rotLing, normLing, indice, abrirIndice, ampliar, lerPergs, listaHtml, ehItem, ehTabela, tabelaHtml, aplicar, equipar, ligar, enviarImagens, mostrarImagens, telaCheia, sairCheia, montar, cursorDe, mdParaHtml, htmlParaMd, separar, juntar};
 })();

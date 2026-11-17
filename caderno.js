@@ -256,12 +256,12 @@ function md(src){
       out+= d&&!d.apagado ? `<div class="fx">${d.titulo?`<h4 class="fx-tit">${esc(d.titulo)}</h4>`:""}${xx.desc}<div class="fx-svg" data-src="${encodeURIComponent(d.codigo||"")}"><p class="muted">Desenhando fluxograma…</p></div>${xx.lista}<div class="row"><button class="btn sm" data-fxeditar="${nfx}">Editar fluxograma</button></div></div>` : `<p class="muted">Fluxograma ainda não chegou neste aparelho (sincronizando).</p>`;
       nfx++; continue; }
     // bloco de código; ```mermaid vira fluxograma desenhado (fluxo.js)
-    const cerca=l.match(/^```\s*([\w-]*)\s*$/);
+    const cerca=l.match(/^```\s*([\w#+.-]*)\s*$/);
     if(cerca){ let j=i+1; const cod=[]; while(j<linhas.length && !/^```\s*$/.test(linhas[j])){ cod.push(linhas[j]); j++; }
       fechar();
       const c=cod.join("\n");
       if(cerca[1].toLowerCase()==="mermaid"){ out+=`<div class="fx"><div class="fx-svg" data-src="${encodeURIComponent(c)}"><p class="muted">Desenhando fluxograma…</p></div><div class="row"><button class="btn sm" data-fxeditar="${nfx}">Editar fluxograma</button></div></div>`; nfx++; }
-      else out+=`<pre><code>${esc(c)}</code></pre>`;
+      else out+= window.FORMATO&&FORMATO.blocoCodigo ? FORMATO.blocoCodigo(c,cerca[1]) : `<pre><code>${esc(c)}</code></pre>`;
       i=j; continue; }
     if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ fechar(); out+="<hr>"; continue; }
     if(window.FORMATO&&FORMATO.ehTabela(linhas,i)){ fechar(); const [h,f]=FORMATO.tabelaHtml(linhas,i,inl); out+=h; i=f; continue; }
