@@ -50,7 +50,7 @@ h2{font:800 22px/1.2 var(--display);margin:0;text-wrap:balance}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .muted{color:var(--muted)}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.btn{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 14px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn{color:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 14px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{border-color:var(--accent)}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.sm{padding:4px 10px;font-size:13px}
@@ -75,7 +75,19 @@ label{font-size:12.5px;color:var(--muted);display:block;margin-bottom:4px}
 .bar>i{display:block;height:100%;background:var(--c)}
 .foot{font-size:12.5px;color:var(--muted)}
 .foot a{color:var(--accent)}
-@media (max-width:620px){ .kpis{grid-template-columns:1fr 1fr} h1{font-size:24px} }
+.tab.novo{color:var(--accent)}
+.novo-f{display:flex;flex-direction:column;gap:14px}
+.fmt2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fmt2 label{all:unset;cursor:pointer;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;background:var(--bg)}
+.fmt2 label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.fmt2 input{position:absolute;opacity:0;pointer-events:none}
+.fmt2 b{font:700 15px var(--display)}.fmt2 span{font-size:13px;color:var(--muted)}
+.fmt2 label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.cores{display:flex;gap:8px;flex-wrap:wrap}
+.cores button{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.cores button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
+textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
+@media (max-width:620px){ .kpis{grid-template-columns:1fr 1fr} h1{font-size:24px} .fmt2{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -94,9 +106,15 @@ const CURSOS=[
 ];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let sb=null, sessao=null, ABA=null, RES={};
+// Cadernos criados no app (tabela caderno_livre, linhas caderno='_'). Cópia local para abrir sem internet.
+let LIVRES=[], LIVRES_ERRO="";
+try{ LIVRES=JSON.parse(localStorage.getItem("cadernos:livres")||"[]").filter(c=>c&&c.id); }catch(e){}
+const CORES=["#0f6b5c","#3b7dd8","#2f9e44","#c9871a","#8a5cd0","#d0453b","#1592a3","#b8407a","#d2622a","#475569"];
+const abaLivre=c=>({k:"l:"+c.id, livre:c, nome:c.nome||"Caderno", cor:/^#[0-9a-f]{6}$/i.test(c.cor||"")?c.cor:"#0f6b5c", url:"/livre?n="+encodeURIComponent(c.id)});
+const todas=()=>[...CURSOS, ...LIVRES.map(abaLivre)];
 try{ ABA=localStorage.getItem("cadernos:aba"); }catch(e){}
-if(location.hash.slice(1) && CURSOS.some(c=>c.k===location.hash.slice(1))) ABA=location.hash.slice(1);
-if(!CURSOS.some(c=>c.k===ABA)) ABA=CURSOS[0].k;
+{ const h=decodeURIComponent(location.hash.slice(1)); if(h && (h==="novo"||todas().some(c=>c.k===h))) ABA=h; }
+if(ABA!=="novo"&&!todas().some(c=>c.k===ABA)) ABA=CURSOS[0].k;
 const app=document.getElementById("app");
 
 function telaLogin(msg){
@@ -140,10 +158,69 @@ async function resumoDIO(c){
     return {status: ok? ok+" de "+c.itens+" itens concluídos" : (and?"Estudando o primeiro item":"Trilha ainda não iniciada"), ok, pct:Math.round(ok/c.itens*100)};
   }catch(e){ return {status:"Progresso indisponível agora"}; }
 }
+async function carregarLivres(){
+  try{
+    const {data,error}=await sb.from("caderno_livre").select("id,body,updated_at").eq("caderno","_").order("updated_at",{ascending:true}).limit(200);
+    if(error) throw error;
+    LIVRES=(data||[]).map(r=>({...r.body,id:r.id})).filter(c=>!c.apagado).sort((a,b)=>(a.criado||0)-(b.criado||0)); LIVRES_ERRO="";
+    try{ localStorage.setItem("cadernos:livres",JSON.stringify(LIVRES)); LIVRES.forEach(c=>{ const k="caderno-livre:cfg:"+c.id, v=JSON.parse(localStorage.getItem(k)||"null"); if(!v||(c.upd||0)>(v.upd||0)) localStorage.setItem(k,JSON.stringify(c)); }); }catch(e){}
+  }catch(e){ LIVRES_ERRO = (e.code==="PGRST205"||e.code==="42P01"||/could not find the table|does not exist/i.test(e.message||"")) ? "Para criar cadernos, rode uma vez o SQL supabase/caderno_livre.sql no Supabase do Checklist." : ""; }
+}
+// Progresso de um caderno livre: trilha = itens concluídos; curso = aulas que já passaram no calendário
+async function resumoLivre(c){
+  if(c.tipo==="trilha"){
+    const its=c.itens||[], hT=its.reduce((s,i)=>s+(Number(i.h)||0),0);
+    try{ const {data,error}=await sb.from("caderno_livre").select("id,body").eq("caderno",c.id).like("id","item-%").limit(1000); if(error) throw error;
+      const ok=new Set((data||[]).filter(r=>r.body&&!r.body.apagado&&r.body.st==="ok").map(r=>r.id.slice(5)));
+      const n=its.filter(i=>ok.has(i.id)).length, h=its.filter(i=>ok.has(i.id)).reduce((s,i)=>s+(Number(i.h)||0),0);
+      return {status:n?n+" de "+its.length+" itens concluídos":"Ainda não iniciado", ok:n, pct:hT?Math.round(h/hT*100):(its.length?Math.round(n/its.length*100):0)};
+    }catch(e){ return {status:"Progresso indisponível agora"}; }
+  }
+  const dias=[...(c.dias||[])].sort(), hs=(c.horarios||[]).filter(h=>!h.int); if(!dias.length||!hs.length) return {status:"Sem dias de aula definidos", pct:0};
+  const t=Date.now(), ini=Date.parse(dias[0]+"T"+hs[0].ini+":00-03:00"), fim=Date.parse(dias[dias.length-1]+"T"+hs[hs.length-1].fim+":00-03:00");
+  if(t<ini){ const d=Math.ceil((ini-t)/864e5); return {status:d<=1?"Começa amanhã, "+hs[0].ini:"Começa em "+d+" dias", pct:0}; }
+  if(t>fim) return {status:"Curso concluído", pct:100};
+  return {status:"Curso em andamento", pct:Math.round((t-ini)/(fim-ini)*100)};
+}
 async function carregarResumos(){
-  RES.qgis=resumoQGIS(CURSOS[0]); RES.dio=await resumoDIO(CURSOS[1]); desenhar();
+  RES.qgis=resumoQGIS(CURSOS[0]); desenhar();
+  await carregarLivres(); desenhar();
+  RES.dio=await resumoDIO(CURSOS[1]); desenhar();
+  for(const c of LIVRES){ RES["l:"+c.id]=await resumoLivre(c); if(ABA==="l:"+c.id) desenhar(); }
+  desenhar();
 }
 
+function painelLivre(a){
+  const c=a.livre, r=RES[a.k]||{}, tr=c.tipo==="trilha", secs=c.secoes||[];
+  const kp = tr
+    ? `<div class="kpi"><b>${r.ok??"–"}<span class="mono" style="font-size:14px">/${(c.itens||[]).length}</span></b><span>itens concluídos</span></div><div class="kpi"><b>${secs.length}</b><span>fases</span></div><div class="kpi"><b>${(c.itens||[]).reduce((s,i)=>s+(Number(i.h)||0),0)}</b><span>horas</span></div>`
+    : `<div class="kpi"><b>${secs.reduce((s,x)=>s+(Number(x.ha)||0),0)}</b><span>aulas</span></div><div class="kpi"><b>${secs.length}</b><span>disciplinas</span></div><div class="kpi"><b>${(c.dias||[]).length}</b><span>dias de aula</span></div>`;
+  return `<section class="card curso" style="--c:${a.cor}" role="tabpanel" aria-labelledby="t-${esc(a.k)}">
+    <div class="k">${tr?"Trilha de estudo":"Curso com aulas"} · criado no app</div>
+    <h2>${esc(c.nome||"Caderno")}</h2>
+    <p class="muted" style="margin:0">${esc(c.sub||c.desc||"")}</p>
+    <div class="kpis">${kp}</div>
+    <div class="row" style="justify-content:space-between;margin-bottom:6px"><span>${esc(r.status||"Carregando…")}</span><span class="mono muted">${r.pct!=null?r.pct+"%":""}</span></div>
+    <div class="bar"><i style="width:${r.pct||0}%"></i></div>
+    <div class="row" style="margin-top:16px"><a class="btn pri" href="${esc(a.url)}" style="background:${a.cor};border-color:${a.cor}">Abrir caderno →</a><a class="btn" href="${esc(a.url)}#configurar">Configurar</a></div>
+  </section>`;
+}
+function painelNovo(){
+  return `<form class="card novo-f" id="fnovo" role="tabpanel" aria-labelledby="t-novo">
+    <div><h2>Novo caderno</h2><p class="sub">Crie um caderno com as mesmas ferramentas dos outros (anotações, materiais, resumos, questões, flashcards, projetos, tarefas). Depois, tudo é editável na aba Configurar.</p></div>
+    ${LIVRES_ERRO?`<p class="err" style="margin:0">${esc(LIVRES_ERRO)}</p>`:""}
+    <div><label for="nv-nome">Nome do caderno</label><input type="text" id="nv-nome" maxlength="80" required placeholder="Ex.: Excel avançado, Inglês, Concurso CBMCE"></div>
+    <div><label>Formato</label><div class="fmt2">
+      <label><input type="radio" name="nv-tipo" value="curso" checked><b>Curso com aulas e datas</b><span>Disciplinas, dias e horários de aula, presença e cronograma (como o caderno QGIS).</span></label>
+      <label><input type="radio" name="nv-tipo" value="trilha"><b>Trilha de estudo</b><span>Fases e itens no seu ritmo, com horas, links, prompt de estudo e portfólio (como o caderno DIO).</span></label>
+    </div></div>
+    <div><label for="nv-sub">Subtítulo (opcional)</label><input type="text" id="nv-sub" maxlength="120" placeholder="Ex.: Turma 2026 · 40 h · noite"></div>
+    <div><label for="nv-desc">Sobre o que é e qual o seu objetivo (opcional)</label><textarea id="nv-desc" rows="2" maxlength="700" placeholder="A IA usa este texto para fazer resumos, questões e explicações no contexto certo."></textarea></div>
+    <div><label>Cor</label><div class="cores">${CORES.map((x,i)=>`<button type="button" data-nvcor="${x}" style="background:${x}" aria-pressed="${i===LIVRES.length%CORES.length?"true":"false"}" aria-label="Cor ${x}"></button>`).join("")}</div></div>
+    <p class="err" id="nv-err" hidden></p>
+    <div class="row"><button class="btn pri" type="submit" id="nv-b">Criar caderno</button><span class="foot">Os dados de cada caderno ficam separados.</span></div>
+  </form>`;
+}
 function painel(c){
   const r=RES[c.k]||{};
   const kp = c.k==="qgis"
@@ -159,24 +236,62 @@ function painel(c){
     <div class="row" style="margin-top:16px"><a class="btn pri" href="${c.url}" style="background:${c.cor};border-color:${c.cor}">Abrir caderno →</a></div>
   </section>`;
 }
-function desenhar(){
+function abasHTML(){ return todas().map(c=>`<button class="tab" role="tab" id="t-${esc(c.k)}" style="--c:${c.cor}" aria-selected="${ABA===c.k}" data-aba="${esc(c.k)}"><span class="sw" style="background:${c.cor}"></span>${esc(c.nome)}</button>`).join("")+`<button class="tab novo" role="tab" id="t-novo" style="--c:var(--accent)" aria-selected="${ABA==="novo"}" data-aba="novo">+ Novo caderno</button>`; }
+function desenhar(forcar){
+  // com o formulário de novo caderno aberto, só atualiza as abas (não apaga o que está sendo digitado)
+  if(!forcar&&ABA==="novo"&&document.getElementById("fnovo")){ const t=document.querySelector(".tabs"); if(t) t.innerHTML=abasHTML(); return; }
   const email=sessao&&sessao.user?sessao.user.email:"";
   app.innerHTML=`<div class="top"><div><h1>Cadernos de Estudo</h1><p class="sub">Escolha o curso. Cada caderno guarda anotações, materiais, resumos, questões e tarefas.</p></div>
       <div class="row"><span class="foot">${esc(email)}</span><button class="btn sm" id="sair">Sair</button></div></div>
-    <div class="tabs" role="tablist">${CURSOS.map(c=>`<button class="tab" role="tab" id="t-${c.k}" style="--c:${c.cor}" aria-selected="${ABA===c.k}" data-aba="${c.k}"><span class="sw" style="background:${c.cor}"></span>${esc(c.nome)}</button>`).join("")}</div>
-    ${painel(CURSOS.find(c=>c.k===ABA))}
+    <div class="tabs" role="tablist">${abasHTML()}</div>
+    ${ABA==="novo"?painelNovo():ABA.startsWith("l:")?painelLivre(todas().find(c=>c.k===ABA)||abaLivre({id:"x"})):painel(CURSOS.find(c=>c.k===ABA)||CURSOS[0])}
     <p class="foot" style="margin:0">Os dados de cada curso ficam separados. Dentro de um caderno, “← Cursos” volta para esta página.</p>`;
 }
 function telaCursos(){ desenhar(); carregarResumos(); }
 
 document.addEventListener("click",async e=>{
   const t=e.target.closest("[data-aba]");
-  if(t){ ABA=t.dataset.aba; try{ localStorage.setItem("cadernos:aba",ABA); history.replaceState(null,"","#"+ABA); }catch(x){} desenhar(); return; }
+  if(t){ ABA=t.dataset.aba; try{ localStorage.setItem("cadernos:aba",ABA); history.replaceState(null,"","#"+ABA); }catch(x){} desenhar(true); if(ABA==="novo"){ const n=document.getElementById("nv-nome"); if(n) n.focus(); } return; }
+  const cb=e.target.closest("[data-nvcor]");
+  if(cb){ document.querySelectorAll("[data-nvcor]").forEach(x=>x.setAttribute("aria-pressed",String(x===cb))); return; }
   const s=e.target.closest("#sair");
   if(s){ if(!s.dataset.conf){ s.dataset.conf="1"; s.textContent="Confirmar saída"; setTimeout(()=>{ if(s.isConnected){ delete s.dataset.conf; s.textContent="Sair"; } },3000); return; }
     try{ await sb.auth.signOut(); }catch(x){} sessao=null; telaLogin(); }
 });
-document.addEventListener("submit",e=>{ if(e.target.id==="flogin"){ e.preventDefault(); entrar(); } });
+document.addEventListener("submit",e=>{ if(e.target.id==="flogin"){ e.preventDefault(); entrar(); } if(e.target.id==="fnovo"){ e.preventDefault(); criarCaderno(); } });
+
+// Configuração inicial de um caderno novo (tudo muda depois em Configurar)
+function proxDiasUteis(n){ const out=[]; let d=new Date(Date.now()-3*36e5); d.setUTCDate(d.getUTCDate()+1); while(out.length<n){ const w=d.getUTCDay(); if(w!==0&&w!==6) out.push(d.toISOString().slice(0,10)); d.setUTCDate(d.getUTCDate()+1); } return out; }
+function cfgInicial(tipo,nome,sub,desc,cor){
+  const base={v:1,tipo,nome,sub,desc,cor,criado:Date.now(),upd:Date.now(),abas:{}};
+  if(tipo==="trilha") return {...base, inicio:new Date(Date.now()-3*36e5).toISOString().slice(0,10), horasSemana:7, plat:"",
+    secoes:[{k:"s1",nome:"Fase 1",curto:"",ha:2,inst:[],cor:"#3b7dd8"},{k:"s2",nome:"Fase 2",curto:"",ha:2,inst:[],cor:"#2f9e44"}],
+    itens:[{id:"i1",k:"s1",nome:"Primeiro item",tipo:"Curso",h:1,url:""},{id:"i2",k:"s1",nome:"Segundo item",tipo:"Curso",h:1,url:""},{id:"i3",k:"s2",nome:"Projeto da fase",tipo:"Projeto",h:2,url:""}]};
+  return {...base, presenca:true, local:"",
+    secoes:[{k:"s1",nome:"Disciplina 1",curto:"",ha:10,inst:[],cor:"#3b7dd8"},{k:"s2",nome:"Disciplina 2",curto:"",ha:10,inst:[],cor:"#2f9e44"}],
+    dias:proxDiasUteis(5), horarios:[{ini:"08:00",fim:"08:50"},{ini:"08:50",fim:"09:40"},{int:"Intervalo",ini:"09:40",fim:"10:00"},{ini:"10:00",fim:"10:50"},{ini:"10:50",fim:"11:40"}]};
+}
+async function criarCaderno(){
+  const nome=document.getElementById("nv-nome").value.trim(), err=document.getElementById("nv-err"), bt=document.getElementById("nv-b");
+  const tipo=(document.querySelector('input[name="nv-tipo"]:checked')||{}).value==="trilha"?"trilha":"curso";
+  const cor=(document.querySelector('[data-nvcor][aria-pressed="true"]')||{}).dataset?.nvcor||CORES[0];
+  if(!nome){ err.hidden=false; err.textContent="Dê um nome ao caderno."; return; }
+  const slug=nome.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,28)||"caderno";
+  const id=slug+"-"+Math.random().toString(36).slice(2,6);
+  const cfg=cfgInicial(tipo,nome,document.getElementById("nv-sub").value.trim(),document.getElementById("nv-desc").value.trim(),cor);
+  err.hidden=true; bt.disabled=true; bt.textContent="Criando…";
+  try{
+    const uid=sessao&&sessao.user&&sessao.user.id; if(!uid) throw new Error("Entre com a sua conta para criar cadernos.");
+    const r=await Promise.race([sb.from("caderno_livre").insert({user_id:uid,caderno:"_",id,body:cfg,upd:cfg.upd}), new Promise((_,rej)=>setTimeout(()=>rej(new Error("tempo")),15000))]);
+    if(r.error) throw r.error;
+  }catch(e){
+    bt.disabled=false; bt.textContent="Criar caderno"; err.hidden=false;
+    err.textContent = e.message==="tempo" ? "O servidor não respondeu. Confira a internet e tente de novo." : (e.code==="PGRST205"||e.code==="42P01"||/could not find the table|does not exist/i.test(e.message||"")) ? "Falta rodar o SQL supabase/caderno_livre.sql no Supabase do Checklist (uma vez só)." : "Não consegui criar: "+(e.message||e);
+    return;
+  }
+  try{ localStorage.setItem("caderno-livre:cfg:"+id,JSON.stringify(cfg)); LIVRES.push({...cfg,id}); localStorage.setItem("cadernos:livres",JSON.stringify(LIVRES)); localStorage.setItem("cadernos:aba","l:"+id); }catch(e){}
+  location.href="/livre?n="+encodeURIComponent(id)+"#configurar";
+}
 
 (async function iniciar(){
   // Quem entrou por link pessoal de convidado vai direto para o caderno do QGIS.

@@ -83,9 +83,9 @@ function setSync(){
 async function iniciarSupa(session){
   S.uid=session.user.id; S.email=session.user.email||"";
   S.modo="conectando"; setSync();
-  const tab=()=>S.sb.from(CURSO.tabela);
+  const tab=()=>S.sb.from(CURSO.tabela), CAD=CURSO.caderno||null;
   S.push=async(id,body)=>{
-    const {error}=await tab().upsert({user_id:S.uid,id,body,upd:body.upd||Date.now()},{onConflict:"user_id,id"});
+    const {error}=await tab().upsert(CAD?{user_id:S.uid,caderno:CAD,id,body,upd:body.upd||Date.now()}:{user_id:S.uid,id,body,upd:body.upd||Date.now()},{onConflict:CAD?"user_id,caderno,id":"user_id,id"});
     if(error) throw error;
   };
   let puxando=false;
@@ -93,7 +93,7 @@ async function iniciarSupa(session){
     if(puxando) return; puxando=true;
     try{
       // 1ª vez: tudo. Depois: só o que mudou desde a última leitura (com folga de 10 s).
-      let q=tab().select("id,body,updated_at").order("updated_at",{ascending:true}).limit(5000);
+      let q=tab().select("id,body,updated_at"); if(CAD) q=q.eq("caderno",CAD); q=q.order("updated_at",{ascending:true}).limit(5000);
       inicial = inicial || !S.inicialOk;
       if(!inicial && S.desde) q=q.gte("updated_at", new Date(Date.parse(S.desde)-10000).toISOString());
       const {data,error}=await q;
@@ -118,7 +118,7 @@ async function checarSQL(){
 function pararSupa(){ S.inicialOk=false; S.esperaOnline=false; S.desde=null; S.uid=null; S.email=""; S.push=null; S.pull=null; S.modo="local"; Object.keys(pend).forEach(k=>delete pend[k]); setSync(); }
 async function conectarSupa(){
   if(!window.supabase){ S.modo="local"; setSync(); return; }
-  S.sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
+  S.sb=window.SB_PRONTO||window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}});
   S.sb.auth.onAuthStateChange((ev,session)=>{ if(ev==="SIGNED_OUT") pararSupa(); });
   checarSQL();
   await tentarSessao();
@@ -338,14 +338,14 @@ function renderProg(){
   const comNota=DISC.filter(x=>(discD(x.k).nota||"").trim()).length;
   const pres=AULAS.filter(a=>aulaD(a.id).pres==="p").length;
   el.innerHTML=`
-    <div class="row" style="justify-content:space-between"><span>Curso</span><span class="mono">${haTxt(ha)}/80 h/a · ${Math.floor(pct)}%</span></div>
+    <div class="row" style="justify-content:space-between"><span>Curso</span><span class="mono">${haTxt(ha)}/${AULAS.length} ${CURSO.id==="qgis"?"h/a":"aulas"} · ${Math.floor(pct)}%</span></div>
     ${barraMarcos(AULAS)}
     <div class="muted" style="font-size:12px;line-height:1.35">${linhaAgora()}</div>
     <div class="row" style="justify-content:space-between"><span>Disciplinas anotadas</span><span class="mono">${comNota}</span></div>
     <div class="row" style="justify-content:space-between"><span>Presenças marcadas</span><span class="mono">${pres}</span></div>`;
   const hb=document.getElementById("hojeBarra"); if(hb) hb.innerHTML=barraHoje();
 }
-function barraHoje(){ const {ha,pct}=progresso(AULAS); return `<div class="row" style="justify-content:space-between;margin-bottom:6px"><h3>Linha do curso ${info("linha")}</h3><span class="mono muted" style="font-size:13px">${haTxt(ha)}/80 h/a · ${Math.floor(pct)}%</span></div>${barraMarcos(AULAS)}<div class="muted" style="font-size:13px;margin-top:6px">${linhaAgora()}</div>`; }
+function barraHoje(){ const {ha,pct}=progresso(AULAS); return `<div class="row" style="justify-content:space-between;margin-bottom:6px"><h3>Linha do curso ${info("linha")}</h3><span class="mono muted" style="font-size:13px">${haTxt(ha)}/${AULAS.length} ${CURSO.id==="qgis"?"h/a":"aulas"} · ${Math.floor(pct)}%</span></div>${barraMarcos(AULAS)}<div class="muted" style="font-size:13px;margin-top:6px">${linhaAgora()}</div>`; }
 
 /* ============ VIEWS ============ */
 function slotHTML(a){
@@ -360,9 +360,11 @@ function diaHTML(dia){
   const aulas=AULAS.filter(a=>a.data===dia);
   let h=""; let i=0;
   for(const s of SLOTS){
+    if(s&&s.int){ h+=`<div class="slot int"><span class="mono">${esc(s.ini||"")}${s.fim?"–"+esc(s.fim):""}</span><span>${esc(s.int)}</span></div>`; continue; }
+    if(!Array.isArray(s)&&s!=="INT1"&&s!=="INT2") continue;
     if(s==="INT1") h+=`<div class="slot int"><span class="mono">10:00–10:20</span><span>Intervalo</span></div>`;
     else if(s==="INT2") h+=`<div class="slot int"><span class="mono">14:40–15:00</span><span>Intervalo</span></div>`;
-    else { if(s[0]==="13:00") h+=`<div class="slot int"><span class="mono">12:00–13:00</span><span>Almoço</span></div>`; h+=slotHTML(aulas[i++]); }
+    else { if(CURSO.id==="qgis"&&s[0]==="13:00") h+=`<div class="slot int"><span class="mono">12:00–13:00</span><span>Almoço</span></div>`; const a=aulas[i++]; if(a) h+=slotHTML(a); }
   }
   const ds=[...new Set(aulas.map(a=>a.k))];
   return `<div class="card day"><div class="dayh"><h3>${fmtData(dia,true)}</h3><div class="row">${ds.map(k=>`<span class="chip">${sw(k)}<span class="ct">${esc(nomeDisc(k))}</span></span>`).join("")}</div></div>${h}</div>`;
@@ -372,10 +374,11 @@ function vHoje(){
   const ag=agoraFor(); const t=Date.now();
   const cur=AULAS.find(a=>statusAula(a)==="cur");
   const prox=AULAS.find(a=>msDe(a.data,a.ini)>t);
-  const ini=msDe(AULAS[0].data,AULAS[0].ini), fim=msDe(AULAS[79].data,AULAS[79].fim);
+  const A0=AULAS[0], AN=AULAS[AULAS.length-1], QG=CURSO.id==="qgis";
+  const ini=msDe(A0.data,A0.ini), fim=msDe(AN.data,AN.fim);
   let titulo, sub, foco=cur||prox;
-  if(t<ini){ const dias=Math.ceil((msDe("2026-11-09","00:00")-msDe(ag.data,"00:00"))/864e5); titulo="O curso começa "+(dias<=1?"amanhã":"em "+dias+" dias"); sub="Segunda-feira, 09/11, às 07:30 · AESP/CE, Fortaleza"; }
-  else if(t>fim){ titulo="Curso concluído"; sub="80 h/a entre 09 e 18/11. Use o caderno para revisar."; foco=null; }
+  if(t<ini){ const dias=Math.ceil((msDe(A0.data,"00:00")-msDe(ag.data,"00:00"))/864e5); titulo="O curso começa "+(dias<=1?"amanhã":"em "+dias+" dias"); sub=QG?"Segunda-feira, 09/11, às 07:30 · AESP/CE, Fortaleza":fmtData(A0.data,true)+", às "+A0.ini+(CURSO.local?" · "+CURSO.local:""); }
+  else if(t>fim){ titulo="Curso concluído"; sub=QG?"80 h/a entre 09 e 18/11. Use o caderno para revisar.":AULAS.length+" aulas entre "+fmtData(A0.data)+" e "+fmtData(AN.data)+". Use o caderno para revisar."; foco=null; }
   else if(cur){ titulo="Aula em andamento"; sub=fmtData(ag.data,true); }
   else { titulo= DIAS_REPO.includes(ag.data)?"Fim de semana de reposição":"Fora do horário de aula"; sub=fmtData(ag.data,true); }
 
@@ -396,8 +399,8 @@ function vHoje(){
   return `
     <div><h2>${titulo} ${info("hoje")}</h2><p class="sub">${sub}</p></div>
     <div class="kpis">
-      <div class="card kpi"><b>${haTxt(progresso(AULAS).ha)}<span class="mono" style="font-size:15px">/80</span></b><span>h/a cumpridas (50 min) ${info("kpiha")}</span></div>
-      <div class="card kpi"><b>${DISC.filter(x=>AULAS.filter(a=>a.k===x.k).every(a=>statusAula(a)==="past")).length}<span class="mono" style="font-size:15px">/9</span></b><span>disciplinas concluídas ${info("kpidisc")}</span></div>
+      <div class="card kpi"><b>${haTxt(progresso(AULAS).ha)}<span class="mono" style="font-size:15px">/${AULAS.length}</span></b><span>${QG?"h/a cumpridas (50 min)":"aulas cumpridas"} ${info("kpiha")}</span></div>
+      <div class="card kpi"><b>${DISC.filter(x=>AULAS.filter(a=>a.k===x.k).every(a=>statusAula(a)==="past")).length}<span class="mono" style="font-size:15px">/${DISC.length}</span></b><span>disciplinas concluídas ${info("kpidisc")}</span></div>
       <div class="card kpi"><b>${notas().length}</b><span>notas no caderno ${info("kpinotas")}</span></div>
       <div class="card kpi"><b>${tp.length}</b><span>tarefas pendentes ${info("kpitar")}</span></div>
     </div>
@@ -417,10 +420,10 @@ function vCronograma(){
   if(!DIA_SEL) DIA_SEL = TODOS_DIAS.includes(ag.data)? ag.data : "todos";
   const bts=[["todos","Todos"],...TODOS_DIAS.map(d=>[d,fmtData(d)])].map(([v,l])=>`<button class="btn sm ${DIA_SEL===v?"on":""}" data-dia="${v}">${l}</button>`).join("");
   const dias = DIA_SEL==="todos"?TODOS_DIAS:[DIA_SEL];
-  return `<div><h2>Cronograma ${info("cronograma")}</h2><p class="sub">Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.</p></div>
+  return `<div><h2>Cronograma ${info("cronograma")}</h2><p class="sub">${CURSO.id==="qgis"?"Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.":esc(CURSO.subCrono||(AULAS.length+" aulas em "+DIAS_AULA.length+" dia(s). Clique numa aula para anotar."))}</p></div>
     <div class="daysel">${bts}</div>
     ${dias.map(diaHTML).join("")}
-    <p class="muted" style="font-size:13px;margin:0">No QTS original, o horário de 18/11 às 07:30 veio em branco; aqui ele aparece como a 3ª aula do Projeto Prático, seguindo a numeração 2/12 → 4/12.</p>`;
+    ${CURSO.id!=="qgis"?"":`<p class="muted" style="font-size:13px;margin:0">No QTS original, o horário de 18/11 às 07:30 veio em branco; aqui ele aparece como a 3ª aula do Projeto Prático, seguindo a numeração 2/12 → 4/12.</p>`}`;
 }
 
 function vDisciplinas(){
@@ -460,7 +463,7 @@ function vDisciplinas(){
 }
 
 // Partes do cartão da disciplina que mudam por curso (o caderno DIO troca estas funções)
-function discIntro(){ return `<h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.</p>`; }
+function discIntro(){ return `<h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">${CURSO.id==="qgis"?"9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.":DISC.length+" disciplina(s), "+AULAS.length+" aulas. Para mudar disciplinas, cargas e cores, use Configurar."}</p>`; }
 function discLinhas(x,aulas,dias){ return `<div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
         <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div>`; }
 function discPres(x,aulas,anot){ return `<details class="pres-pop" data-prespop="${x.k}" ${PRES_POP===x.k?"open":""}><summary class="btn sm" title="Marcar presença ou falta em cada aula">Presença ${anot.length}/${aulas.length} <span aria-hidden="true">▾</span></summary>
@@ -1244,7 +1247,7 @@ async function gerar(mid, modo){
   try{
     let imagens=[...(t.imgs||[])];
     for(const a of (m.arquivos||[]).filter(a=>a.mime.startsWith("image/"))) imagens.push(await paraDataURL(await baixar(a.path)));
-    const j=await api("/api/ia",{modo,n:modo==="flashcards"?(PANE.nf||12):(PANE.n||8),texto:(t.texto||""),imagens:imagens.slice(0,8),titulo:m.titulo,disciplina:m.disc?nomeDisc(m.disc):"",curso:CURSO.id});
+    const j=await api("/api/ia",{modo,n:modo==="flashcards"?(PANE.nf||12):(PANE.n||8),texto:(t.texto||""),imagens:imagens.slice(0,8),titulo:m.titulo,disciplina:m.disc?nomeDisc(m.disc):"",curso:CURSO.id,ctx:CURSO.ctxIA||""});
     if(modo==="resumo"){ salvarDoc(mid,{...S.docs[mid],resumo:j.resumo},50); toast(j.cortado?"Resumo pronto (material muito longo: usei o começo).":"Resumo pronto."); }
     else if(modo==="flashcards"){ const n=addFlashMat(mid,j.flashcards||[]); toast(n+" flashcards novos. Revise em Estudar → Flashcards."); }
     else { const n=addQuestoes(mid,j.questoes); toast(n+" questões novas."); }
@@ -1638,7 +1641,7 @@ function abrirExplica(o){
     if(a==="tirar"){ o.tirar(); d.remove(); if(o.voltar) o.voltar(); return; }
     if(a==="apagar"){ if(!b.dataset.conf){ b.dataset.conf="1"; b.textContent="Confirmar"; return; } o.apagar(); d.remove(); if(o.voltar) o.voltar(); return; }
     if(a==="ia"){ ocupado=true; desenhar();
-      try{ const j=await api("/api/ia",{modo:"explicar",texto:termo,contexto:o.contexto||"",disciplina:k?nomeDisc(k):"",curso:CURSO.id}); rascunho=String(j.explicacao||"").trim(); modo="editar"; aviso("Revise e salve a explicação."); }
+      try{ const j=await api("/api/ia",{modo:"explicar",texto:termo,contexto:o.contexto||"",disciplina:k?nomeDisc(k):"",curso:CURSO.id,ctx:CURSO.ctxIA||""}); rascunho=String(j.explicacao||"").trim(); modo="editar"; aviso("Revise e salve a explicação."); }
       catch(x){ aviso(x.message||"Não foi possível gerar agora."); }
       ocupado=false; if(d.isConnected) desenhar(); return; }
   });
@@ -1806,7 +1809,7 @@ const AJUDA={
   discaulas:{t:"Presença nas aulas",o:"Cada linha é uma aula (sessão de 50 min) da disciplina, com número, dia e horário.",c:"Toque em Presente ou Falta para marcar. Tocar de novo no mesmo botão desmarca."},
   materiais:{t:"Materiais",o:"Biblioteca do curso: PDFs, slides, fotos do quadro, links e textos, separados por disciplina.",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo e questões, ou para corrigir o texto extraído."},
   addmat:{t:"Novo material",o:"Formas de trazer conteúdo para o caderno.",c:"Arquivo: PDF ou texto (o app lê o texto do PDF). Fotos: até 8 de slides ou do quadro. Link: site, PDF, Google Drive/Docs/Slides (precisa estar como “Qualquer pessoa com o link”); YouTube fica só como link. Colar texto: conteúdo copiado de qualquer lugar."},
-  matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo "+(CURSO.id==="dio"?"prático":"no QGIS")+", aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
+  matres:{t:"Resumo do material",o:"Resumo de estudo feito por IA a partir do material: ideia central, pontos principais, passo a passo "+(CURSO.id==="qgis"?"no QGIS":"prático")+", aplicação e termos.",c:"Gerar resumo: automático (só aparece com a chave da IA configurada). Sem chave: “Copiar pedido p/ Claude” → cole no app do Claude e envie → copie a resposta → “Colar resposta” → Salvar. “Editar” permite ajustar o texto."},
   matq:{t:"Questões",o:"Questões de múltipla escolha geradas do material, com gabarito e explicação.",c:"Escolha a quantidade e clique em Gerar (automático) ou use Copiar pedido / Colar resposta (cole a resposta inteira do Claude; o app acha o JSON). “Gerar mais” acrescenta sem repetir. Clique numa questão para ver o gabarito, ou use “Estudar estas questões”."},
   mattx:{t:"Texto do material",o:"O texto que o app extraiu do PDF, link ou que você colou. É ele que vai para a IA.",c:"Corrija erros, apague partes irrelevantes ou cole conteúdo extra (por exemplo, a transcrição de um vídeo). PDF escaneado vem sem texto: use fotos ou cole o conteúdo."},
   estudar:{t:"Estudar",o:"Duas abas: Questões (múltipla escolha geradas dos materiais) e Flashcards (cartões com revisão espaçada).",c:"Escolha filtros e clique em Começar. Toque na alternativa: verde é a correta, vermelho a sua se errou, e aparece a explicação. Cada resposta fica guardada."},
@@ -1897,7 +1900,7 @@ function htmlFlutuante(){
   return `<div class="fl-h" data-flarrastar title="${PIP?"":"Arraste para mover"}"><span class="sw" style="background:${DK[a.k].cor}"></span>
     <select id="fl-item" aria-label="Aula">${grupos}</select>
     ${PIP?"":`<button type="button" class="btn sm" data-flmin title="${FL.min?"Expandir":"Minimizar"}" aria-label="${FL.min?"Expandir":"Minimizar"}">${FL.min?"▢":"–"}</button>`}
-    ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: ${CURSO.id==="dio"?"o editor de código ou a aula":"o QGIS ou os slides"})" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
+    ${!PIP&&PIP_OK?`<button type="button" class="btn sm" data-flpip title="Manter por cima de outras janelas (ex.: ${CURSO.id==="qgis"?"o QGIS ou os slides":CURSO.id==="dio"?"o editor de código ou a aula":"a aula, o vídeo ou os slides"})" aria-label="Manter por cima de outras janelas">⧉</button>`:""}
     ${PIP?`<button type="button" class="btn sm" data-flmax title="${PIP_COMUM?"Altura da tela inteira / metade":"Aumentar até o máximo que o Chrome permite (cerca de 80% da tela)"}" aria-label="Aumentar janela">↕</button>`:`<button type="button" class="btn sm" data-flalto title="${FL.alto?"Voltar ao tamanho anterior":"Ocupar a altura da tela"}" aria-label="Altura da tela">↕</button>`}
     ${PIP&&!PIP_COMUM?`<button type="button" class="btn sm" data-flcomum title="Abrir numa janela comum com a altura da tela inteira (não fica por cima das outras janelas)" aria-label="Janela com altura total">⬍</button>`:""}
     <button type="button" class="btn sm" data-flx aria-label="Fechar bloco de anotações">✕</button></div>
@@ -2733,4 +2736,4 @@ render(); setSync(); renderFlutuante();
 conectar();
 setTimeout(()=>{ if(!S.push) migrarNotasAulas(); },4000);
 }
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciarCaderno); else iniciarCaderno();
+if(!window.ADIAR_INICIO){ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciarCaderno); else iniciarCaderno(); }

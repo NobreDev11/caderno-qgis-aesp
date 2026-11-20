@@ -2,6 +2,7 @@
 const { verificar, lerCorpo, responder } = require("./_auth");
 const PROMPTS_QGIS = require("./_prompts");
 const PROMPTS_DIO = require("./_prompts_dio");
+const PROMPTS_LIVRE = require("./_prompts_livre");
 
 const MAX_TEXTO = 150000;
 
@@ -13,14 +14,15 @@ module.exports = async (req, res) => {
     await verificar(req);
     const b = await lerCorpo(req);
     // curso: "dio" usa os pedidos da trilha DIO; qualquer outro valor (ou nenhum) mantém os do caderno QGIS.
-    const P = b.curso === "dio" ? PROMPTS_DIO : PROMPTS_QGIS;
+    // "livre": caderno criado no app; o contexto do curso vem da configuração do caderno (b.ctx).
+    const P = b.curso === "livre" ? PROMPTS_LIVRE.criar({ curso: String(b.ctx || "").slice(0, 700) }) : b.curso === "dio" ? PROMPTS_DIO : PROMPTS_QGIS;
     const { pedidoResumo, pedidoQuestoes, lerQuestoes, SISTEMA } = P;
     const pedidoFlashcards = P.pedidoFlashcards || PROMPTS_QGIS.pedidoFlashcards, lerFlashcards = P.lerFlashcards || PROMPTS_QGIS.lerFlashcards;
     // Explicação curta de um termo marcado com ((termo)) nas anotações
     if (b.modo === "explicar") {
       const termo = String(b.texto || "").trim().slice(0, 200), ctx = String(b.contexto || "").trim().slice(0, 1200), disc = String(b.disciplina || "").slice(0, 200);
       if (!termo) return responder(res, 400, { erro: "Termo vazio." });
-      const pedido = `Explique de forma curta e didática, em português do Brasil, o termo abaixo, no contexto do curso${b.curso === "dio" ? "" : ' "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE)'}${disc ? `, disciplina "${disc}"` : ""}.\n\nTermo: "${termo}"\n${ctx && ctx.toLowerCase() !== termo.toLowerCase() ? `Trecho da anotação onde aparece: "${ctx}"\n` : ""}\nResponda em 2 a 5 frases: o que é; se for sigla, o significado; e um exemplo prático de uso${b.curso === "dio" ? "" : " no QGIS ou na segurança pública"}. Sem introdução e sem títulos. Pode usar **negrito** em palavras-chave.`;
+      const pedido = b.curso === "livre" ? P.pedidoExplica(termo, disc, ctx) : `Explique de forma curta e didática, em português do Brasil, o termo abaixo, no contexto do curso${b.curso === "dio" ? "" : ' "Uso do QGIS como Estratégia de Segurança Pública" (AESP/CE)'}${disc ? `, disciplina "${disc}"` : ""}.\n\nTermo: "${termo}"\n${ctx && ctx.toLowerCase() !== termo.toLowerCase() ? `Trecho da anotação onde aparece: "${ctx}"\n` : ""}\nResponda em 2 a 5 frases: o que é; se for sigla, o significado; e um exemplo prático de uso${b.curso === "dio" ? "" : " no QGIS ou na segurança pública"}. Sem introdução e sem títulos. Pode usar **negrito** em palavras-chave.`;
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json" },

@@ -121,7 +121,7 @@ function renderPaneAula(host){
   host.innerHTML=`<div class="shade" data-fechar></div><section class="pane" role="dialog" aria-label="Item da trilha">
     <header style="border-top:5px solid ${x.cor}"><div style="min-width:0"><div class="mono muted" style="font-size:12.5px">Item ${a.n} de ${ITENS.length} · ${esc(a.tipo)}${a.h?" · "+a.h+" h":""} · plano: semana ${a.semana} (${fmtData(a.plano)})</div>
       <h3 style="margin-top:4px">${esc(a.nome)} ${info("item")}</h3><div class="muted" style="font-size:13px">${esc(nomeDisc(a.k))}</div>
-      ${a.url?`<div class="row" style="margin-top:8px"><a class="btn sm pri" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir na DIO</a></div>`:""}</div>
+      ${a.url?`<div class="row" style="margin-top:8px"><a class="btn sm pri" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(CURSO.abrirRot||"Abrir na DIO")}</a></div>`:""}</div>
       <button class="btn sm" data-fechar aria-label="Fechar">✕</button></header>
     <div class="body">
       <div class="row">
@@ -161,6 +161,7 @@ function itemRow(it){
 }
 function faseCard(k){
   const f=DK[k], its=ITENS.filter(i=>i.k===k), ok=its.filter(feito).length, hf=horasFeitas(k);
+  if(!its.length) return `<div class="card day" style="border-left:6px solid ${f.cor}"><div class="dayh"><h3>${esc(nomeDisc(k))}</h3></div><p class="empty" style="margin:0">Nenhum item nesta fase ainda. Adicione em Configurar.</p></div>`;
   const ini=its[0].plano, fim=addDias(ITENS.filter(i=>i.k===k).slice(-1)[0].plano,6);
   return `<div class="card day" style="border-left:6px solid ${f.cor}"><div class="dayh"><h3>${esc(nomeDisc(k))}</h3><div class="row"><span class="chip">semanas ${its[0].semana}–${Math.max(...its.map(i=>i.semana))}</span><span class="chip">${fmtData(ini)} a ${fmtData(fim)}</span><span class="mono muted" style="font-size:12.5px">${ok}/${its.length} · ${hf}/${f.ha}h</span></div></div>${its.map(itemRow).join("")}</div>`;
 }
@@ -170,7 +171,7 @@ function vHoje(){
   const ok=ITENS.filter(feito).length, hf=horasFeitas(), r=ritmo(), tp=tarefas().filter(x=>!x.feito);
   let titulo, sub;
   if(!a){ titulo="Trilha concluída"; sub="Os 42 itens estão marcados como concluídos. Use o caderno para revisar."; }
-  else if(hoje<INICIO){ const dias=Math.ceil((msDe(INICIO,"00:00")-msDe(hoje,"00:00"))/864e5); titulo="A trilha começa "+(dias<=1?"amanhã":"em "+dias+" dias"); sub=fmtData(INICIO,true)+" · 1 hora por dia"; }
+  else if(hoje<INICIO){ const dias=Math.ceil((msDe(INICIO,"00:00")-msDe(hoje,"00:00"))/864e5); titulo="A trilha começa "+(dias<=1?"amanhã":"em "+dias+" dias"); sub=fmtData(INICIO,true)+" · "+(CURSO.ritmoTxt||"1 hora por dia"); }
   else { titulo= itemD(a.id).st==="and"?"Estudando agora":"Próximo item"; sub=fmtData(hoje,true); }
   const d=a?itemD(a.id):{};
   const hero = a? `
@@ -179,7 +180,7 @@ function vHoje(){
       <div class="d">${esc(a.nome)}</div>
       <div class="muted">${esc(nomeDisc(a.k))}</div>
       <div class="row" style="margin-top:10px">
-        ${a.url?`<a class="btn sm pri" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir na DIO</a>`:""}
+        ${a.url?`<a class="btn sm pri" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(CURSO.abrirRot||"Abrir na DIO")}</a>`:""}
         <button class="btn sm" data-pcopiar="${a.id}">Copiar prompt de estudo</button> ${info("prompt")}
       </div>
       <div style="margin-top:12px"><div class="row" style="gap:6px"><label class="lb" for="qnota" style="margin:0">Anotação rápida deste item</label>${info("rapida")}</div>
@@ -214,7 +215,7 @@ function vHoje(){
 function vTrilha(){
   const bts=[["todas","Todas"],...DISC.map(d=>[d.k,d.nome.split(" · ")[0]])].map(([v,l])=>`<button class="btn sm ${FASE_SEL===v?"on":""}" data-fase="${v}">${l}</button>`).join("");
   const ks = FASE_SEL==="todas"?DISC.map(d=>d.k):[FASE_SEL];
-  return `<div><h2>Trilha ${info("trilha")}</h2><p class="sub">Os ${ITENS.length} itens na ordem de estudo, com a semana prevista no plano de 1 hora por dia. Clique num item para estudar, anotar e marcar como concluído.</p></div>
+  return `<div><h2>Trilha ${info("trilha")}</h2><p class="sub">Os ${ITENS.length} itens na ordem de estudo, com a semana prevista no plano de ${esc(CURSO.ritmoTxt||"1 hora por dia")}. Clique num item para estudar, anotar e marcar como concluído.</p></div>
     <div class="daysel">${bts}</div>
     ${ks.map(faseCard).join("")}`;
 }
@@ -223,10 +224,10 @@ function vPortfolio(){
   const pg=S.docs["port-geral"]||{};
   const projs=ITENS.filter(ehProjeto);
   const comRepo=ITENS.filter(i=>itemD(i.id).repo);
-  return `<div><h2>Portfólio ${info("portfolio")}</h2><p class="sub">Onde ficam os seus projetos no GitHub. Cada fase termina com um projeto seu, e alguns itens têm projeto da DIO.</p></div>
+  return `<div><h2>Portfólio ${info("portfolio")}</h2><p class="sub">${esc(CURSO.portSub||"Onde ficam os seus projetos no GitHub. Cada fase termina com um projeto seu, e alguns itens têm projeto da DIO.")}</p></div>
     <div class="card grid2">
-      <div><label class="lb" for="pg-repo">Repositório da trilha (todos os estudos)</label><input type="text" id="pg-repo" inputmode="url" placeholder="https://github.com/NobreDev11/trilha-agentes-ia-dados" value="${esc(pg.repo||"")}"></div>
-      <div><label class="lb" for="pg-perfil">Perfil no GitHub</label><input type="text" id="pg-perfil" inputmode="url" placeholder="https://github.com/NobreDev11" value="${esc(pg.perfil||"")}"></div>
+      <div><label class="lb" for="pg-repo">Repositório da trilha (todos os estudos)</label><input type="text" id="pg-repo" inputmode="url" placeholder="${esc(CURSO.phRepo||"https://github.com/NobreDev11/trilha-agentes-ia-dados")}" value="${esc(pg.repo||"")}"></div>
+      <div><label class="lb" for="pg-perfil">Perfil no GitHub</label><input type="text" id="pg-perfil" inputmode="url" placeholder="${esc(CURSO.phPerfil||"https://github.com/NobreDev11")}" value="${esc(pg.perfil||"")}"></div>
     </div>
     <div class="card">${projs.map(it=>{ const d=itemD(it.id); return `<div class="task" style="flex-wrap:wrap">
         <span style="flex:1;min-width:220px">${sw(it.k)} <button class="btn sm" data-item="${it.id}" style="text-align:left">${String(it.n).padStart(2,"0")} · ${esc(it.nome)}</button> <span class="chip">${esc(it.tipo)}</span> ${stChip(it.id)}</span>

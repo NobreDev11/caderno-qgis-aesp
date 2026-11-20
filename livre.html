@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title id="lv-title">Caderno</title>
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0f6b5c">
+<meta name="apple-mobile-web-app-title" content="Caderno QGIS">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/caderno.css">
+<style>
+/* Caderno livre: o mesmo app (caderno.js/.css); cor e textos vêm da configuração do caderno */
+.it-l{all:unset;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 6px;border-radius:7px;cursor:pointer;font-size:13.5px}
+.it-l:hover{background:var(--accent-soft)}.it-l .it-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rt-ok{color:var(--ok)} .rt-mal{color:var(--bad)}
+.lv-carga{display:grid;place-items:center;min-height:60vh;text-align:center;padding:24px}
+.lv-carga .card{max-width:460px}
+.lv-carga[hidden],.app[hidden]{display:none}
+/* Configurar */
+.cf-card{display:flex;flex-direction:column;gap:10px}
+.cf-card h3{margin:0}
+.cf-dica{font-size:12.5px;color:var(--muted);margin-top:4px}
+.cf-lista{display:flex;flex-direction:column;gap:6px}
+.cf-sec,.cf-it,.cf-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.cf-sec input[type=text],.cf-it input[type=text],.cf-it input[type=url],.cf-it select,.cf-h select,.cf-h input{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:0}
+.cf-card input[type=number],.cf-card input[type=date],.cf-card input[type=time],.cf-card select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit}
+.cf-it select{flex:0 1 150px;min-width:110px}.cf-h select{flex:0 0 auto}
+.cf-nm{flex:2 1 200px}.cf-curto{flex:0 1 130px}.cf-inst{flex:2 1 220px}.cf-tipo{flex:0 1 110px}.cf-url{flex:1 1 180px}.cf-int{flex:1 1 120px}
+.cf-cor{width:34px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;flex:none}
+.cf-ha{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}.cf-ha input{width:70px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.cf-meta{font-size:12.5px;color:var(--muted);flex:0 0 auto}
+.cf-n{font-size:12.5px;color:var(--muted);width:22px;text-align:right}
+.cf-acoes{display:inline-flex;gap:4px;margin-left:auto}
+.cf-acoes .btn{min-width:32px;justify-content:center}
+.cf-x.conf,.cf-perigo .cf-x{color:var(--bad);border-color:var(--bad)}
+.cf-abas{display:flex;flex-wrap:wrap;gap:6px}
+.cf-aba{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;cursor:pointer;font-size:14px;background:var(--surface)}
+.cf-aba.on{border-color:var(--accent);background:var(--accent-soft)}
+.cf-aba input{accent-color:var(--accent)}
+.cf-cores{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cf-sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;position:relative}
+.cf-sw.on{box-shadow:0 0 0 2px var(--ink)}
+.cf-sw-livre{background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red);overflow:hidden;display:inline-block}
+.cf-sw-livre input{opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer}
+.cf-dias{display:flex;flex-wrap:wrap;gap:6px}
+.cf-dia{display:inline-flex;align-items:center;gap:6px}
+.cf-dia button{all:unset;cursor:pointer;color:var(--muted);padding:0 2px}.cf-dia button:hover{color:var(--bad)}
+.cf-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cf-linha input[type=date],.cf-linha input[type=time],.cf-linha input[type=number],.cf-linha input[type=text]{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.cf-linha label{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.cf-gerar summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px;margin:4px 0}
+.cf-gerar[open] summary{margin-bottom:8px}
+.cf-chk{display:flex;align-items:center;gap:8px;font-size:14px}
+.cf-resumo{position:sticky;top:0;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.06);padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.cf-erro{color:var(--bad)}.cf-aviso{color:var(--warn)}
+.cf-perigo{border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+.cf-perigo input{flex:1 1 240px}
+.cf-barra{position:sticky;bottom:0;z-index:6;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 -6px 20px rgba(0,0,0,.06)}
+.cf-barra.sujo{border-color:var(--accent)}.cf-barra.sujo .cf-st{color:var(--accent);font-weight:600}
+@media (max-width:640px){.cf-acoes{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="topo"><button type="button" class="menu-bt" id="menuBt" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button></div>
+    <div class="brand">
+      <p style="margin:0 0 6px" id="voltarCursos"><a href="/" style="color:var(--accent);font-size:13px;text-decoration:none">← Cursos</a></p>
+      <h1 id="lv-h1">Caderno</h1>
+      <p id="lv-sub"></p>
+    </div>
+    <nav id="nav"></nav>
+    <div class="prog" id="prog"></div>
+    <div id="tmini" style="margin-top:auto"></div>
+    <div class="sync" style="margin-top:0"><span id="sinfo"></span><span class="dot" id="sdot"></span><span id="stxt" style="flex:1;min-width:0;overflow-wrap:anywhere">Carregando…</span><button class="btn sm" id="sbtn" hidden>Entrar</button></div>
+  </aside>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<div id="paneHost"></div>
+<div id="floatHost"></div>
+<div id="lvCarga" class="lv-carga" hidden><div class="card"><h2 id="lvCargaT" style="margin-top:0">Abrindo o caderno…</h2><p class="muted" id="lvCargaM" style="margin:0"></p><p style="margin:14px 0 0"><a class="btn" href="/">← Voltar aos cursos</a></p></div></div>
+<script src="/vendor/supabase.js"></script>
+<script src="/prompts-livre.js"></script>
+<script>
+/* Caderno livre (/livre?n=<código>): lê a configuração (guardada neste aparelho ou no Supabase) e só então carrega o app.
+   A configuração define seções, itens ou dias e horários, abas e cor; ela é editada na aba Configurar (livre.js). */
+window.ADIAR_INICIO=true;
+(async function(){
+  const URL_SB="https://ytionrwdwdmcxbdgqnkt.supabase.co", KEY_SB="sb_publishable_MFrDp-4qr0yA2vyX1UJWOw_7RN7rdMX";
+  const cid=(new URLSearchParams(location.search).get("n")||"").replace(/[^a-z0-9-]/gi,"").slice(0,40);
+  const app=document.querySelector(".app"), carga=document.getElementById("lvCarga");
+  const falha=(t,m)=>{ app.hidden=true; carga.hidden=false; document.getElementById("lvCargaT").textContent=t; document.getElementById("lvCargaM").textContent=m||""; };
+  if(!cid){ location.replace("/"); return; }
+  const CH="caderno-livre:cfg:"+cid;
+  let cfg=null; try{ cfg=JSON.parse(localStorage.getItem(CH)||"null"); }catch(e){}
+  let sb=null; try{ sb=window.supabase.createClient(URL_SB,KEY_SB,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"caderno-qgis-auth"}}); window.SB_PRONTO=sb; }catch(e){}
+  const remoto=async()=>{ if(!sb) return null; const {data:{session}}=await sb.auth.getSession(); if(!session) return null;
+    const {data,error}=await sb.from("caderno_livre").select("body").eq("caderno","_").eq("id",cid).maybeSingle(); if(error) throw error; return data?data.body:null; };
+  const comPrazo=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("tempo")),ms))]);
+  if(!cfg){
+    app.hidden=true; carga.hidden=false;
+    try{ cfg=await comPrazo(remoto(),10000); }catch(e){ falha("Não consegui abrir o caderno", e.message==="tempo"?"O servidor não respondeu. Confira a internet e tente de novo.":(/caderno_livre/.test(e.message||"")||e.code==="PGRST205"||e.code==="42P01")?"Falta rodar o SQL supabase/caderno_livre.sql no Supabase.":"Erro: "+(e.message||e)); return; }
+    if(!cfg){ falha("Caderno não encontrado","Ele pode ter sido apagado, ou você precisa entrar com a sua conta na página inicial."); return; }
+    try{ localStorage.setItem(CH,JSON.stringify(cfg)); }catch(e){}
+    app.hidden=false; carga.hidden=true;
+  }
+  if(cfg.apagado){ falha("Este caderno foi apagado",""); return; }
+  cfg.id=cid; window.LIVRE=cfg;
+  document.getElementById("lv-title").textContent=(cfg.nome||"Caderno")+" · Caderno";
+  document.getElementById("lv-h1").textContent=cfg.nome||"Caderno";
+  document.getElementById("lv-sub").textContent=cfg.sub||"";
+  const lista=["/curso-livre.js","/caderno.js",...(cfg.tipo==="trilha"?["/dio.js"]:[]),"/livre.js","/timer.js","/fluxo.js","/formato.js"];
+  for(const src of lista){ await new Promise((ok,ruim)=>{ const s=document.createElement("script"); s.src=src; s.async=false; s.onload=ok; s.onerror=()=>ruim(new Error(src)); document.body.appendChild(s); }).catch(e=>{ falha("Não consegui carregar o app","Arquivo "+e.message+". Recarregue a página."); throw e; }); }
+  iniciarCaderno();
+  // Mudou em outro aparelho? Atualiza a cópia local e oferece recarregar.
+  setTimeout(async()=>{ try{ const r=await comPrazo(remoto(),10000); if(!r) return;
+    if(r.apagado){ try{ localStorage.removeItem(CH); }catch(e){} return; }
+    if((r.upd||0)>(cfg.upd||0)){ try{ localStorage.setItem(CH,JSON.stringify(r)); }catch(e){}
+      if(typeof toast==="function"&&!(typeof CF_SUJO!=="undefined"&&CF_SUJO)){ toast("A configuração do caderno mudou em outro aparelho. Recarregando…"); setTimeout(()=>location.reload(),1500); } } }catch(e){} },2500);
+})();
+</script>
+<script>
+/* Funciona sem internet: guarda o app no aparelho (sw.js). */
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")) addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
