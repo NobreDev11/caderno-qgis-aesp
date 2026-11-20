@@ -99,9 +99,9 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 const SUPA_URL="https://ytionrwdwdmcxbdgqnkt.supabase.co";
 const SUPA_KEY="sb_publishable_MFrDp-4qr0yA2vyX1UJWOw_7RN7rdMX"; // chave publicável (pública por natureza)
 const CURSOS=[
-  {k:"qgis", nome:"QGIS AESP", cor:"#0f6b5c", url:"/qgis", titulo:"Uso do QGIS como Estratégia de Segurança Pública",
+  {k:"qgis", tabela:"caderno_notas", lsp:"caderno-qgis-aesp:", nome:"QGIS AESP", cor:"#0f6b5c", url:"/qgis", titulo:"Uso do QGIS como Estratégia de Segurança Pública",
    info:"AESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11/2026 · 80 h/a", ini:"2026-11-09T07:30:00-03:00", fim:"2026-11-18T17:30:00-03:00"},
-  {k:"dio", nome:"Trilha DIO", cor:"#5b3cc4", url:"/dio", titulo:"Trilha DIO: agentes de IA e dados",
+  {k:"dio", lsp:"caderno-dio:", nome:"Trilha DIO", cor:"#5b3cc4", url:"/dio", titulo:"Trilha DIO: agentes de IA e dados",
    info:"Do zero ao avançado · 42 itens em 7 fases · 1 h por dia desde 09/11/2026", tabela:"caderno_dio", itens:42, horas:384},
 ];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -111,10 +111,14 @@ let LIVRES=[], LIVRES_ERRO="";
 try{ LIVRES=JSON.parse(localStorage.getItem("cadernos:livres")||"[]").filter(c=>c&&c.id); }catch(e){}
 const CORES=["#0f6b5c","#3b7dd8","#2f9e44","#c9871a","#8a5cd0","#d0453b","#1592a3","#b8407a","#d2622a","#475569"];
 const abaLivre=c=>({k:"l:"+c.id, livre:c, nome:c.nome||"Caderno", cor:/^#[0-9a-f]{6}$/i.test(c.cor||"")?c.cor:"#0f6b5c", url:"/livre?n="+encodeURIComponent(c.id)});
-const todas=()=>[...CURSOS, ...LIVRES.map(abaLivre)];
+// QGIS e DIO: configuração editada (doc cfg-caderno) ou caderno apagado (oculto). Cópia local em <lsp>cfg.
+const FIX={}; CURSOS.forEach(c=>{ try{ FIX[c.k]=JSON.parse(localStorage.getItem(c.lsp+"cfg")||"null"); }catch(e){} });
+const fixEditado = c => { const f=FIX[c.k]; return f&&!f.padrao&&!f.oculto&&Array.isArray(f.secoes)&&f.secoes.length ? f : null; };
+const fixVisiveis = () => CURSOS.filter(c=>!(FIX[c.k]&&FIX[c.k].oculto)).map(c=>{ const f=fixEditado(c); return f?{...c,nome:f.nome&&f.nome!==c.titulo?f.nome.slice(0,28):c.nome,cor:/^#[0-9a-f]{6}$/i.test(f.cor||"")?f.cor:c.cor}:c; });
+const todas=()=>[...fixVisiveis(), ...LIVRES.map(abaLivre)];
 try{ ABA=localStorage.getItem("cadernos:aba"); }catch(e){}
 { const h=decodeURIComponent(location.hash.slice(1)); if(h && (h==="novo"||todas().some(c=>c.k===h))) ABA=h; }
-if(ABA!=="novo"&&!todas().some(c=>c.k===ABA)) ABA=CURSOS[0].k;
+if(ABA!=="novo"&&!todas().some(c=>c.k===ABA)) ABA=(todas()[0]||{k:"novo"}).k;
 const app=document.getElementById("app");
 
 function telaLogin(msg){
@@ -167,10 +171,10 @@ async function carregarLivres(){
   }catch(e){ LIVRES_ERRO = (e.code==="PGRST205"||e.code==="42P01"||/could not find the table|does not exist/i.test(e.message||"")) ? "Para criar cadernos, rode uma vez o SQL supabase/caderno_livre.sql no Supabase do Checklist." : ""; }
 }
 // Progresso de um caderno livre: trilha = itens concluídos; curso = aulas que já passaram no calendário
-async function resumoLivre(c){
+async function resumoLivre(c,tabela){
   if(c.tipo==="trilha"){
     const its=c.itens||[], hT=its.reduce((s,i)=>s+(Number(i.h)||0),0);
-    try{ const {data,error}=await sb.from("caderno_livre").select("id,body").eq("caderno",c.id).like("id","item-%").limit(1000); if(error) throw error;
+    try{ let q=sb.from(tabela||"caderno_livre").select("id,body"); if(!tabela) q=q.eq("caderno",c.id); const {data,error}=await q.like("id","item-%").limit(1000); if(error) throw error;
       const ok=new Set((data||[]).filter(r=>r.body&&!r.body.apagado&&r.body.st==="ok").map(r=>r.id.slice(5)));
       const n=its.filter(i=>ok.has(i.id)).length, h=its.filter(i=>ok.has(i.id)).reduce((s,i)=>s+(Number(i.h)||0),0);
       return {status:n?n+" de "+its.length+" itens concluídos":"Ainda não iniciado", ok:n, pct:hT?Math.round(h/hT*100):(its.length?Math.round(n/its.length*100):0)};
@@ -182,21 +186,27 @@ async function resumoLivre(c){
   if(t>fim) return {status:"Curso concluído", pct:100};
   return {status:"Curso em andamento", pct:Math.round((t-ini)/(fim-ini)*100)};
 }
+async function carregarFixos(){
+  for(const c of CURSOS){ try{ const {data,error}=await sb.from(c.tabela).select("body").eq("id","cfg-caderno").maybeSingle(); if(error) continue;
+      const b=data&&data.body; const l=FIX[c.k]; if(b&&(!l||(b.upd||0)>=(l.upd||0))){ FIX[c.k]=b; try{ localStorage.setItem(c.lsp+"cfg",JSON.stringify(b)); }catch(e){} } }catch(e){} }
+  if(ABA!=="novo"&&!todas().some(c=>c.k===ABA)) ABA=(todas()[0]||{k:"novo"}).k;
+}
 async function carregarResumos(){
-  RES.qgis=resumoQGIS(CURSOS[0]); desenhar();
+  await carregarFixos();
+  RES.qgis=fixEditado(CURSOS[0])?await resumoLivre(fixEditado(CURSOS[0])):resumoQGIS(CURSOS[0]); desenhar();
   await carregarLivres(); desenhar();
-  RES.dio=await resumoDIO(CURSOS[1]); desenhar();
+  RES.dio=fixEditado(CURSOS[1])?await resumoLivre(fixEditado(CURSOS[1]),"caderno_dio"):await resumoDIO(CURSOS[1]); desenhar();
   for(const c of LIVRES){ RES["l:"+c.id]=await resumoLivre(c); if(ABA==="l:"+c.id) desenhar(); }
   desenhar();
 }
 
-function painelLivre(a){
+function painelLivre(a,fixo){
   const c=a.livre, r=RES[a.k]||{}, tr=c.tipo==="trilha", secs=c.secoes||[];
   const kp = tr
     ? `<div class="kpi"><b>${r.ok??"–"}<span class="mono" style="font-size:14px">/${(c.itens||[]).length}</span></b><span>itens concluídos</span></div><div class="kpi"><b>${secs.length}</b><span>fases</span></div><div class="kpi"><b>${(c.itens||[]).reduce((s,i)=>s+(Number(i.h)||0),0)}</b><span>horas</span></div>`
     : `<div class="kpi"><b>${secs.reduce((s,x)=>s+(Number(x.ha)||0),0)}</b><span>aulas</span></div><div class="kpi"><b>${secs.length}</b><span>disciplinas</span></div><div class="kpi"><b>${(c.dias||[]).length}</b><span>dias de aula</span></div>`;
   return `<section class="card curso" style="--c:${a.cor}" role="tabpanel" aria-labelledby="t-${esc(a.k)}">
-    <div class="k">${tr?"Trilha de estudo":"Curso com aulas"} · criado no app</div>
+    <div class="k">${tr?"Trilha de estudo":"Curso com aulas"} · ${fixo?"configuração editada":"criado no app"}</div>
     <h2>${esc(c.nome||"Caderno")}</h2>
     <p class="muted" style="margin:0">${esc(c.sub||c.desc||"")}</p>
     <div class="kpis">${kp}</div>
@@ -217,11 +227,13 @@ function painelNovo(){
     <div><label for="nv-sub">Subtítulo (opcional)</label><input type="text" id="nv-sub" maxlength="120" placeholder="Ex.: Turma 2026 · 40 h · noite"></div>
     <div><label for="nv-desc">Sobre o que é e qual o seu objetivo (opcional)</label><textarea id="nv-desc" rows="2" maxlength="700" placeholder="A IA usa este texto para fazer resumos, questões e explicações no contexto certo."></textarea></div>
     <div><label>Cor</label><div class="cores">${CORES.map((x,i)=>`<button type="button" data-nvcor="${x}" style="background:${x}" aria-pressed="${i===LIVRES.length%CORES.length?"true":"false"}" aria-label="Cor ${x}"></button>`).join("")}</div></div>
+    ${CURSOS.filter(c=>FIX[c.k]&&FIX[c.k].oculto).map(c=>`<div class="row" style="justify-content:space-between;border:1px dashed var(--line);border-radius:10px;padding:10px 12px"><span><b>${esc(c.nome)}</b> <span class="muted">foi apagado. Pode trazê-lo de volta, vazio e com a configuração original.</span></span><button type="button" class="btn sm" data-restaurar="${c.k}">Trazer de volta</button></div>`).join("")}
     <p class="err" id="nv-err" hidden></p>
     <div class="row"><button class="btn pri" type="submit" id="nv-b">Criar caderno</button><span class="foot">Os dados de cada caderno ficam separados.</span></div>
   </form>`;
 }
 function painel(c){
+  const f=fixEditado(c); if(f) return painelLivre({k:c.k, livre:f, cor:/^#[0-9a-f]{6}$/i.test(f.cor||"")?f.cor:c.cor, url:c.url}, true);
   const r=RES[c.k]||{};
   const kp = c.k==="qgis"
     ? `<div class="kpi"><b>80</b><span>horas-aula</span></div><div class="kpi"><b>9</b><span>disciplinas</span></div><div class="kpi"><b>8</b><span>dias de aula</span></div>`
@@ -252,6 +264,12 @@ function telaCursos(){ desenhar(); carregarResumos(); }
 document.addEventListener("click",async e=>{
   const t=e.target.closest("[data-aba]");
   if(t){ ABA=t.dataset.aba; try{ localStorage.setItem("cadernos:aba",ABA); history.replaceState(null,"","#"+ABA); }catch(x){} desenhar(true); if(ABA==="novo"){ const n=document.getElementById("nv-nome"); if(n) n.focus(); } return; }
+  const rs=e.target.closest("[data-restaurar]");
+  if(rs){ const c=CURSOS.find(x=>x.k===rs.dataset.restaurar); rs.disabled=true; rs.textContent="Restaurando…";
+    const body={tipo:"cfg",padrao:true,upd:Date.now()};
+    try{ const uid=sessao&&sessao.user&&sessao.user.id; const r=await sb.from(c.tabela).upsert({user_id:uid,id:"cfg-caderno",body,upd:body.upd},{onConflict:"user_id,id"}); if(r.error) throw r.error; }
+    catch(x){ rs.disabled=false; rs.textContent="Trazer de volta"; alert("Não consegui restaurar: "+(x.message||x)); return; }
+    FIX[c.k]=body; try{ localStorage.setItem(c.lsp+"cfg",JSON.stringify(body)); }catch(x){} ABA=c.k; try{ localStorage.setItem("cadernos:aba",ABA); }catch(x){} desenhar(true); carregarResumos(); return; }
   const cb=e.target.closest("[data-nvcor]");
   if(cb){ document.querySelectorAll("[data-nvcor]").forEach(x=>x.setAttribute("aria-pressed",String(x===cb))); return; }
   const s=e.target.closest("#sair");

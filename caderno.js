@@ -364,7 +364,7 @@ function diaHTML(dia){
     if(!Array.isArray(s)&&s!=="INT1"&&s!=="INT2") continue;
     if(s==="INT1") h+=`<div class="slot int"><span class="mono">10:00–10:20</span><span>Intervalo</span></div>`;
     else if(s==="INT2") h+=`<div class="slot int"><span class="mono">14:40–15:00</span><span>Intervalo</span></div>`;
-    else { if(CURSO.id==="qgis"&&s[0]==="13:00") h+=`<div class="slot int"><span class="mono">12:00–13:00</span><span>Almoço</span></div>`; const a=aulas[i++]; if(a) h+=slotHTML(a); }
+    else { const a=aulas[i++]; if(a) h+=slotHTML(a); }
   }
   const ds=[...new Set(aulas.map(a=>a.k))];
   return `<div class="card day"><div class="dayh"><h3>${fmtData(dia,true)}</h3><div class="row">${ds.map(k=>`<span class="chip">${sw(k)}<span class="ct">${esc(nomeDisc(k))}</span></span>`).join("")}</div></div>${h}</div>`;
@@ -374,7 +374,7 @@ function vHoje(){
   const ag=agoraFor(); const t=Date.now();
   const cur=AULAS.find(a=>statusAula(a)==="cur");
   const prox=AULAS.find(a=>msDe(a.data,a.ini)>t);
-  const A0=AULAS[0], AN=AULAS[AULAS.length-1], QG=CURSO.id==="qgis";
+  const A0=AULAS[0], AN=AULAS[AULAS.length-1], QG=CURSO.id==="qgis"&&!CURSO.editado;
   const ini=msDe(A0.data,A0.ini), fim=msDe(AN.data,AN.fim);
   let titulo, sub, foco=cur||prox;
   if(t<ini){ const dias=Math.ceil((msDe(A0.data,"00:00")-msDe(ag.data,"00:00"))/864e5); titulo="O curso começa "+(dias<=1?"amanhã":"em "+dias+" dias"); sub=QG?"Segunda-feira, 09/11, às 07:30 · AESP/CE, Fortaleza":fmtData(A0.data,true)+", às "+A0.ini+(CURSO.local?" · "+CURSO.local:""); }
@@ -420,10 +420,10 @@ function vCronograma(){
   if(!DIA_SEL) DIA_SEL = TODOS_DIAS.includes(ag.data)? ag.data : "todos";
   const bts=[["todos","Todos"],...TODOS_DIAS.map(d=>[d,fmtData(d)])].map(([v,l])=>`<button class="btn sm ${DIA_SEL===v?"on":""}" data-dia="${v}">${l}</button>`).join("");
   const dias = DIA_SEL==="todos"?TODOS_DIAS:[DIA_SEL];
-  return `<div><h2>Cronograma ${info("cronograma")}</h2><p class="sub">${CURSO.id==="qgis"?"Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.":esc(CURSO.subCrono||(AULAS.length+" aulas em "+DIAS_AULA.length+" dia(s). Clique numa aula para anotar."))}</p></div>
+  return `<div><h2>Cronograma ${info("cronograma")}</h2><p class="sub">${CURSO.id==="qgis"&&!CURSO.editado?"Quadro de Trabalhos Semanais da AESP. Aulas de 50 min, das 07:30 às 17:30. Clique numa aula para anotar.":esc(CURSO.subCrono||(AULAS.length+" aulas em "+DIAS_AULA.length+" dia(s). Clique numa aula para anotar."))}</p></div>
     <div class="daysel">${bts}</div>
     ${dias.map(diaHTML).join("")}
-    ${CURSO.id!=="qgis"?"":`<p class="muted" style="font-size:13px;margin:0">No QTS original, o horário de 18/11 às 07:30 veio em branco; aqui ele aparece como a 3ª aula do Projeto Prático, seguindo a numeração 2/12 → 4/12.</p>`}`;
+    ${CURSO.id!=="qgis"||CURSO.editado?"":`<p class="muted" style="font-size:13px;margin:0">No QTS original, o horário de 18/11 às 07:30 veio em branco; aqui ele aparece como a 3ª aula do Projeto Prático, seguindo a numeração 2/12 → 4/12.</p>`}`;
 }
 
 function vDisciplinas(){
@@ -463,7 +463,7 @@ function vDisciplinas(){
 }
 
 // Partes do cartão da disciplina que mudam por curso (o caderno DIO troca estas funções)
-function discIntro(){ return `<h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">${CURSO.id==="qgis"?"9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.":DISC.length+" disciplina(s), "+AULAS.length+" aulas. Para mudar disciplinas, cargas e cores, use Configurar."}</p>`; }
+function discIntro(){ return `<h2>Disciplinas ${info("disciplinas")}</h2><p class="sub">${CURSO.id==="qgis"&&!CURSO.editado?"9 disciplinas, 80 h/a. Os nomes vieram abreviados no QTS: clique em “Editar nome” para completar.":DISC.length+" disciplina(s), "+AULAS.length+" aulas. Para mudar disciplinas, cargas e cores, use Configurar."}</p>`; }
 function discLinhas(x,aulas,dias){ return `<div class="muted" style="font-size:13.5px">${x.inst.map(esc).join(" · ")}</div>
         <div class="mono muted" style="font-size:12.5px">${x.ha} h/a · ${dias.map(d=>fmtData(d)).join(", ")}</div>`; }
 function discPres(x,aulas,anot){ return `<details class="pres-pop" data-prespop="${x.k}" ${PRES_POP===x.k?"open":""}><summary class="btn sm" title="Marcar presença ou falta em cada aula">Presença ${anot.length}/${aulas.length} <span aria-hidden="true">▾</span></summary>

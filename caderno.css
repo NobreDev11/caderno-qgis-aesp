@@ -451,3 +451,46 @@ details.mat-g>summary:hover{color:var(--ink)}
 .fc-dlg-fundo.ancorado .fc-dlg h3{font-size:15px}
 .fc-dlg-fundo.ancorado textarea{min-height:46px}
 .fc-ver .fc-tx{font-size:16px}
+
+/* Aba Configurar (livre.js): QGIS, DIO e cadernos criados no app */
+.cf-card{display:flex;flex-direction:column;gap:10px}
+.cf-card h3{margin:0}
+.cf-dica{font-size:12.5px;color:var(--muted);margin-top:4px}
+.cf-lista{display:flex;flex-direction:column;gap:6px}
+.cf-sec,.cf-it,.cf-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.cf-sec input[type=text],.cf-it input[type=text],.cf-it input[type=url],.cf-it select,.cf-h select,.cf-h input{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:0}
+.cf-card input[type=number],.cf-card input[type=date],.cf-card input[type=time],.cf-card select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit}
+.cf-it select{flex:0 1 150px;min-width:110px}.cf-h select{flex:0 0 auto}
+.cf-nm{flex:2 1 200px}.cf-curto{flex:0 1 130px}.cf-inst{flex:2 1 220px}.cf-tipo{flex:0 1 110px}.cf-url{flex:1 1 180px}.cf-int{flex:1 1 120px}
+.cf-cor{width:34px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;flex:none}
+.cf-ha{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}.cf-ha input{width:70px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.cf-meta{font-size:12.5px;color:var(--muted);flex:0 0 auto}
+.cf-n{font-size:12.5px;color:var(--muted);width:22px;text-align:right}
+.cf-acoes{display:inline-flex;gap:4px;margin-left:auto}
+.cf-acoes .btn{min-width:32px;justify-content:center}
+.cf-x.conf,.cf-perigo .cf-x{color:var(--bad);border-color:var(--bad)}
+.cf-abas{display:flex;flex-wrap:wrap;gap:6px}
+.cf-aba{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;cursor:pointer;font-size:14px;background:var(--surface)}
+.cf-aba.on{border-color:var(--accent);background:var(--accent-soft)}
+.cf-aba input{accent-color:var(--accent)}
+.cf-cores{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cf-sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;position:relative}
+.cf-sw.on{box-shadow:0 0 0 2px var(--ink)}
+.cf-sw-livre{background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red);overflow:hidden;display:inline-block}
+.cf-sw-livre input{opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer}
+.cf-dias{display:flex;flex-wrap:wrap;gap:6px}
+.cf-dia{display:inline-flex;align-items:center;gap:6px}
+.cf-dia button{all:unset;cursor:pointer;color:var(--muted);padding:0 2px}.cf-dia button:hover{color:var(--bad)}
+.cf-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cf-linha input[type=date],.cf-linha input[type=time],.cf-linha input[type=number],.cf-linha input[type=text]{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.cf-linha label{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.cf-gerar summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px;margin:4px 0}
+.cf-gerar[open] summary{margin-bottom:8px}
+.cf-chk{display:flex;align-items:center;gap:8px;font-size:14px}
+.cf-resumo{position:sticky;top:0;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.06);padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.cf-erro{color:var(--bad)}.cf-aviso{color:var(--warn)}
+.cf-perigo{border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+.cf-perigo input{flex:1 1 240px}
+.cf-barra{position:sticky;bottom:0;z-index:6;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 -6px 20px rgba(0,0,0,.06)}
+.cf-barra.sujo{border-color:var(--accent)}.cf-barra.sujo .cf-st{color:var(--accent);font-weight:600}
+@media (max-width:640px){.cf-acoes{margin-left:0}}

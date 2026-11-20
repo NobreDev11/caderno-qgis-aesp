@@ -4,12 +4,12 @@
    - vendor/, ícones: usa a cópia e atualiza em segundo plano.
    - Fontes do Google: cópia guardada.
    - /api e Supabase: nunca guardados (sempre rede). As anotações em si ficam no localStorage e sobem ao voltar a internet. */
-const VERSAO = "cadernos-v7";
+const VERSAO = "cadernos-v8";
 const PAGINAS = ["/", "/qgis", "/dio", "/livre"];
 const ARQUIVOS = [
   "/prompts.js", "/prompts-dio.js", "/timer.js", "/fluxo.js", "/formato.js",
   "/caderno.js", "/caderno.css", "/curso-qgis.js", "/curso-dio.js", "/dio.js",
-  "/curso-livre.js", "/livre.js", "/prompts-livre.js",
+  "/curso-livre.js", "/curso-base.js", "/livre.js", "/prompts-livre.js",
   "/vendor/supabase.js", "/vendor/pdf.min.mjs", "/vendor/pdf.worker.min.mjs", "/vendor/mermaid.min.js", "/vendor/palavras-pt-br.txt",
   "/manifest.webmanifest", "/icons/icon.svg", "/icons/favicon-32.png", "/icons/apple-touch-icon.png",
   "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png",

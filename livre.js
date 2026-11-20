@@ -2,13 +2,15 @@
 /* Caderno livre: aba Configurar (tudo editável: nome, cor, abas, seções, itens ou dias e horários), textos genéricos
    e ajustes por cima do app comum (caderno.js) e, no formato trilha, do dio.js. */
 
-const LV_KEY = "caderno-livre:cfg:"+LV.id;
+const LV_LIVRE = CURSO.id==="livre";              // criado no app (tabela caderno_livre)
+const LV_KEY = LV_LIVRE ? "caderno-livre:cfg:"+LV.id : CURSO.lsp+"cfg";   // cópia local da configuração
+const LV_GEN = LV_LIVRE || !!CURSO.editado;         // textos genéricos (o QGIS/DIO original mantém os seus)
 const lvId = p => p+Math.random().toString(36).slice(2,7)+Date.now().toString(36).slice(-3);
 const lvClone = o => JSON.parse(JSON.stringify(o||{}));
 const LV_TERMO = LV_TRILHA ? {um:"fase", uns:"fases", Um:"Fase", Uns:"Fases"} : {um:"disciplina", uns:"disciplinas", Um:"Disciplina", Uns:"Disciplinas"};
 
 /* ============ textos genéricos (no lugar dos do QGIS/DIO) ============ */
-Object.assign(AJUDA,{
+if(LV_GEN) Object.assign(AJUDA,{
   hoje: LV_TRILHA
     ? {t:"Hoje",o:"O item em que você está (ou o próximo), seu progresso e as tarefas pendentes.",c:"Abra o item, copie o prompt de estudo se quiser estudar com o Claude e anote enquanto estuda. Marque “Estudando” e “Concluído” para acompanhar o ritmo."}
     : {t:"Hoje",o:"A aula em andamento (ou a próxima), o progresso do curso e as tarefas pendentes.",c:"Durante a aula, digite na “Anotação rápida”: salva sozinho. “Abrir aula” mostra presença, destaque e a anotação da disciplina."},
@@ -27,15 +29,17 @@ Object.assign(AJUDA,{
   materiais:{t:"Materiais",o:"Biblioteca do caderno: PDFs, slides, fotos, links e textos, separados por "+LV_TERMO.um+".",c:"“Adicionar material” → escolha o tipo → Salvar. Abra o material para gerar resumo, questões e flashcards."},
   busca:{t:"Buscar",o:"Procura em tudo o que você escreveu, nos materiais"+(LV_TRILHA?" e nos itens":"")+".",c:"Digite 2 letras ou mais. Clique no resultado para abrir."},
   sql:{t:"Configuração pendente",o:"A tabela dos cadernos criados no app ainda não existe no Supabase do Checklist.",c:"No Supabase do Checklist: SQL Editor → cole o conteúdo de supabase/caderno_livre.sql (do repositório caderno-qgis-aesp) → Run. Depois recarregue a página."},
+});
+Object.assign(AJUDA,{
   configurar:{t:"Configurar",o:"Tudo do caderno: nome, descrição, cor, abas, "+LV_TERMO.uns+(LV_TRILHA?", itens e plano de estudo.":", dias e horários das aulas."),c:"Mude o que quiser e clique em “Salvar alterações”. Suas anotações, materiais e tarefas ficam guardados: apagar uma "+LV_TERMO.um+" só a tira do caderno."},
   cfabas:{t:"Abas",o:"Quais abas aparecem no menu.",c:"Hoje e Configurar ficam sempre. Esconder uma aba não apaga nada do que está nela."},
   cfdesc:{t:"Descrição",o:"Sobre o que é o curso e o seu objetivo.",c:"A IA usa este texto para fazer resumos, questões, flashcards e explicações no contexto certo. Ex.: “Curso de Excel avançado para análise de dados de RH; objetivo: montar painéis”."},
 });
-AJUDA.fases=AJUDA.disciplinas;
+if(LV_TRILHA) AJUDA.fases=AJUDA.disciplinas;
 ICONES.configurar='<circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/>';
 
 // Prompt de estudo padrão de um item (trilha), sem dados pessoais
-if(LV_TRILHA) promptPadrao = function(it){
+if(LV_LIVRE&&LV_TRILHA) promptPadrao = function(it){
   const f=DK[it.k], i=ITENS.indexOf(it), ant=ITENS[i-1], prox=ITENS[i+1], sess=Math.max(1,Math.ceil(it.h||1));
   return [
     "Você é meu tutor. Vamos estudar juntos um item do meu caderno de estudos \""+(LV.nome||"Caderno")+"\".",
@@ -56,8 +60,9 @@ if(LV_TRILHA) promptPadrao = function(it){
   ].filter(Boolean).join("\n");
 };
 
-/* ============ temporizador e fluxogramas (por formato) ============ */
-if(LV_TRILHA){
+/* ============ temporizador e fluxogramas (por formato; QGIS e DIO definem os seus no HTML) ============ */
+if(!LV_LIVRE){}
+else if(LV_TRILHA){
   window.TIMER_CFG={ls:CURSO.lsp+"timer", meta:null, alvo:()=>{ const a=atual(); return a?{id:a.id, nome:a.n+". "+a.nome, rot:"item "+a.n}:null; }};
   window.FLUXO_ALVO=()=>{
     if(!PANE) return null;
@@ -97,7 +102,7 @@ const cfCampo=(id,rot,val,o={})=>`<div${o.cls?` class="${o.cls}"`:""}><label cla
 const cfMover=(tipo,i,n)=>`<span class="cf-acoes"><button type="button" class="btn sm" data-cfm="${tipo}:${i}:-1" ${i===0?"disabled":""} aria-label="Subir" title="Subir">↑</button><button type="button" class="btn sm" data-cfm="${tipo}:${i}:1" ${i===n-1?"disabled":""} aria-label="Descer" title="Descer">↓</button><button type="button" class="btn sm cf-x${CF_CONF[tipo+":"+i]?" conf":""}" data-cfx="${tipo}:${i}" aria-label="Apagar" title="Apagar">${CF_CONF[tipo+":"+i]?"Apagar?":"✕"}</button></span>`;
 
 function vConfigurar(){
-  cfIni();
+  cfIni(); setTimeout(cfResumo,0);
   const c=CF, T=LV_TERMO, cores=LV_CORES.concat(["#0f6b5c","#475569"]);
   const secs=c.secoes.map((x,i)=>{ const nIt=LV_TRILHA?c.itens.filter(t=>t.k===x.k).length:0, hIt=LV_TRILHA?c.itens.filter(t=>t.k===x.k).reduce((s,t)=>s+(Number(t.h)||0),0):0;
     return `<div class="cf-sec" data-i="${i}">
@@ -170,14 +175,15 @@ function vConfigurar(){
       ${LV_TRILHA?`<div class="grid2">${cfCampo("cf-plat","Onde fica o curso",c.plat,{k:"plat",max:40,ph:"Ex.: DIO, Alura, Udemy, YouTube",dica:"Usado no botão “Abrir em …” dos itens com link."})}<div></div></div>`:""}
       <div><span class="lb">Cor</span><div class="cf-cores">${cores.map(x=>`<button type="button" class="cf-sw${(c.cor||"").toLowerCase()===x?" on":""}" style="background:${x}" data-cfcor="${x}" aria-label="Cor ${x}" title="${x}"></button>`).join("")}<label class="cf-sw cf-sw-livre" title="Outra cor"><input type="color" data-cf="cor" value="${esc(c.cor||"#0f6b5c")}" aria-label="Outra cor"></label></div></div>
       <p class="muted cf-dica" style="margin:8px 0 0">Formato: <b>${LV_TRILHA?"Trilha de estudo (fases e itens)":"Curso com aulas e datas (disciplinas, dias e horários)"}</b>. Para o outro formato, crie um caderno novo na página inicial.</p>
+      ${LV_LIVRE?"":`<div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn sm" data-cforig>Voltar à configuração original</button><span class="muted cf-dica" style="margin:0">Carrega no formulário ${CURSO.id==="qgis"?"o curso como veio do QTS":"a trilha original"}; nada muda até salvar.</span></div>`}
     </section>
     <section class="card cf-card"><h3>Abas ${info("cfabas")}</h3><div class="cf-abas">${abas}</div></section>
     <section class="card cf-card"><div class="row" style="justify-content:space-between"><h3>${T.Uns} <span class="muted" style="font-weight:500;font-size:14px">(${c.secoes.length})</span></h3><button type="button" class="btn sm" data-cfadd="sec">+ ${T.Um}</button></div>
       <p class="muted cf-dica" style="margin:4px 0 10px">${LV_TRILHA?"Cada fase agrupa itens e tem anotações, materiais e projeto próprios.":"A ordem das disciplinas e o número de aulas de cada uma definem o cronograma, nos dias e horários abaixo."}</p>
       <div class="cf-lista">${secs}</div></section>
     ${blocoTipo}
-    <section class="card cf-card cf-perigo"><h3>Apagar caderno</h3><p class="muted" style="margin:0 0 8px">Apaga o caderno e tudo o que está nele (anotações, materiais, tarefas), em todos os aparelhos. Não dá para desfazer; baixe antes um backup em Exportar.</p>
-      <div class="cf-linha"><input type="text" id="cf-apagar-nome" placeholder="Digite o nome do caderno para confirmar" aria-label="Nome do caderno para confirmar"><button type="button" class="btn sm cf-x" data-cfapagar>Apagar caderno</button></div></section>
+    ${typeof CONVITE!=="undefined"&&CONVITE?"":`<section class="card cf-card cf-perigo"><h3>Apagar caderno</h3><p class="muted" style="margin:0 0 8px">Apaga o caderno e tudo o que está nele (anotações, materiais, tarefas), em todos os aparelhos. Não dá para desfazer; baixe antes um backup em Exportar.</p>
+      <div class="cf-linha"><input type="text" id="cf-apagar-nome" placeholder="Digite o nome do caderno para confirmar" aria-label="Nome do caderno para confirmar"><button type="button" class="btn sm cf-x" data-cfapagar>Apagar caderno</button></div>${LV_LIVRE?"":`<p class="muted cf-dica" style="margin:8px 0 0">Ele some da página inicial; dá para trazê-lo de volta, vazio, em “+ Novo caderno”.</p>`}</section>`}
     <div class="cf-barra${CF_SUJO?" sujo":""}" id="cf-barra"><span class="cf-st">${CF_SUJO?"Alterações não salvas":"Tudo salvo"}</span><span class="row" style="gap:8px"><button type="button" class="btn" data-cfdesfazer ${CF_SUJO?"":"disabled"}>Descartar</button><button type="button" class="btn pri" data-cfsalvar>Salvar alterações</button></span></div>`;
 }
 window.TELAS_EXTRA=Object.assign(window.TELAS_EXTRA||{}, {configurar:vConfigurar});
@@ -216,6 +222,7 @@ const cfRedesenhar=()=>{ const m=document.querySelector("main"), y=m?m.scrollTop
 
 document.addEventListener("input",e=>{
   if(VIEW!=="configurar"||!CF) return; const t=e.target, d=t.dataset; if(!d) return;
+  if(d.cf||d.cfs||d.cfi||d.cfh||d.cfaba) delete CF._padrao;
   const num=v=>v===""?0:Number(v);
   if(d.cf){ const k=d.cf; CF[k]= t.type==="checkbox"?t.checked : t.type==="number"?num(t.value) : t.value; if(k==="cor") document.querySelectorAll(".cf-sw.on").forEach(x=>x.classList.remove("on")); cfSujo(); return; }
   if(d.cfs){ const [i,k]=d.cfs.split(":"), x=CF.secoes[+i]; if(!x) return; x[k]= k==="ha"?num(t.value) : k==="inst"?t.value.split(",").map(s=>s.trim()).filter(Boolean) : t.value; cfSujo(); return; }
@@ -265,6 +272,7 @@ document.addEventListener("click",async e=>{
     ls.forEach(l=>{ const p=l.split(/\s*[;|\t]\s*/), nome=p[0].replace(/^\d+[.)-]\s*/,""), h=parseFloat(String(p[1]||"").replace(",",".")), url=(p.find(x=>/^https?:\/\//i.test(x))||"");
       CF.itens.push({id:lvId("i"),k,nome:nome.slice(0,200),tipo:/^projeto/i.test(nome)?"Projeto":"Curso",h:isFinite(h)?h:1,url}); });
     cfSujo(); cfRedesenhar(); toast(ls.length+" item(ns) adicionado(s)."); return; }
+  if(d.cforig!==undefined){ CF=lvClone(LV_PADRAO); CF.secoes=CF.secoes.map(x=>({...x})); CF.itens=CF.itens||[]; CF.dias=CF.dias||[]; CF.horarios=CF.horarios||[]; CF.abas=CF.abas||{}; CF_SUJO=false; cfSujo(); CF._padrao=true; cfRedesenhar(); toast("Configuração original carregada. Clique em “Salvar alterações” para aplicar."); return; }
   if(d.cfdesfazer!==undefined){ CF=null; CF_SUJO=false; CF_CONF={}; cfRedesenhar(); toast("Alterações descartadas."); return; }
   if(d.cfsalvar!==undefined){ await cfSalvar(b); return; }
   if(d.cfapagar!==undefined){ await cfApagar(b); return; }
@@ -278,6 +286,12 @@ async function cfSalvar(bt){
   else c.dias=[...new Set(c.dias)].sort();
   c.upd=Date.now();
   CF_SALVANDO=true; if(bt){ bt.disabled=true; bt.textContent="Salvando…"; }
+  if(!LV_LIVRE){ // QGIS/DIO: a configuração é um doc do próprio caderno (sincroniza como as anotações)
+    const body = CF._padrao ? {tipo:"cfg",padrao:true} : {...c,tipo:"cfg"}; delete body._padrao;
+    salvarDoc("cfg-caderno",body,0); try{ localStorage.setItem(LV_KEY,JSON.stringify(S.docs["cfg-caderno"])); }catch(e){}
+    const ok=await lvEsperarEnvio(); CF_SUJO=false;
+    toast(ok?"Configuração salva. Recarregando…":"Salvo neste aparelho; vai para a nuvem quando a conexão voltar. Recarregando…"); setTimeout(()=>location.reload(),600); return;
+  }
   try{ localStorage.setItem(LV_KEY,JSON.stringify(c)); }catch(e){}
   if(S.sb&&S.uid){
     try{ const {error}=await S.sb.from("caderno_livre").upsert({user_id:S.uid,caderno:"_",id:LV.id,body:c,upd:c.upd},{onConflict:"user_id,caderno,id"}); if(error) throw error; }
@@ -285,11 +299,28 @@ async function cfSalvar(bt){
   }
   CF_SUJO=false; toast("Configuração salva. Recarregando…"); setTimeout(()=>location.reload(),500);
 }
+// espera os envios pendentes (até 6 s)
+async function lvEsperarEnvio(){ flushTudo(); for(let i=0;i<30;i++){ if(!Object.keys(pend).length&&!Object.values(writing).some(Boolean)) return !S.erro; await new Promise(r=>setTimeout(r,200)); } return false; }
 async function cfApagar(bt){
   const v=(document.getElementById("cf-apagar-nome")||{}).value||"";
   if(v.trim().toLowerCase()!==String(LV.nome||"").trim().toLowerCase()){ toast("Digite o nome exato do caderno para confirmar."); return; }
   if(!bt.dataset.conf){ bt.dataset.conf="1"; bt.textContent="Confirmar: apagar tudo"; setTimeout(()=>{ if(bt.isConnected){ delete bt.dataset.conf; bt.textContent="Apagar caderno"; } },5000); return; }
   bt.disabled=true; bt.textContent="Apagando…";
+  if(!LV_LIVRE){ // QGIS/DIO: apaga todos os dados do caderno e o esconde da página inicial
+    Object.keys(pend).forEach(k=>{ clearTimeout(timers[k]); delete pend[k]; });
+    const oculto={tipo:"cfg",oculto:true,upd:Date.now()};
+    if(S.sb&&S.uid){
+      try{
+        const paths=Object.values(S.docs).flatMap(m=>(m&&m.tipo==="mat"&&Array.isArray(m.arquivos))?m.arquivos.map(a=>a.path).filter(Boolean):[]);
+        if(paths.length) await S.sb.storage.from("caderno").remove(paths).catch(()=>{});
+        let r=await S.sb.from(CURSO.tabela).delete().eq("user_id",S.uid); if(r.error) throw r.error;
+        r=await S.sb.from(CURSO.tabela).upsert({user_id:S.uid,id:"cfg-caderno",body:oculto,upd:oculto.upd},{onConflict:"user_id,id"}); if(r.error) throw r.error;
+      }catch(e){ bt.disabled=false; bt.textContent="Apagar caderno"; toast("Não consegui apagar na nuvem: "+(e.message||"erro")); return; }
+    }
+    S.push=null; S.pull=null; S.docs={};
+    try{ Object.keys(localStorage).filter(k=>k.startsWith(CURSO.lsp)||k.startsWith(CURSO.lsp2)).forEach(k=>localStorage.removeItem(k)); localStorage.setItem(LV_KEY,JSON.stringify(oculto)); }catch(e){}
+    CF_SALVANDO=true; location.href="/"; return;
+  }
   if(S.sb&&S.uid){
     try{
       const paths=Object.values(S.docs).flatMap(m=>(m&&m.tipo==="mat"&&Array.isArray(m.arquivos))?m.arquivos.map(a=>a.path).filter(Boolean):[]);
@@ -302,8 +333,9 @@ async function cfApagar(bt){
   CF_SALVANDO=true; location.href="/";
 }
 
-/* ============ cor do caderno ============ */
+/* ============ cor e título do caderno ============ */
 (function(){
+  if(!LV_LIVRE){ const h=document.querySelector(".brand h1"), p=document.querySelector(".brand h1+p"); if(h) h.textContent=LV.nome||h.textContent; if(p) p.textContent=LV.sub||""; if(LV===LV_PADRAO||(LV.cor||"").toLowerCase()===(LV_PADRAO.cor||"").toLowerCase()) return; }
   const cor=/^#[0-9a-f]{6}$/i.test(LV.cor||"")?LV.cor:"#0f6b5c", st=document.createElement("style");
   st.textContent=`:root{--accent:${cor};--accent-soft:color-mix(in srgb,${cor} 14%,#fff)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--accent:color-mix(in srgb,${cor} 62%,#fff);--accent-ink:#111;--accent-soft:color-mix(in srgb,${cor} 24%,#151a19)}}
@@ -311,3 +343,18 @@ async function cfApagar(bt){
   document.head.appendChild(st);
   const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=cor;
 })();
+
+/* ============ QGIS/DIO: configuração vinda de outro aparelho ============ */
+if(!LV_LIVRE){
+  const _mesclar=mesclar;
+  mesclar=function(r,i){ _mesclar(r,i); lvConferirCfg(); };
+  function lvConferirCfg(){
+    const d=S.docs["cfg-caderno"]; if(!d) return; let l=null; try{ l=JSON.parse(localStorage.getItem(LV_KEY)||"null"); }catch(e){}
+    if(l&&(d.upd||0)<=(l.upd||0)) return;
+    try{ localStorage.setItem(LV_KEY,JSON.stringify(d)); }catch(e){}
+    const vale = c => c&&!c.padrao&&!c.oculto&&Array.isArray(c.secoes)&&c.secoes.length;
+    if(!vale(d)&&LV===LV_PADRAO) return;           // nada muda na tela
+    if(CF_SUJO){ toast("A configuração mudou em outro aparelho. Salve ou descarte para ver a nova."); return; }
+    toast("A configuração do caderno mudou em outro aparelho. Recarregando…"); setTimeout(()=>location.reload(),1500);
+  }
+}

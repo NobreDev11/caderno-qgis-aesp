@@ -1,8 +1,36 @@
 "use strict";
-/* Caderno QGIS (AESP/CE): configuração do curso, lida pelo caderno.js. */
+/* Caderno QGIS (AESP/CE): configuração do curso, lida pelo caderno.js.
+   LV_PADRAO = o curso como veio do QTS. Se você mudou algo na aba Configurar, vale a sua versão (doc cfg-caderno, cópia em localStorage).
+   A estrutura (DISC, AULAS…) é montada pelo curso-base.js, carregado logo depois. */
+const LV_PADRAO = { v:1, tipo:"curso", nome:"Uso do QGIS como Estratégia de Segurança Pública", sub:"AESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11",
+  desc:"Curso da Academia Estadual de Segurança Pública do Ceará (AESP/CE) sobre QGIS e geoprocessamento aplicados à segurança pública; o aluno é bombeiro militar (CBMCE).",
+  cor:"#0f6b5c", presenca:true, local:"AESP/CE, Fortaleza", abas:{},
+  secoes:[
+    {k:"cart", nome:"Ambientação e Introdução à Cartografia", curto:"Cartografia", ha:4, inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#3b7dd8"},
+    {k:"sig",  nome:"Fundamentos de Geoprocessamento e SIG", curto:"SIG", ha:4, inst:["José Eudázio Honório Sampaio","José Dyego de Souza Santos"], cor:"#8a5cd0"},
+    {k:"gmaps",nome:"Google Maps e Google My Maps Aplicados à Segurança Pública", curto:"Google Maps", ha:8, inst:["José Dyego de Souza Santos"], cor:"#d0453b"},
+    {k:"qgis", nome:"Introdução ao QGIS", curto:"QGIS", ha:12, inst:["Flávio do Nascimento Moreira Júnior","José Eudázio Honório Sampaio"], cor:"#2f9e44"},
+    {k:"edic", nome:"Edição e Manipulação de Dados", curto:"Edição de dados", ha:8, inst:["José Eudázio Honório Sampaio"], cor:"#c9871a"},
+    {k:"bases",nome:"Bases de Dados Geográficas", curto:"Bases de dados", ha:8, inst:["José Dyego de Souza Santos"], cor:"#1592a3"},
+    {k:"anal", nome:"Análises Espaciais Aplicadas à Segurança", curto:"Análises espaciais", ha:16, inst:["José Eudázio Honório Sampaio"], cor:"#b8407a"},
+    {k:"prod", nome:"Elaboração de Produtos Cartográficos", curto:"Produtos cartográficos", ha:8, inst:["Flávio do Nascimento Moreira Júnior","Daniel de Souza Rocha"], cor:"#6c7a1f"},
+    {k:"proj", nome:"Projeto Prático: Diagnóstico Territorial", curto:"Projeto Prático", ha:12, inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#d2622a"},
+  ],
+  dias:["2026-11-09","2026-11-10","2026-11-11","2026-11-12","2026-11-13","2026-11-16","2026-11-17","2026-11-18"],
+  diasRepo:["2026-11-14","2026-11-15"],
+  horarios:[{ini:"07:30",fim:"08:20"},{ini:"08:20",fim:"09:10"},{ini:"09:10",fim:"10:00"},{int:"Intervalo",ini:"10:00",fim:"10:20"},{ini:"10:20",fim:"11:10"},{ini:"11:10",fim:"12:00"},
+    {int:"Almoço",ini:"12:00",fim:"13:00"},{ini:"13:00",fim:"13:50"},{ini:"13:50",fim:"14:40"},{int:"Intervalo",ini:"14:40",fim:"15:00"},{ini:"15:00",fim:"15:50"},{ini:"15:50",fim:"16:40"},{ini:"16:40",fim:"17:30"}] };
+const LV_CFG_KEY = "caderno-qgis-aesp:cfg";
+const LV = (()=>{ try{ const c=JSON.parse(localStorage.getItem(LV_CFG_KEY)||"null"); if(c&&!c.padrao&&!c.oculto&&Array.isArray(c.secoes)&&c.secoes.length) return {...c,tipo:"curso"}; }catch(e){} return LV_PADRAO; })();
+const LV_TRILHA = false;
+const LV_ABAS = [["hoje","Hoje"],["cronograma","Cronograma"],["disciplinas","Disciplinas"],["materiais","Materiais"],["projetos","Projetos"],["estudar","Estudar"],["caderno","Caderno"],["tarefas","Tarefas"],["busca","Buscar"],["formatacao","Formatação"],["backup","Exportar"]];
+const LV_FIXAS = ["hoje"];
+const lvAba = v => LV_FIXAS.includes(v) || !LV.abas || LV.abas[v] !== false;
+const lvDesc = String(LV.desc||"").trim();
 const CURSO={ id:"qgis", tabela:"caderno_notas", lsp:"caderno-qgis-aesp:", lsp2:"caderno-qgis:", convite:true, aulas:true, compartilharPratica:true,
+  editado:LV!==LV_PADRAO, presenca:LV.presenca!==false, local:LV.local||"", views:[...LV_ABAS.filter(([v])=>lvAba(v)),["configurar","Configurar"]],
   app:"caderno-qgis-aesp", arq:"caderno-qgis", termo:"disciplina",
-  tituloMD:"Uso do QGIS como Estratégia de Segurança Pública\nAESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11/2026",
+  tituloMD: LV===LV_PADRAO ? "Uso do QGIS como Estratégia de Segurança Pública\nAESP/CE · Turma 01/2026 · Grupo 1 · 09 a 18/11/2026" : LV.nome+(LV.sub?"\n"+LV.sub:""),
   praticaModelo:"Prática no QGIS",
   modeloProjeto:{ titulo:"Diagnóstico Territorial", prazo:"2026-11-18",
     objetivo:"Produzir um diagnóstico territorial da criminalidade numa área de estudo, usando o QGIS, para apoiar o planejamento operacional.",
@@ -11,38 +39,6 @@ const CURSO={ id:"qgis", tabela:"caderno_notas", lsp:"caderno-qgis-aesp:", lsp2:
       ["Montar o projeto no QGIS com as camadas de base","qgis"],["Tratar dados: tabela de atributos, junções, correções","edic"],["Análises espaciais: densidade (kernel), hotspots, buffers","anal"],
       ["Elaborar mapas temáticos e o layout de impressão","prod"],["Interpretar resultados e propor ações","proj"],["Preparar a apresentação final","proj"]]
   } };
-/* ============ DADOS DO QTS (AESP, versão de 06/11/2026) ============ */
-const DISC = [
-  {k:"cart", nome:"Ambientação e Introdução à Cartografia", ha:4,  inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#3b7dd8"},
-  {k:"sig",  nome:"Fundamentos de Geoprocessamento e SIG",  ha:4,  inst:["José Eudázio Honório Sampaio","José Dyego de Souza Santos"], cor:"#8a5cd0"},
-  {k:"gmaps",nome:"Google Maps e Google My Maps Aplicados à Segurança Pública", ha:8, inst:["José Dyego de Souza Santos"], cor:"#d0453b"},
-  {k:"qgis", nome:"Introdução ao QGIS", ha:12, inst:["Flávio do Nascimento Moreira Júnior","José Eudázio Honório Sampaio"], cor:"#2f9e44"},
-  {k:"edic", nome:"Edição e Manipulação de Dados", ha:8, inst:["José Eudázio Honório Sampaio"], cor:"#c9871a"},
-  {k:"bases",nome:"Bases de Dados Geográficas", ha:8, inst:["José Dyego de Souza Santos"], cor:"#1592a3"},
-  {k:"anal", nome:"Análises Espaciais Aplicadas à Segurança", ha:16, inst:["José Eudázio Honório Sampaio"], cor:"#b8407a"},
-  {k:"prod", nome:"Elaboração de Produtos Cartográficos", ha:8, inst:["Flávio do Nascimento Moreira Júnior","Daniel de Souza Rocha"], cor:"#6c7a1f"},
-  {k:"proj", nome:"Projeto Prático: Diagnóstico Territorial", ha:12, inst:["José Eudázio Honório Sampaio","Daniel de Souza Rocha"], cor:"#d2622a"},
-];
-const DK = Object.fromEntries(DISC.map(d=>[d.k,d]));
-const SLOTS = [["07:30","08:20"],["08:20","09:10"],["09:10","10:00"],"INT1",["10:20","11:10"],["11:10","12:00"],["13:00","13:50"],["13:50","14:40"],"INT2",["15:00","15:50"],["15:50","16:40"],["16:40","17:30"]];
-const DIAS_AULA = ["2026-11-09","2026-11-10","2026-11-11","2026-11-12","2026-11-13","2026-11-16","2026-11-17","2026-11-18"];
-const DIAS_REPO = ["2026-11-14","2026-11-15"];
-const WD = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
-
-const AULAS = []; // {id, data, ini, fim, k, n, tot}
-(function gerar(){
-  const seq=[]; DISC.forEach(d=>{for(let i=1;i<=d.ha;i++)seq.push([d.k,i,d.ha])});
-  let p=0;
-  for(const dia of DIAS_AULA){
-    for(const s of SLOTS){ if(typeof s==="string")continue;
-      const [k,n,tot]=seq[p++];
-      AULAS.push({id:dia.replace(/-/g,"")+"-"+s[0].replace(":",""), data:dia, ini:s[0], fim:s[1], k, n, tot});
-    }
-  }
-})();
-const AK = Object.fromEntries(AULAS.map(a=>[a.id,a]));
-const TODOS_DIAS = [...DIAS_AULA.slice(0,5),...DIAS_REPO,...DIAS_AULA.slice(5)];
-
 // Textos e listas que variam por curso
 const RAP_DOM=/cartogra|geod[eé]s|geogr[aá]f|mapa|georrefer|coordenad|proje[cç][aã]o|\bsig\b|geoprocess|sat[eé]lit|sensoriament|vetor|raster|camada|software|seguran[cç]a|crim|pol[ií]cia|estat[ií]stic|dados|topogra|gps|altitude|latitude|longitude/i;
 
@@ -55,6 +51,5 @@ const PJ_CAMPOS=[
   ["produtos","Produtos e resultados esperados","Mapas, tabelas, relatório, apresentação."],
 ];
 
-const CURTO={cart:"Cartografia",sig:"SIG",gmaps:"Google Maps",qgis:"QGIS",edic:"Edição de dados",bases:"Bases de dados",anal:"Análises espaciais",prod:"Produtos cartográficos",proj:"Projeto Prático"};
 
 const PASSOS_QGIS=["Criar o projeto no QGIS e conferir o SRC","Carregar as camadas e conferir os atributos","Executar a ferramenta / análise","Conferir o resultado (simbologia, tabela, mapa)","Salvar o projeto e exportar o resultado"];
